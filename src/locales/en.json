@@ -45,13 +45,40 @@
     "settings": "Settings"
   },
   "login": {
-    "title": "Sign in",
-    "subtitle": "Welcome to the SwiftAxis rider management system",
+    "title": "Welcome back",
+    "subtitle": "Sign in to your SwiftAxis workspace",
     "username": "Username",
     "password": "Password",
     "submit": "Sign in",
-    "demoHint": "Demo: pick any role from the list below",
-    "loginAs": "Sign in as"
+    "signingIn": "Signing in…",
+    "remember": "Keep me signed in",
+    "forgot": "Forgot password?",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "demoHint": "Demo mode — choose a role to explore",
+    "loginAs": "Sign in as",
+    "showcaseTitle": "Every rider, every riyal — in motion.",
+    "showcaseSubtitle": "The command center for delivery operations across Jeddah — orders, commissions, and cash wallets in one place.",
+    "features": {
+      "orders": "Live order tracking",
+      "ordersDesc": "Follow every delivery as it happens",
+      "commissions": "Automated commissions",
+      "commissionsDesc": "Fair, transparent rider payouts",
+      "wallets": "Cash wallet control",
+      "walletsDesc": "Balances reconciled in real time"
+    },
+    "stat": {
+      "orders": "Orders today",
+      "onTime": "On-time rate",
+      "riders": "Active riders"
+    },
+    "live": "Live",
+    "delivered": "Delivered",
+    "min": "min",
+    "preview": {
+      "title": "Today's performance",
+      "topRider": "Top rider"
+    }
   },
   "dashboard": {
     "welcome": "Welcome, {name}",

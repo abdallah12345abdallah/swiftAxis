@@ -6,7 +6,8 @@ const THEME_KEY = 'swiftaxis.theme'
 function storedTheme() {
   const t = localStorage.getItem(THEME_KEY)
   if (t === 'light' || t === 'dark') return t
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  // Default to light; users can switch and their choice is remembered.
+  return 'light'
 }
 
 export const useUiStore = defineStore('ui', {
