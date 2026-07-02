@@ -1,0 +1,109 @@
+{
+  "app": {
+    "name": "SwiftAxis",
+    "logistics": "لوجستيك",
+    "tagline": "نظام إدارة مناديب الشحن بالعمولة"
+  },
+  "common": {
+    "search": "بحث…",
+    "loading": "جارٍ التحميل…",
+    "day": "اليوم",
+    "month": "الشهر",
+    "year": "السنة",
+    "today": "اليوم",
+    "thisMonth": "هذا الشهر",
+    "thisYear": "هذه السنة",
+    "target": "الهدف",
+    "actual": "الفعلي",
+    "notifications": "الإشعارات",
+    "profile": "الملف الشخصي",
+    "logout": "تسجيل الخروج",
+    "riyal": "ر.س",
+    "vsPrev": "مقارنة بالفترة السابقة",
+    "viewAll": "عرض الكل",
+    "noData": "لا توجد بيانات",
+    "orders": "أوردر",
+    "collapse": "طيّ القائمة"
+  },
+  "roles": {
+    "manager": "مدير النظام",
+    "supervisor": "مشرف",
+    "accountant": "محاسب",
+    "rider": "مندوب"
+  },
+  "nav": {
+    "dashboard": "الرئيسية",
+    "riders": "المناديب والعقود",
+    "orders": "الأوردرات اليومية",
+    "commissions": "العمولات",
+    "wallets": "محافظ الكاش",
+    "vehicles": "السيارات والمصروفات",
+    "reports": "التقارير",
+    "ledger": "دفتر الأستاذ",
+    "purchases": "المشتريات و VAT",
+    "users": "المستخدمون والصلاحيات",
+    "settings": "الإعدادات"
+  },
+  "login": {
+    "title": "تسجيل الدخول",
+    "subtitle": "مرحبًا بك في نظام إدارة مناديب SwiftAxis",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "submit": "دخول",
+    "demoHint": "للتجربة: اختر أي دور من القائمة أدناه",
+    "loginAs": "الدخول كـ"
+  },
+  "dashboard": {
+    "welcome": "مرحبًا، {name}",
+    "subtitleManager": "نظرة عامة على أداء الفريق والعمولات",
+    "subtitleRider": "ملخص أدائك ومحفظتك",
+    "kpi": {
+      "totalOrders": "إجمالي الأوردرات",
+      "commissionsDue": "العمولات المستحقة",
+      "activeRiders": "المناديب النشطون",
+      "avgOrders": "متوسط الأوردرات/مندوب",
+      "myOrders": "أوردراتي",
+      "myCommission": "عمولتي المتوقعة",
+      "walletBalance": "رصيد المحفظة",
+      "goalProgress": "التقدم نحو الهدف"
+    },
+    "trendTitle": "تطور الأوردرات والعمولات",
+    "trendOrders": "الأوردرات",
+    "trendCommissions": "العمولات (ر.س)",
+    "ridersTitle": "أداء المناديب",
+    "compareTitle": "مقارنة أداء المناديب",
+    "alertsTitle": "التنبيهات",
+    "weeklyTitle": "أوردراتي هذا الأسبوع",
+    "lastMovement": "آخر حركة",
+    "goalReached": "تجاوزت هدفك اليومي! 🎉",
+    "table": {
+      "rider": "المندوب",
+      "contract": "العقد",
+      "orders": "الأوردرات",
+      "progress": "التقدم",
+      "commission": "العمولة",
+      "status": "الحالة"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "معطّل",
+      "warning": "أقل من الهدف"
+    },
+    "alerts": {
+      "walletOver": "رصيد {name} تجاوز الحد ({amount} ر.س)",
+      "lowPerformer": "{name} أقل من 70% من الهدف",
+      "empty": "لا توجد تنبيهات حالية 👍"
+    }
+  },
+  "placeholder": {
+    "comingSoon": "قيد التطوير",
+    "description": "هذه الصفحة ({title}) ستُبنى في المرحلة القادمة."
+  },
+  "styleguide": {
+    "title": "دليل التصميم",
+    "colors": "الألوان",
+    "buttons": "الأزرار",
+    "badges": "الشارات",
+    "cards": "البطاقات"
+  }
+}

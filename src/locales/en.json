@@ -1,0 +1,109 @@
+{
+  "app": {
+    "name": "SwiftAxis",
+    "logistics": "LOGISTICS",
+    "tagline": "Delivery Rider Commission Management"
+  },
+  "common": {
+    "search": "Search…",
+    "loading": "Loading…",
+    "day": "Day",
+    "month": "Month",
+    "year": "Year",
+    "today": "Today",
+    "thisMonth": "This month",
+    "thisYear": "This year",
+    "target": "Target",
+    "actual": "Actual",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "logout": "Log out",
+    "riyal": "SAR",
+    "vsPrev": "vs previous period",
+    "viewAll": "View all",
+    "noData": "No data",
+    "orders": "orders",
+    "collapse": "Collapse"
+  },
+  "roles": {
+    "manager": "System Manager",
+    "supervisor": "Supervisor",
+    "accountant": "Accountant",
+    "rider": "Rider"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "riders": "Riders & Contracts",
+    "orders": "Daily Orders",
+    "commissions": "Commissions",
+    "wallets": "Cash Wallets",
+    "vehicles": "Vehicles & Expenses",
+    "reports": "Reports",
+    "ledger": "General Ledger",
+    "purchases": "Purchases & VAT",
+    "users": "Users & Permissions",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Welcome to the SwiftAxis rider management system",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "demoHint": "Demo: pick any role from the list below",
+    "loginAs": "Sign in as"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {name}",
+    "subtitleManager": "Overview of team performance and commissions",
+    "subtitleRider": "Summary of your performance and wallet",
+    "kpi": {
+      "totalOrders": "Total Orders",
+      "commissionsDue": "Commissions Due",
+      "activeRiders": "Active Riders",
+      "avgOrders": "Avg Orders / Rider",
+      "myOrders": "My Orders",
+      "myCommission": "Expected Commission",
+      "walletBalance": "Wallet Balance",
+      "goalProgress": "Goal Progress"
+    },
+    "trendTitle": "Orders & Commissions Trend",
+    "trendOrders": "Orders",
+    "trendCommissions": "Commissions (SAR)",
+    "ridersTitle": "Rider Performance",
+    "compareTitle": "Rider Performance Comparison",
+    "alertsTitle": "Alerts",
+    "weeklyTitle": "My orders this week",
+    "lastMovement": "Last movement",
+    "goalReached": "You beat your daily goal! 🎉",
+    "table": {
+      "rider": "Rider",
+      "contract": "Contract",
+      "orders": "Orders",
+      "progress": "Progress",
+      "commission": "Commission",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "warning": "Below target"
+    },
+    "alerts": {
+      "walletOver": "{name}'s balance exceeded the limit ({amount} SAR)",
+      "lowPerformer": "{name} is below 70% of target",
+      "empty": "No current alerts 👍"
+    }
+  },
+  "placeholder": {
+    "comingSoon": "Coming soon",
+    "description": "This page ({title}) will be built in the next phase."
+  },
+  "styleguide": {
+    "title": "Design System",
+    "colors": "Colors",
+    "buttons": "Buttons",
+    "badges": "Badges",
+    "cards": "Cards"
+  }
+}
