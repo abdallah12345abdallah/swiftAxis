@@ -16,6 +16,7 @@ import RoleSwitcher from '@/components/common/RoleSwitcher.vue'
 import Dropdown from '@/components/common/Dropdown.vue'
 import Avatar from '@/components/common/Avatar.vue'
 import { Badge } from '@/components/ui/badge'
+import { ToastHost } from '@/components/ui/toast'
 
 const ICONS = {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
@@ -166,6 +167,8 @@ function logout() {
     <main class="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
       <RouterView />
     </main>
+
+    <ToastHost />
   </div>
 </template>
 
