@@ -23,7 +23,8 @@
     "viewAll": "View all",
     "noData": "No data",
     "orders": "orders",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "switchRole": "Switch role (demo)"
   },
   "roles": {
     "manager": "System Manager",
@@ -98,6 +99,7 @@
     "trendOrders": "Orders",
     "trendCommissions": "Commissions (SAR)",
     "ridersTitle": "Rider Performance",
+    "topRidersTitle": "Top Riders",
     "compareTitle": "Rider Performance Comparison",
     "alertsTitle": "Alerts",
     "weeklyTitle": "My orders this week",
@@ -120,6 +122,92 @@
       "walletOver": "{name}'s balance exceeded the limit ({amount} SAR)",
       "lowPerformer": "{name} is below 70% of target",
       "empty": "No current alerts 👍"
+    }
+  },
+  "riders": {
+    "title": "Riders & Contracts",
+    "subtitle": "Manage your delivery riders and their contracts",
+    "tabs": {
+      "riders": "Riders",
+      "contracts": "Contracts"
+    },
+    "searchPlaceholder": "Search by name or national ID…",
+    "filters": {
+      "all": "All",
+      "contract": "Contract",
+      "status": "Status",
+      "city": "City"
+    },
+    "stats": {
+      "total": "Total riders",
+      "active": "Active",
+      "underperforming": "Below target",
+      "avgOrders": "Avg orders"
+    },
+    "actions": {
+      "add": "Add rider",
+      "export": "Export",
+      "edit": "Edit",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
+    },
+    "table": {
+      "rider": "Rider",
+      "contracts": "Contracts",
+      "vehicle": "Vehicle",
+      "orders": "Orders",
+      "commission": "Commission",
+      "wallet": "Wallet",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "underTarget": "Below 70% of target",
+    "empty": "No riders match your filters",
+    "form": {
+      "addTitle": "Add a new rider",
+      "editTitle": "Edit rider",
+      "name": "Full name",
+      "namePh": "e.g. Mohammed Al-Ghamdi",
+      "nationalId": "National ID",
+      "nationalIdPh": "10 digits",
+      "nationalIdLocked": "National ID can't be changed after creation",
+      "mobile": "Mobile number",
+      "mobilePh": "05xxxxxxxx",
+      "city": "City",
+      "cityPh": "Select a city",
+      "vehicleType": "Vehicle type",
+      "vehicleTypePh": "Select a type",
+      "vehiclePlate": "Plate number",
+      "vehiclePlatePh": "e.g. ABC-1234",
+      "contracts": "Contracts",
+      "contractsHint": "Link the rider to one or more contracts",
+      "activeAccount": "Account active",
+      "autoUser": "A login account is created automatically for the rider.",
+      "save": "Save rider",
+      "cancel": "Cancel",
+      "errName": "Please enter the rider's name",
+      "errNationalId": "National ID is required",
+      "errNationalIdFormat": "National ID must be 10 digits",
+      "errDuplicate": "This national ID already exists in the system",
+      "errMobile": "Enter a valid mobile (05xxxxxxxx)",
+      "errContract": "Select at least one contract"
+    },
+    "contract": {
+      "add": "Add contract",
+      "addTitle": "Add a new contract",
+      "editTitle": "Edit contract",
+      "company": "Company",
+      "companyPh": "e.g. Hunger Station",
+      "city": "City",
+      "start": "Start date",
+      "end": "End date",
+      "ongoing": "Ongoing",
+      "ridersLinked": "Riders",
+      "status": "Status",
+      "actions": "Actions",
+      "save": "Save contract",
+      "cancel": "Cancel",
+      "errCompany": "Please enter the company name"
     }
   },
   "placeholder": {

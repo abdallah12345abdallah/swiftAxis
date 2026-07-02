@@ -9,46 +9,63 @@ const props = defineProps({
   value: { type: [String, Number], required: true },
   delta: { type: Number, default: null },
   icon: { type: [Object, Function], default: null },
-  // accent colour class group: 'primary' | 'orange' | 'success' | 'warning'
+  // accent colour group: 'primary' | 'orange' | 'success' | 'warning'
   accent: { type: String, default: 'primary' },
 })
 
 const { t } = useI18n()
 
-const accentClass = computed(
-  () =>
-    ({
-      primary: 'bg-primary/12 text-primary',
-      orange: 'bg-orange/12 text-orange',
-      success: 'bg-success/12 text-success',
-      warning: 'bg-warning/15 text-warning-foreground',
-    })[props.accent] ?? 'bg-primary/12 text-primary',
-)
+const GRAD = {
+  primary: 'from-primary to-primary/70',
+  orange: 'from-orange to-orange/75',
+  success: 'from-success to-success/75',
+  warning: 'from-warning to-warning/80',
+}
+const WATERMARK = {
+  primary: 'text-primary',
+  orange: 'text-orange',
+  success: 'text-success',
+  warning: 'text-warning',
+}
 
+const gradClass = computed(() => GRAD[props.accent] ?? GRAD.primary)
+const iconTextClass = computed(() => (props.accent === 'warning' ? 'text-warning-foreground' : 'text-white'))
+const watermarkClass = computed(() => WATERMARK[props.accent] ?? WATERMARK.primary)
 const deltaUp = computed(() => (props.delta ?? 0) >= 0)
 </script>
 
 <template>
-  <Card class="p-5">
-    <div class="flex items-start justify-between gap-3">
-      <div class="space-y-2">
-        <p class="text-muted-foreground text-sm font-medium">{{ label }}</p>
-        <p class="text-2xl font-bold tracking-tight tabular-nums">{{ value }}</p>
-      </div>
-      <div v-if="icon" :class="accentClass" class="flex size-11 items-center justify-center rounded-xl">
-        <component :is="icon" class="size-5" />
-      </div>
-    </div>
+  <Card class="group relative overflow-hidden p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <!-- watermark -->
+    <component
+      :is="icon"
+      v-if="icon"
+      class="pointer-events-none absolute -top-4 -end-4 size-28 opacity-[0.06] transition-transform duration-300 group-hover:scale-110"
+      :class="watermarkClass"
+    />
 
-    <div v-if="delta !== null" class="mt-3 flex items-center gap-1.5 text-xs">
-      <span
-        class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold"
-        :class="deltaUp ? 'bg-success/12 text-success' : 'bg-danger/12 text-danger'"
-      >
-        <component :is="deltaUp ? ArrowUpRight : ArrowDownRight" class="size-3.5" />
-        {{ Math.abs(delta) }}%
-      </span>
-      <span class="text-muted-foreground">{{ t('common.vsPrev') }}</span>
+    <div class="relative">
+      <div class="flex items-center justify-between gap-3">
+        <div
+          v-if="icon"
+          class="grid size-11 place-items-center rounded-xl bg-gradient-to-br shadow-sm"
+          :class="[gradClass, iconTextClass]"
+        >
+          <component :is="icon" class="size-5" />
+        </div>
+
+        <span
+          v-if="delta !== null"
+          class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-bold"
+          :class="deltaUp ? 'bg-success/12 text-success' : 'bg-danger/12 text-danger'"
+        >
+          <component :is="deltaUp ? ArrowUpRight : ArrowDownRight" class="size-3.5" />
+          {{ Math.abs(delta) }}%
+        </span>
+      </div>
+
+      <p class="mt-4 text-3xl font-extrabold tracking-tight tabular-nums">{{ value }}</p>
+      <p class="text-muted-foreground mt-1 text-sm font-medium">{{ label }}</p>
     </div>
   </Card>
 </template>

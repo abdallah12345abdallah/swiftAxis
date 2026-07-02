@@ -23,7 +23,8 @@
     "viewAll": "عرض الكل",
     "noData": "لا توجد بيانات",
     "orders": "أوردر",
-    "collapse": "طيّ القائمة"
+    "collapse": "طيّ القائمة",
+    "switchRole": "تبديل الدور (تجربة)"
   },
   "roles": {
     "manager": "مدير النظام",
@@ -98,6 +99,7 @@
     "trendOrders": "الأوردرات",
     "trendCommissions": "العمولات (ر.س)",
     "ridersTitle": "أداء المناديب",
+    "topRidersTitle": "أفضل المناديب",
     "compareTitle": "مقارنة أداء المناديب",
     "alertsTitle": "التنبيهات",
     "weeklyTitle": "أوردراتي هذا الأسبوع",
@@ -120,6 +122,92 @@
       "walletOver": "رصيد {name} تجاوز الحد ({amount} ر.س)",
       "lowPerformer": "{name} أقل من 70% من الهدف",
       "empty": "لا توجد تنبيهات حالية 👍"
+    }
+  },
+  "riders": {
+    "title": "المناديب والعقود",
+    "subtitle": "إدارة مناديب التوصيل والعقود المرتبطة بهم",
+    "tabs": {
+      "riders": "المناديب",
+      "contracts": "العقود"
+    },
+    "searchPlaceholder": "ابحث بالاسم أو رقم الهوية…",
+    "filters": {
+      "all": "الكل",
+      "contract": "العقد",
+      "status": "الحالة",
+      "city": "المدينة"
+    },
+    "stats": {
+      "total": "إجمالي المناديب",
+      "active": "نشط",
+      "underperforming": "أقل من الهدف",
+      "avgOrders": "متوسط الأوردرات"
+    },
+    "actions": {
+      "add": "إضافة مندوب",
+      "export": "تصدير",
+      "edit": "تعديل",
+      "activate": "تفعيل",
+      "deactivate": "تعطيل"
+    },
+    "table": {
+      "rider": "المندوب",
+      "contracts": "العقود",
+      "vehicle": "المركبة",
+      "orders": "الأوردرات",
+      "commission": "العمولة",
+      "wallet": "المحفظة",
+      "status": "الحالة",
+      "actions": "إجراءات"
+    },
+    "underTarget": "أقل من 70% من الهدف",
+    "empty": "لا يوجد مناديب مطابقون للفلاتر",
+    "form": {
+      "addTitle": "إضافة مندوب جديد",
+      "editTitle": "تعديل بيانات المندوب",
+      "name": "الاسم الكامل",
+      "namePh": "مثال: محمد الغامدي",
+      "nationalId": "رقم الهوية",
+      "nationalIdPh": "10 أرقام",
+      "nationalIdLocked": "لا يمكن تغيير رقم الهوية بعد الإنشاء",
+      "mobile": "رقم الجوال",
+      "mobilePh": "05xxxxxxxx",
+      "city": "المدينة",
+      "cityPh": "اختر المدينة",
+      "vehicleType": "نوع المركبة",
+      "vehicleTypePh": "اختر النوع",
+      "vehiclePlate": "رقم اللوحة",
+      "vehiclePlatePh": "مثال: ABC-1234",
+      "contracts": "العقود",
+      "contractsHint": "اربط المندوب بعقد واحد أو أكثر",
+      "activeAccount": "الحساب مفعّل",
+      "autoUser": "يُنشأ حساب دخول للمندوب تلقائيًا عند إضافته.",
+      "save": "حفظ المندوب",
+      "cancel": "إلغاء",
+      "errName": "الرجاء إدخال اسم المندوب",
+      "errNationalId": "رقم الهوية مطلوب",
+      "errNationalIdFormat": "رقم الهوية يجب أن يكون 10 أرقام",
+      "errDuplicate": "رقم الهوية هذا موجود مسبقًا في النظام",
+      "errMobile": "أدخل رقم جوال صحيح (05xxxxxxxx)",
+      "errContract": "اختر عقدًا واحدًا على الأقل"
+    },
+    "contract": {
+      "add": "إضافة عقد",
+      "addTitle": "إضافة عقد جديد",
+      "editTitle": "تعديل العقد",
+      "company": "الشركة",
+      "companyPh": "مثال: هانجر استيشن",
+      "city": "المدينة",
+      "start": "تاريخ البداية",
+      "end": "تاريخ النهاية",
+      "ongoing": "مستمر",
+      "ridersLinked": "المناديب",
+      "status": "الحالة",
+      "actions": "إجراءات",
+      "save": "حفظ العقد",
+      "cancel": "إلغاء",
+      "errCompany": "الرجاء إدخال اسم الشركة"
     }
   },
   "placeholder": {

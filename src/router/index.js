@@ -6,16 +6,22 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import Login from '@/pages/Login.vue'
 import Dashboard from '@/pages/Dashboard.vue'
+import Riders from '@/pages/Riders.vue'
 import Placeholder from '@/pages/Placeholder.vue'
 import StyleGuide from '@/pages/StyleGuide.vue'
 
-// Placeholder pages for every epic except the (real) dashboard.
-const placeholderRoutes = NAV_ITEMS.filter((i) => i.key !== 'dashboard').map((i) => ({
+// Pages that have a real implementation (skip the placeholder for these).
+const BUILT = new Set(['dashboard', 'riders'])
+
+// Placeholder pages for every epic not yet built.
+const placeholderRoutes = NAV_ITEMS.filter((i) => !BUILT.has(i.key)).map((i) => ({
   path: i.to.slice(1),
   name: i.key,
   component: Placeholder,
   meta: { roles: i.roles, titleKey: `nav.${i.key}` },
 }))
+
+const ridersItem = NAV_ITEMS.find((i) => i.key === 'riders')
 
 const routes = [
   {
@@ -30,6 +36,7 @@ const routes = [
     children: [
       { path: '', redirect: '/dashboard' },
       { path: 'dashboard', name: 'dashboard', component: Dashboard },
+      { path: 'riders', name: 'riders', component: Riders, meta: { roles: ridersItem.roles, titleKey: 'nav.riders' } },
       ...placeholderRoutes,
       { path: 'profile', name: 'profile', component: Placeholder, meta: { titleKey: 'common.profile' } },
       { path: 'dev/ui', name: 'styleguide', component: StyleGuide },

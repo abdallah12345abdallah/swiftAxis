@@ -1,34 +1,59 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings,
-  Menu, Bell, Search, LogOut, User, PanelLeftClose, PanelLeftOpen,
+  Bell, LogOut, User, ChevronDown, UserCircle,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import { useUiStore } from '@/stores/ui'
-import { NAV_ITEMS } from '@/lib/constants'
+import { NAV_ITEMS, ROLES } from '@/lib/constants'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import LangToggle from '@/components/common/LangToggle.vue'
 import RoleSwitcher from '@/components/common/RoleSwitcher.vue'
 import Dropdown from '@/components/common/Dropdown.vue'
 import Avatar from '@/components/common/Avatar.vue'
+import { Badge } from '@/components/ui/badge'
 
 const ICONS = {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings,
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const auth = useAuthStore()
-const ui = useUiStore()
 const router = useRouter()
+const route = useRoute()
 
 const navItems = computed(() => NAV_ITEMS.filter((item) => item.roles.includes(auth.role)))
-const collapsed = computed(() => ui.sidebarCollapsed)
+
+// Sliding active-tab indicator
+const navEl = ref(null)
+const indicator = ref({ left: 0, width: 0, opacity: 0 })
+
+function updateIndicator() {
+  const c = navEl.value
+  if (!c) return
+  const active = c.querySelector('.router-link-active')
+  if (!active) {
+    indicator.value = { ...indicator.value, opacity: 0 }
+    return
+  }
+  indicator.value = { left: active.offsetLeft, width: active.offsetWidth, opacity: 1 }
+  // keep the active tab in view
+  active.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+watch(() => route.fullPath, () => nextTick(updateIndicator))
+watch(locale, () => nextTick(updateIndicator))
+watch(() => navItems.value.length, () => nextTick(updateIndicator))
+onMounted(() => {
+  nextTick(updateIndicator)
+  window.addEventListener('resize', updateIndicator)
+})
+onUnmounted(() => window.removeEventListener('resize', updateIndicator))
 
 function logout() {
   auth.logout()
@@ -37,74 +62,23 @@ function logout() {
 </script>
 
 <template>
-  <div class="bg-background flex min-h-screen">
-    <!-- Sidebar -->
-    <aside
-      class="bg-sidebar text-sidebar-foreground sticky top-0 hidden h-screen shrink-0 flex-col border-e transition-[width] duration-300 md:flex"
-      :class="collapsed ? 'w-[76px]' : 'w-64'"
-    >
-      <div class="flex h-16 items-center px-4" :class="collapsed ? 'justify-center' : ''">
-        <BrandLogo :mark-only="collapsed" tone="light" :mark-size="collapsed ? 34 : 34" />
-      </div>
-
-      <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.key"
-          :to="item.to"
-          class="group text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
-          active-class="!bg-sidebar-primary !text-sidebar-primary-foreground shadow-sm"
-          :title="collapsed ? t(`nav.${item.key}`) : ''"
-        >
-          <component :is="ICONS[item.icon]" class="size-5 shrink-0" />
-          <span v-if="!collapsed" class="truncate">{{ t(`nav.${item.key}`) }}</span>
+  <div class="bg-background min-h-screen">
+    <!-- ── Top navbar ─────────────────────────────────────── -->
+    <header class="glass sticky top-0 z-40 border-b">
+      <!-- row 1: brand + controls -->
+      <div class="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-4 sm:px-6">
+        <RouterLink to="/dashboard" class="shrink-0">
+          <BrandLogo :mark-size="34" />
         </RouterLink>
-      </nav>
 
-      <div class="border-sidebar-border border-t p-3">
-        <button
-          type="button"
-          class="text-sidebar-foreground/70 hover:bg-sidebar-accent flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors"
-          @click="ui.toggleSidebar()"
-        >
-          <component :is="collapsed ? PanelLeftOpen : PanelLeftClose" class="size-5 shrink-0" />
-          <span v-if="!collapsed">{{ t('common.collapse') }}</span>
-        </button>
-      </div>
-    </aside>
-
-    <!-- Main column -->
-    <div class="flex min-w-0 flex-1 flex-col">
-      <!-- Topbar -->
-      <header
-        class="glass sticky top-0 z-30 flex h-16 items-center gap-3 border-b px-4 sm:px-6"
-      >
-        <button
-          type="button"
-          class="hover:bg-accent inline-flex size-9 items-center justify-center rounded-lg md:hidden"
-          @click="ui.toggleSidebar()"
-        >
-          <Menu class="size-5" />
-        </button>
-
-        <!-- Search -->
-        <div class="relative hidden max-w-sm flex-1 sm:block">
-          <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3" />
-          <input
-            type="text"
-            :placeholder="t('common.search')"
-            class="bg-muted/60 focus:ring-ring/40 h-9 w-full rounded-lg border-0 ps-9 pe-3 text-sm outline-none focus:ring-2"
-          />
-        </div>
-
-        <div class="ms-auto flex items-center gap-1.5">
+        <div class="ms-auto flex shrink-0 items-center gap-1.5">
           <RoleSwitcher />
           <LangToggle />
           <ThemeToggle />
 
           <button
             type="button"
-            class="hover:bg-accent text-muted-foreground relative inline-flex size-9 items-center justify-center rounded-lg"
+            class="border-border bg-card/50 hover:bg-accent text-muted-foreground relative inline-flex size-9 items-center justify-center rounded-lg border transition-colors"
             :aria-label="t('common.notifications')"
           >
             <Bell class="size-5" />
@@ -112,39 +86,118 @@ function logout() {
           </button>
 
           <!-- User menu -->
-          <Dropdown align="end">
-            <template #trigger>
-              <button type="button" class="hover:bg-accent flex items-center gap-2 rounded-lg p-1 ps-2">
-                <span class="hidden text-end sm:block">
-                  <span class="block text-sm font-semibold leading-tight">{{ auth.user?.name }}</span>
-                  <span class="text-muted-foreground block text-xs">{{ t(`roles.${auth.role}`) }}</span>
+          <Dropdown align="end" content-class="w-72">
+            <template #trigger="{ open }">
+              <button type="button" class="border-border bg-card/50 hover:bg-accent flex h-9 items-center gap-2 rounded-lg border px-1.5 transition-colors">
+                <span class="hidden text-end lg:block">
+                  <span class="block text-xs font-semibold leading-tight">{{ auth.user?.name }}</span>
+                  <span class="text-muted-foreground block text-[11px] leading-tight">{{ t(`roles.${auth.role}`) }}</span>
                 </span>
-                <Avatar :initials="auth.initials" />
+                <Avatar :initials="auth.initials" class="size-6 text-xs" />
+                <ChevronDown
+                  class="text-muted-foreground size-4 shrink-0 transition-transform duration-200"
+                  :class="open && 'rotate-180'"
+                />
               </button>
             </template>
 
-            <div class="border-b px-2.5 py-2">
-              <p class="text-sm font-semibold">{{ auth.user?.name }}</p>
-              <p class="text-muted-foreground text-xs">{{ t(`roles.${auth.role}`) }}</p>
+            <!-- header -->
+            <div class="from-primary/10 flex items-center gap-3 rounded-lg bg-gradient-to-br to-transparent p-3">
+              <div class="from-primary to-orange grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br text-base font-bold text-white shadow-sm">
+                {{ auth.initials }}
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold">{{ auth.user?.name }}</p>
+                <Badge variant="default" class="mt-1">{{ t(`roles.${auth.role}`) }}</Badge>
+              </div>
             </div>
-            <RouterLink to="/profile" class="hover:bg-accent mt-1 flex items-center gap-2 rounded-md px-2.5 py-2 text-sm">
-              <User class="size-4" /> {{ t('common.profile') }}
+
+            <div class="bg-border/70 -mx-1.5 my-1.5 h-px" />
+
+            <!-- items -->
+            <RouterLink to="/profile" class="menu-item">
+              <UserCircle class="text-muted-foreground size-4" />
+              {{ t('common.profile') }}
             </RouterLink>
-            <button
-              type="button"
-              class="hover:bg-accent text-danger flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm"
-              @click="logout"
-            >
-              <LogOut class="size-4" /> {{ t('common.logout') }}
+            <RouterLink v-if="auth.role === ROLES.MANAGER" to="/settings" class="menu-item">
+              <Settings class="text-muted-foreground size-4" />
+              {{ t('nav.settings') }}
+            </RouterLink>
+
+            <div class="bg-border/70 -mx-1.5 my-1.5 h-px" />
+
+            <button type="button" class="menu-item text-danger hover:!bg-danger/10 w-full" @click="logout">
+              <LogOut class="size-4" />
+              {{ t('common.logout') }}
             </button>
           </Dropdown>
         </div>
-      </header>
+      </div>
 
-      <!-- Page -->
-      <main class="flex-1 p-4 sm:p-6 lg:p-8">
-        <RouterView />
-      </main>
-    </div>
+      <!-- row 2: tab bar with sliding underline -->
+      <div class="mx-auto max-w-[1600px] px-2 sm:px-4">
+        <div class="no-scrollbar overflow-x-auto">
+          <nav ref="navEl" class="relative flex items-center gap-1">
+            <RouterLink
+              v-for="item in navItems"
+              :key="item.key"
+              :to="item.to"
+              class="nav-link text-muted-foreground hover:text-foreground relative flex items-center gap-2 whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors"
+            >
+              <component :is="ICONS[item.icon]" class="size-4 shrink-0 opacity-80" />
+              {{ t(`nav.${item.key}`) }}
+            </RouterLink>
+
+            <!-- sliding underline -->
+            <span
+              class="bg-primary pointer-events-none absolute bottom-0 left-0 h-px rounded-t-full transition-all duration-300 ease-out"
+              :style="{
+                transform: `translateX(${indicator.left}px)`,
+                width: `${indicator.width}px`,
+                opacity: indicator.opacity,
+              }"
+            />
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Page ───────────────────────────────────────────── -->
+    <main class="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
+      <RouterView />
+    </main>
   </div>
 </template>
+
+<style scoped>
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* active tab — brand color + sliding underline */
+.nav-link.router-link-active {
+  color: var(--primary);
+  font-weight: 600;
+}
+.nav-link.router-link-active :deep(svg) {
+  color: var(--primary);
+  opacity: 1;
+}
+
+/* user-menu items */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease;
+}
+.menu-item:hover {
+  background: var(--accent);
+}
+</style>

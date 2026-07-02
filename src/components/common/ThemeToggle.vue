@@ -8,11 +8,19 @@ const ui = useUiStore()
 <template>
   <button
     type="button"
-    class="hover:bg-accent hover:text-accent-foreground text-muted-foreground inline-flex size-9 items-center justify-center rounded-lg transition-colors"
+    class="border-border bg-card/50 hover:bg-accent text-muted-foreground hover:text-foreground group relative inline-flex size-9 items-center justify-center overflow-hidden rounded-lg border transition-colors"
     :aria-label="ui.isDark ? 'Light mode' : 'Dark mode'"
     @click="ui.toggleTheme()"
   >
-    <Moon v-if="!ui.isDark" class="size-5" />
-    <Sun v-else class="size-5" />
+    <span class="relative block size-5">
+      <Sun
+        class="absolute inset-0 size-5 transition-all duration-300 ease-out"
+        :class="ui.isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'"
+      />
+      <Moon
+        class="absolute inset-0 size-5 transition-all duration-300 ease-out"
+        :class="ui.isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'"
+      />
+    </span>
   </button>
 </template>

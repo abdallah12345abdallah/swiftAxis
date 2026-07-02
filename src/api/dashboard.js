@@ -19,11 +19,20 @@ export function fetchManagerDashboard(period = 'month') {
   const activeRiders = active.length
   const avgOrders = activeRiders ? Math.round(totalOrders / activeRiders) : 0
 
+  const t = TRENDS[period] ?? TRENDS.month
   const kpis = {
-    totalOrders: { value: totalOrders, delta: 8 },
-    commissionsDue: { value: commissionsDue, delta: 5 },
-    activeRiders: { value: activeRiders, delta: 0 },
-    avgOrders: { value: avgOrders, delta: 3 },
+    totalOrders: { value: totalOrders, delta: 8, spark: t.orders },
+    commissionsDue: { value: commissionsDue, delta: 5, spark: t.commissions },
+    activeRiders: {
+      value: activeRiders,
+      delta: 0,
+      spark: t.orders.map((_, i) => Math.round(activeRiders * (0.88 + (i / t.orders.length) * 0.24))),
+    },
+    avgOrders: {
+      value: avgOrders,
+      delta: 3,
+      spark: t.orders.map((o) => Math.round(o / Math.max(activeRiders, 1))),
+    },
   }
 
   const riders = RIDERS.map((r) => {
@@ -66,8 +75,8 @@ export function fetchRiderDashboard(riderId) {
   return mockDelay({
     rider,
     kpis: {
-      myOrders: { value: rider.orders, delta: 6 },
-      myCommission: { value: rider.commission, delta: 4 },
+      myOrders: { value: rider.orders, delta: 6, spark: RIDER_WEEK.orders },
+      myCommission: { value: rider.commission, delta: 4, spark: RIDER_WEEK.orders.map((o) => o * 9) },
       walletBalance: { value: RIDER_WALLET.balance },
       goalProgress: { value: progress },
     },
