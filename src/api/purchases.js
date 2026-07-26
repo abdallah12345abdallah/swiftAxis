@@ -1,5 +1,5 @@
 import { mockDelay } from '@/services/http'
-import { SUPPLIERS, PURCHASES, COST_CENTERS } from './fixtures'
+import { SUPPLIERS, PURCHASES, COST_CENTERS, VEHICLES } from './fixtures'
 import { VAT_RATE } from '@/lib/constants'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
@@ -57,7 +57,12 @@ export function fetchPurchases({ from, to, supplierId } = {}) {
     if (!inRange(p.date, from, to)) return false
     return true
   })
-    .map((p) => ({ ...p, supplierName: supplierById(p.supplierId)?.name ?? '—' }))
+    .map((p) => ({
+      ...p,
+      supplierName: supplierById(p.supplierId)?.name ?? '—',
+      supplierTaxNo: supplierById(p.supplierId)?.taxNo ?? '—',
+      vehiclePlate: VEHICLES.find((v) => v.id === p.vehicleId)?.plate ?? null,
+    }))
     .sort((a, b) => (a.date < b.date ? 1 : -1))
   return mockDelay(rows)
 }
@@ -67,6 +72,8 @@ export async function createPurchase(payload) {
   const totals = computeTotals(payload)
   pSeq += 1
   const ref = `PO-${new Date().getFullYear()}-${String(pSeq).padStart(4, '0')}`
+  // a purchase linked to a vehicle is charged to that vehicle's cost center (#10)
+  const vehicle = payload.vehicleId ? VEHICLES.find((v) => v.id === payload.vehicleId) : null
   const purchase = {
     id: `p${pSeq}`,
     supplierId: payload.supplierId,
@@ -75,7 +82,8 @@ export async function createPurchase(payload) {
     unitPrice: Number(payload.unitPrice) || 0,
     date: payload.date,
     taxable: !!payload.taxable,
-    costCenter: payload.costCenter,
+    vehicleId: vehicle?.id ?? null,
+    costCenter: vehicle ? vehicle.costCenter : payload.costCenter,
     invoiceNo: payload.invoiceNo || '—',
     ref,
     ...totals,
@@ -104,7 +112,7 @@ export function vatReport({ from, to } = {}) {
 export function purchasesByCostCenter({ from, to } = {}) {
   const rows = COST_CENTERS.map((c) => {
     const spent = PURCHASES.filter((p) => p.costCenter === c.id && inRange(p.date, from, to)).reduce((s, p) => s + p.total, 0)
-    return { id: c.id, name: c.name, budget: c.budget, spent, variance: c.budget - spent, over: spent > c.budget }
+    return { id: c.id, name: c.name, budget: c.budget, spent, variance: c.budget - spent, over: c.budget > 0 && spent > c.budget }
   })
   return mockDelay(rows)
 }

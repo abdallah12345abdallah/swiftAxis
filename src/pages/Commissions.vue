@@ -14,7 +14,7 @@ import FormulaDialog from '@/components/commissions/FormulaDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { exportCsv, todayStamp } from '@/lib/export'
 import { useToast } from '@/composables/useToast'
-import { fetchFormulas, fetchMonthlyReview, approveMonth } from '@/api/commissions'
+import { fetchFormulas, fetchMonthlyReview, approveMonth, tiersOf } from '@/api/commissions'
 
 const { t } = useI18n()
 const { sar, num } = useCurrency()
@@ -111,14 +111,20 @@ function exportReview() {
           { key: 'company', label: t('commissions.formula.contract'), sortable: true },
           { key: 'target', label: t('commissions.formula.target'), align: 'end' },
           { key: 'base', label: t('commissions.formula.base'), align: 'end' },
-          { key: 'perOrder', label: t('commissions.formula.perOrder'), align: 'end' },
+          { key: 'tiers', label: t('commissions.formula.tiers'), align: 'end' },
           { key: 'riders', label: t('commissions.formula.riders'), align: 'end', hideBelow: 'sm' },
           { key: 'actions', label: t('common.actions'), align: 'end' },
         ]"
       >
         <template #cell-target="{ row }"><span class="tabular-nums">{{ num(row.formula.target) }}</span></template>
         <template #cell-base="{ row }"><span class="tabular-nums">{{ sar(row.formula.base) }}</span></template>
-        <template #cell-perOrder="{ row }"><span class="tabular-nums">{{ sar(row.formula.perOrder) }}</span></template>
+        <template #cell-tiers="{ row }">
+          <div class="flex flex-wrap justify-end gap-1">
+            <Badge v-for="(tier, i) in tiersOf(row.formula)" :key="i" variant="secondary" class="tabular-nums">
+              {{ tier.upTo == null ? t('commissions.formula.tierUnlimited') : num(tier.upTo) }} · {{ sar(tier.perOrder) }}
+            </Badge>
+          </div>
+        </template>
         <template #cell-riders="{ row }"><span class="tabular-nums">{{ num(row.riders) }}</span></template>
         <template #cell-actions="{ row }">
           <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openFormula(row)">

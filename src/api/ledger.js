@@ -130,7 +130,7 @@ export function costCenterReport(filters = {}) {
         if (a?.type === 'expense') actual += l.debit - l.credit
       }),
     )
-    return { id: c.id, name: c.name, budget: c.budget, actual, variance: c.budget - actual, over: actual > c.budget }
+    return { id: c.id, name: c.name, budget: c.budget, actual, variance: c.budget - actual, over: c.budget > 0 && actual > c.budget }
   })
   return mockDelay(rows)
 }

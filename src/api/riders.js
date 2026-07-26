@@ -1,6 +1,8 @@
 import { mockDelay } from '@/services/http'
-import { RIDERS, CONTRACT_LIST } from './fixtures'
+import { RIDERS, CONTRACT_LIST, ORDERS } from './fixtures'
 import { UNDERPERFORMANCE_RATIO } from '@/lib/constants'
+import { formulaFor, computeCommission } from './commissions'
+import { assignmentOf } from './vehicles'
 
 /* In-memory CRUD over the demo fixtures. Mutations persist for the session
    (module-level arrays), so navigating away and back keeps changes. Swap these
@@ -23,6 +25,21 @@ function decorate(r) {
 /** US-004 — list riders (decorated). */
 export function fetchRiders() {
   return mockDelay(RIDERS.map(decorate))
+}
+
+/** Rider detail view (#1): profile + commission breakdown + vehicle assignment + daily logs. */
+export function fetchRiderDetail(id) {
+  const rider = RIDERS.find((r) => r.id === id)
+  if (!rider) return Promise.reject(new Error('NOT_FOUND'))
+  const breakdown = computeCommission(rider.orders, formulaFor(rider))
+  const assignment = assignmentOf(rider.id)
+  const logs = ORDERS.filter((o) => o.riderId === rider.id).sort((a, b) => (a.date < b.date ? -1 : 1))
+  return mockDelay({
+    rider: decorate(rider),
+    breakdown,
+    assignment: assignment ? { shift: assignment.shift, vehicle: { ...assignment.vehicle } } : null,
+    logs,
+  })
 }
 
 /** US-002 — contracts with linked-rider counts. */
@@ -104,7 +121,7 @@ export function createContract(payload) {
   const contract = {
     id: `ct-${CONTRACT_LIST.length + 1}`,
     company: payload.company,
-    city: payload.city,
+    amount: Number(payload.amount) || 0,
     start: payload.start || null,
     end: payload.end || null,
     active: payload.active ?? true,
@@ -119,7 +136,7 @@ export function updateContract(id, payload) {
   if (!contract) return Promise.reject(new Error('NOT_FOUND'))
   Object.assign(contract, {
     company: payload.company,
-    city: payload.city,
+    amount: Number(payload.amount) || 0,
     start: payload.start || null,
     end: payload.end || null,
     active: payload.active ?? contract.active,

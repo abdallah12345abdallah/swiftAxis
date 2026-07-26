@@ -3,7 +3,6 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { createContract, updateContract } from '@/api/riders'
@@ -11,7 +10,6 @@ import { createContract, updateContract } from '@/api/riders'
 const props = defineProps({
   open: { type: Boolean, default: false },
   contract: { type: Object, default: null },
-  cityOptions: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['update:open', 'saved'])
 
@@ -19,7 +17,7 @@ const { t } = useI18n()
 const isEdit = computed(() => !!props.contract)
 const saving = ref(false)
 
-const blank = () => ({ company: '', city: '', start: '', end: '', active: true })
+const blank = () => ({ company: '', amount: '', start: '', end: '', active: true })
 const form = reactive(blank())
 const errors = reactive({})
 
@@ -32,7 +30,7 @@ watch(
     if (props.contract) {
       Object.assign(form, {
         company: props.contract.company,
-        city: props.contract.city,
+        amount: props.contract.amount ?? '',
         start: props.contract.start ?? '',
         end: props.contract.end ?? '',
         active: props.contract.active,
@@ -75,8 +73,8 @@ async function submit() {
       </div>
 
       <div class="space-y-1.5">
-        <label class="text-sm font-medium">{{ t('riders.contract.city') }}</label>
-        <Select v-model="form.city" :options="cityOptions" :placeholder="t('riders.form.cityPh')" />
+        <label class="text-sm font-medium">{{ t('riders.contract.amount') }}</label>
+        <Input v-model="form.amount" type="number" dir="ltr" min="0" />
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">

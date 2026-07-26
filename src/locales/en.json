@@ -225,7 +225,7 @@
       "editTitle": "Edit contract",
       "company": "Company",
       "companyPh": "e.g. Hunger Station",
-      "city": "City",
+      "amount": "Contract value (SAR)",
       "start": "Start date",
       "end": "End date",
       "ongoing": "Ongoing",
@@ -236,6 +236,18 @@
       "cancel": "Cancel",
       "errCompany": "Please enter the company name"
     }
+  },
+  "riderDetail": {
+    "back": "Back to riders",
+    "orders": "Orders (month)",
+    "commission": "Commission",
+    "baseSalary": "Base salary",
+    "target": "Target",
+    "chartTitle": "Daily orders",
+    "vehicleTitle": "Vehicle details",
+    "shift": "Shift",
+    "noVehicle": "No vehicle assigned",
+    "notFound": "Rider not found"
   },
   "users": {
     "title": "Users & Permissions",
@@ -266,7 +278,27 @@
     "ridersTitle": "Rider performance",
     "vehiclesTitle": "Vehicle profitability",
     "pnlTitle": "Financial summary (P&L)",
-    "comparisonTitle": "Rider comparison"
+    "comparisonTitle": "Rider comparison",
+    "tabs": { "monthly": "Monthly report", "period": "Riders period report", "best": "Best riders" },
+    "period": {
+      "title": "Riders report for a period",
+      "from": "From",
+      "to": "To",
+      "rider": "Rider",
+      "vehicle": "Vehicle",
+      "shift": "Shift",
+      "days": "Logged days",
+      "orders": "Orders",
+      "commission": "Commission",
+      "vehicleExpenses": "Vehicle expenses",
+      "sharedNote": "Vehicle expenses are the full vehicle total; a * marks a vehicle shared by two riders"
+    },
+    "best": {
+      "title": "Best riders of the month",
+      "rank": "Rank",
+      "extraAmount": "Commission (above target)",
+      "achievedSalary": "Achieved salary"
+    }
   },
   "purchases": {
     "title": "Purchases & VAT",
@@ -279,7 +311,8 @@
     "fields": {
       "supplier": "Supplier", "itemType": "Item type", "qty": "Qty", "unitPrice": "Unit price",
       "date": "Date", "inclVat": "Price includes VAT", "taxable": "Subject to VAT (15%)",
-      "costCenter": "Cost center", "invoiceNo": "Invoice no.", "preTax": "Pre-tax", "vat": "VAT", "total": "Total", "receipt": "Invoice / receipt"
+      "costCenter": "Cost center", "invoiceNo": "Invoice no.", "preTax": "Pre-tax", "vat": "VAT", "total": "Total", "receipt": "Invoice / receipt",
+      "vehicle": "Vehicle", "noVehicle": "Not linked to a vehicle", "derivedCostCenter": "Cost center (from vehicle)", "supplierTaxNo": "Supplier tax no."
     },
     "supplier": { "name": "Supplier name", "taxNo": "Tax registration no.", "mobile": "Mobile", "category": "Category", "purchases": "Purchases", "errTax": "Tax no. must be 15 digits, start & end with 3", "errName": "Name is required" },
     "vat": { "invoice": "Invoice", "taxNo": "Tax no.", "preTax": "Pre-tax", "amount": "VAT", "total": "Total VAT" },
@@ -293,13 +326,25 @@
     "tabs": { "vehicles": "Vehicles", "expenses": "Expenses", "profitability": "Profitability" },
     "plate": "Plate",
     "type": "Type",
-    "rider": "Assigned rider",
+    "rider": "Riders",
+    "riders": { "morning": "Morning rider", "evening": "Evening rider" },
+    "statusLabel": "Status",
+    "statusFrom": "From",
+    "statusTo": "To",
+    "errSameRider": "The same rider cannot take both shifts",
     "unassigned": "Unassigned",
     "addVehicle": "Add vehicle",
     "vehicleTitle": "Vehicle",
     "addExpense": "Add expense",
     "expenseTitle": "Vehicle expense",
-    "fields": { "vehicle": "Vehicle", "type": "Expense type", "amount": "Amount", "date": "Date", "invoiceNo": "Invoice no.", "note": "Note", "receipt": "Receipt" },
+    "fields": { "vehicle": "Vehicle", "type": "Expense type", "amount": "Amount", "date": "Date", "invoiceNo": "Invoice no.", "note": "Note", "receipt": "Receipt", "value": "Vehicle value (SAR)" },
+    "charts": {
+      "title": "Expense breakdown",
+      "subtitle": "Spot which expense type is inflating costs",
+      "granularity": { "day": "Daily", "month": "Monthly", "year": "Yearly" },
+      "allVehicles": "All vehicles",
+      "byType": "Totals by type"
+    },
     "prof": { "vehicle": "Vehicle", "revenue": "Revenue", "expenses": "Expenses", "net": "Net", "margin": "Margin" },
     "saved": "Saved",
     "empty": "No records"
@@ -339,7 +384,13 @@
       "preview": "Live preview",
       "previewHint": "Enter an order count to preview the payout",
       "ordersLabel": "Orders",
-      "saved": "Formula updated"
+      "saved": "Formula updated",
+      "tiers": "Tiers",
+      "tierUpTo": "Up to (orders)",
+      "tierPerOrder": "Per order (SAR)",
+      "tierUnlimited": "Unlimited",
+      "addTier": "Add tier",
+      "removeTier": "Remove tier"
     },
     "monthly": {
       "month": "Month",
@@ -406,6 +457,9 @@
     "balanced": "Balanced",
     "unbalanced": "Debits must equal credits",
     "entrySaved": "Journal entry posted",
+    "vehicleWarning": "Warning: this cost center belongs to vehicle {plate}, which is {status} from {from} to {to} — remember this when allocating month-end costs",
+    "vehicleWarningOpenEnded": "Warning: this cost center belongs to vehicle {plate}, which is {status} since {from} — remember this when allocating month-end costs",
+    "vehicleWarningNoPeriod": "Warning: this cost center belongs to vehicle {plate}, which is currently {status}",
     "empty": "No entries for this period",
     "pnl": { "revenue": "Revenue", "expenses": "Expenses", "net": "Net profit", "totalRevenue": "Total revenue", "totalExpense": "Total expenses" },
     "cc": { "name": "Cost center", "budget": "Budget", "actual": "Actual", "variance": "Variance", "add": "Add cost center", "addTitle": "Add cost center", "editTitle": "Edit cost center", "over": "Over budget", "errName": "Name is required" },

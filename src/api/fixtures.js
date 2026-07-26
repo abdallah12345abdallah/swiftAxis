@@ -20,11 +20,24 @@ export const VEHICLE_TYPES = {
   car: { ar: 'سيارة', en: 'Car' },
 }
 
-/** Contracts registry (US-002). commission formula lives in EP-03. */
+/** Work shifts — a vehicle carries up to two riders, one per shift. */
+export const SHIFTS = {
+  morning: { ar: 'صباحي', en: 'Morning' },
+  evening: { ar: 'مسائي', en: 'Evening' },
+}
+
+/** Vehicle operational status. maintenance/fault carry a from/to period. */
+export const VEHICLE_STATUS = {
+  active: { ar: 'تعمل', en: 'Active' },
+  maintenance: { ar: 'في الصيانة', en: 'In maintenance' },
+  fault: { ar: 'عطل', en: 'Fault' },
+}
+
+/** Contracts registry (US-002). amount = contract value in SAR. commission formula lives in EP-03. */
 export const CONTRACT_LIST = [
-  { id: 'hunger', company: 'هانجر استيشن', city: 'jeddah', start: '2026-01-01', end: '2026-12-31', active: true },
-  { id: 'jahez', company: 'جاهز', city: 'jeddah', start: '2026-01-01', end: '2026-12-31', active: true },
-  { id: 'internal', company: 'عقود داخلية', city: 'jeddah', start: '2026-01-01', end: null, active: true },
+  { id: 'hunger', company: 'هانجر استيشن', amount: 120000, start: '2026-01-01', end: '2026-12-31', active: true },
+  { id: 'jahez', company: 'جاهز', amount: 80000, start: '2026-01-01', end: '2026-12-31', active: true },
+  { id: 'internal', company: 'عقود داخلية', amount: 60000, start: '2026-01-01', end: null, active: true },
 ]
 
 /** Riders with current-month performance. commission in SAR.
@@ -38,7 +51,7 @@ export const RIDERS = [
   { id: 'R-005', name: 'سلطان الحربي', nationalId: '1089012345', mobile: '0552345678', city: 'taif', contract: 'hunger', contracts: ['hunger'], vehicleType: 'motorcycle', vehicle: 'MNO-7890', orders: 289, goal: 480, commission: 2510, wallet: 60, active: true },
   { id: 'R-006', name: 'ماجد الشمري', nationalId: '1090123456', mobile: '0554567890', city: 'jeddah', contract: 'jahez', contracts: ['jahez'], vehicleType: 'motorcycle', vehicle: 'PQR-2345', orders: 553, goal: 480, commission: 5320, wallet: 1180, active: true },
   { id: 'R-007', name: 'تركي المطيري', nationalId: '1101234567', mobile: '0557890123', city: 'makkah', contract: 'internal', contracts: ['internal'], vehicleType: 'car', vehicle: 'STU-6789', orders: 401, goal: 450, commission: 3680, wallet: 240, active: true },
-  { id: 'R-008', name: 'ناصر الدوسري', nationalId: '1112345678', mobile: '0550123456', city: 'jeddah', contract: 'hunger', contracts: ['hunger'], vehicleType: 'motorcycle', vehicle: 'VWX-0123', orders: 0, goal: 480, commission: 0, wallet: 0, active: false },
+  { id: 'R-008', name: 'ناصر الدوسري', nationalId: '1112345678', mobile: '0550123456', city: 'jeddah', contract: 'hunger', contracts: ['hunger'], vehicleType: 'motorcycle', vehicle: 'DEF-5678', orders: 0, goal: 480, commission: 0, wallet: 0, active: false },
 ]
 
 /** Trend series per period. labels align to orders/commissions arrays. */
@@ -89,12 +102,20 @@ export const CHART_OF_ACCOUNTS = [
   { id: 'supplies_expense', code: '5030', name: 'مصروف المستلزمات', en: 'Supplies & purchases', type: 'expense' },
 ]
 
-/** Cost centers (US-025) with monthly budgets in SAR. */
+/** Cost centers (US-025) with monthly budgets in SAR.
+    cc-veh-* centers belong to a single vehicle (vehicleId set). */
 export const COST_CENTERS = [
   { id: 'cc-hunger', name: 'هانجر — جدة', budget: 120000, active: true },
   { id: 'cc-jahez', name: 'جاهز — جدة', budget: 80000, active: true },
   { id: 'cc-internal', name: 'العقود الداخلية', budget: 60000, active: true },
-  { id: 'cc-fleet', name: 'أسطول السيارات', budget: 40000, active: true },
+  { id: 'cc-fleet', name: 'أسطول السيارات — عام', budget: 40000, active: true },
+  { id: 'cc-veh-v1', name: 'مركبة ABC-1234', budget: 0, active: true, vehicleId: 'v1' },
+  { id: 'cc-veh-v2', name: 'مركبة DEF-5678', budget: 0, active: true, vehicleId: 'v2' },
+  { id: 'cc-veh-v3', name: 'مركبة GHI-9012', budget: 0, active: true, vehicleId: 'v3' },
+  { id: 'cc-veh-v4', name: 'مركبة JKL-3456', budget: 0, active: true, vehicleId: 'v4' },
+  { id: 'cc-veh-v5', name: 'مركبة MNO-7890', budget: 0, active: true, vehicleId: 'v5' },
+  { id: 'cc-veh-v6', name: 'مركبة PQR-2345', budget: 0, active: true, vehicleId: 'v6' },
+  { id: 'cc-veh-v7', name: 'مركبة STU-6789', budget: 0, active: true, vehicleId: 'v7' },
 ]
 
 /** Seed journal entries (balanced). lines: [{account, costCenter, debit, credit}] */
@@ -135,11 +156,12 @@ export const AUDIT_LOG = [
 
 /* ── Commissions (EP-03) ────────────────────────────────── */
 
-/** Per-contract commission formula: base salary + perOrder for each order past target. */
+/** Per-contract commission formula: base salary + tiered rates past target.
+    tiers: ordered brackets over the absolute order count; upTo:null = unbounded last tier. */
 export const COMMISSION_FORMULAS = {
-  hunger: { target: 480, base: 2500, perOrder: 6 },
-  jahez: { target: 480, base: 2400, perOrder: 6 },
-  internal: { target: 450, base: 2600, perOrder: 7 },
+  hunger: { target: 480, base: 2500, tiers: [{ upTo: null, perOrder: 6 }] },
+  jahez: { target: 480, base: 2400, tiers: [{ upTo: null, perOrder: 6 }] },
+  internal: { target: 450, base: 2600, tiers: [{ upTo: 550, perOrder: 7 }, { upTo: null, perOrder: 9 }] },
 }
 /** Per-rider overrides (riderId → formula). */
 export const RIDER_FORMULA_OVERRIDES = {}
@@ -159,6 +181,22 @@ export const ORDERS = [
   { id: 'o3', riderId: 'R-002', date: '2026-07-01', orders: 25, cash: 710, hours: 10, notes: '', editedBy: null },
   { id: 'o4', riderId: 'R-003', date: '2026-07-01', orders: 14, cash: 300, hours: 7, notes: 'ازدحام مروري', editedBy: null },
   { id: 'o5', riderId: 'R-006', date: '2026-07-01', orders: 27, cash: 820, hours: 11, notes: '', editedBy: null },
+  { id: 'o6', riderId: 'R-001', date: '2026-06-27', orders: 20, cash: 580, hours: 9, notes: '', editedBy: null },
+  { id: 'o7', riderId: 'R-001', date: '2026-06-28', orders: 17, cash: 490, hours: 8, notes: '', editedBy: null },
+  { id: 'o8', riderId: 'R-001', date: '2026-06-29', orders: 21, cash: 610, hours: 9, notes: '', editedBy: null },
+  { id: 'o9', riderId: 'R-001', date: '2026-07-02', orders: 19, cash: 550, hours: 8, notes: '', editedBy: null },
+  { id: 'o10', riderId: 'R-002', date: '2026-06-29', orders: 23, cash: 660, hours: 10, notes: '', editedBy: null },
+  { id: 'o11', riderId: 'R-002', date: '2026-06-30', orders: 24, cash: 690, hours: 10, notes: '', editedBy: null },
+  { id: 'o12', riderId: 'R-002', date: '2026-07-02', orders: 26, cash: 740, hours: 10, notes: '', editedBy: null },
+  { id: 'o13', riderId: 'R-003', date: '2026-06-29', orders: 12, cash: 260, hours: 7, notes: '', editedBy: null },
+  { id: 'o14', riderId: 'R-003', date: '2026-06-30', orders: 15, cash: 330, hours: 7, notes: '', editedBy: null },
+  { id: 'o15', riderId: 'R-004', date: '2026-06-30', orders: 18, cash: 500, hours: 8, notes: '', editedBy: null },
+  { id: 'o16', riderId: 'R-004', date: '2026-07-01', orders: 20, cash: 560, hours: 9, notes: '', editedBy: null },
+  { id: 'o17', riderId: 'R-005', date: '2026-06-30', orders: 11, cash: 240, hours: 6, notes: '', editedBy: null },
+  { id: 'o18', riderId: 'R-005', date: '2026-07-01', orders: 13, cash: 290, hours: 7, notes: '', editedBy: null },
+  { id: 'o19', riderId: 'R-006', date: '2026-06-30', orders: 25, cash: 760, hours: 10, notes: '', editedBy: null },
+  { id: 'o20', riderId: 'R-007', date: '2026-06-30', orders: 16, cash: 430, hours: 8, notes: '', editedBy: null },
+  { id: 'o21', riderId: 'R-007', date: '2026-07-01', orders: 17, cash: 460, hours: 8, notes: '', editedBy: null },
 ]
 
 /* ── Cash wallets (EP-04) ───────────────────────────────── */
@@ -185,14 +223,16 @@ export const EXPENSE_TYPES = {
   other: { ar: 'أخرى', en: 'Other' },
 }
 
+/** Vehicles. value = purchase value in SAR. Up to two riders (one per shift).
+    Each vehicle owns a cost center (cc-veh-*) for its expenses. */
 export const VEHICLES = [
-  { id: 'v1', plate: 'ABC-1234', type: 'motorcycle', riderId: 'R-001', costCenter: 'cc-fleet' },
-  { id: 'v2', plate: 'DEF-5678', type: 'motorcycle', riderId: 'R-002', costCenter: 'cc-fleet' },
-  { id: 'v3', plate: 'GHI-9012', type: 'motorcycle', riderId: 'R-003', costCenter: 'cc-fleet' },
-  { id: 'v4', plate: 'JKL-3456', type: 'car', riderId: 'R-004', costCenter: 'cc-fleet' },
-  { id: 'v5', plate: 'MNO-7890', type: 'motorcycle', riderId: 'R-005', costCenter: 'cc-fleet' },
-  { id: 'v6', plate: 'PQR-2345', type: 'motorcycle', riderId: 'R-006', costCenter: 'cc-fleet' },
-  { id: 'v7', plate: 'STU-6789', type: 'car', riderId: 'R-007', costCenter: 'cc-fleet' },
+  { id: 'v1', plate: 'ABC-1234', type: 'motorcycle', morningRiderId: 'R-001', eveningRiderId: null, value: 18000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v1' },
+  { id: 'v2', plate: 'DEF-5678', type: 'motorcycle', morningRiderId: 'R-002', eveningRiderId: 'R-008', value: 18500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v2' },
+  { id: 'v3', plate: 'GHI-9012', type: 'motorcycle', morningRiderId: 'R-003', eveningRiderId: null, value: 16500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v3' },
+  { id: 'v4', plate: 'JKL-3456', type: 'car', morningRiderId: 'R-004', eveningRiderId: null, value: 78000, status: 'maintenance', statusFrom: '2026-07-10', statusTo: '2026-07-30', costCenter: 'cc-veh-v4' },
+  { id: 'v5', plate: 'MNO-7890', type: 'motorcycle', morningRiderId: 'R-005', eveningRiderId: null, value: 15500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v5' },
+  { id: 'v6', plate: 'PQR-2345', type: 'motorcycle', morningRiderId: 'R-006', eveningRiderId: null, value: 19000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v6' },
+  { id: 'v7', plate: 'STU-6789', type: 'car', morningRiderId: 'R-007', eveningRiderId: null, value: 69000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v7' },
 ]
 
 export const VEHICLE_EXPENSES = [
@@ -219,8 +259,8 @@ export const SUPPLIERS = [
 ]
 
 export const PURCHASES = [
-  { id: 'p1', supplierId: 's2', itemType: 'قطع غيار دراجات', qty: 4, unitPrice: 250, date: '2026-06-25', taxable: true, costCenter: 'cc-fleet', invoiceNo: 'S-1201', ref: 'PO-2026-0001', preTax: 1000, vat: 150, total: 1150 },
-  { id: 'p2', supplierId: 's1', itemType: 'وقود', qty: 1, unitPrice: 800, date: '2026-06-22', taxable: true, costCenter: 'cc-fleet', invoiceNo: 'S-0980', ref: 'PO-2026-0002', preTax: 800, vat: 120, total: 920 },
+  { id: 'p1', supplierId: 's2', itemType: 'قطع غيار دراجات', qty: 4, unitPrice: 250, date: '2026-06-25', taxable: true, vehicleId: 'v1', costCenter: 'cc-veh-v1', invoiceNo: 'S-1201', ref: 'PO-2026-0001', preTax: 1000, vat: 150, total: 1150 },
+  { id: 'p2', supplierId: 's1', itemType: 'وقود', qty: 1, unitPrice: 800, date: '2026-06-22', taxable: true, vehicleId: null, costCenter: 'cc-fleet', invoiceNo: 'S-0980', ref: 'PO-2026-0002', preTax: 800, vat: 120, total: 920 },
 ]
 
 /* ── Users (EP-08) ──────────────────────────────────────── */

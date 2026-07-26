@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, Pencil, Bike, Car, Download } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -10,11 +10,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import VehicleDialog from '@/components/vehicles/VehicleDialog.vue'
 import ExpenseDialog from '@/components/vehicles/ExpenseDialog.vue'
+import ExpenseBreakdownChart from '@/components/vehicles/ExpenseBreakdownChart.vue'
+import { Select } from '@/components/ui/select'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { exportCsv, todayStamp } from '@/lib/export'
-import { VEHICLE_TYPES, EXPENSE_TYPES, RIDERS } from '@/api/fixtures'
-import { fetchVehicles, fetchExpenses, profitability } from '@/api/vehicles'
+import { VEHICLE_TYPES, EXPENSE_TYPES, RIDERS, SHIFTS, VEHICLE_STATUS } from '@/api/fixtures'
+import { fetchVehicles, fetchExpenses, profitability, expenseBreakdown } from '@/api/vehicles'
 
 const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
@@ -34,7 +36,9 @@ const loc = (map, k) => map[k]?.[locale.value] ?? map[k]?.ar ?? k
 const typeOptions = computed(() => Object.keys(VEHICLE_TYPES).map((k) => ({ value: k, label: loc(VEHICLE_TYPES, k) })))
 const expenseTypeOptions = computed(() => Object.keys(EXPENSE_TYPES).map((k) => ({ value: k, label: loc(EXPENSE_TYPES, k) })))
 const riderOptions = computed(() => RIDERS.map((r) => ({ value: r.id, label: r.name })))
-const vehicleOptions = computed(() => vehicles.value.map((v) => ({ value: v.id, label: `${v.plate} — ${v.riderName}` })))
+const vehicleOptions = computed(() => vehicles.value.map((v) => ({ value: v.id, label: `${v.plate} — ${v.ridersLabel}` })))
+
+const statusVariant = (s) => (s === 'active' ? 'success' : s === 'maintenance' ? 'warning' : 'danger')
 
 const tabs = computed(() => [
   { value: 'vehicles', label: t('vehicles.tabs.vehicles') },
@@ -42,9 +46,29 @@ const tabs = computed(() => [
   { value: 'profitability', label: t('vehicles.tabs.profitability') },
 ])
 
+/* expense chart (#9) */
+const granularity = ref('month')
+const chartVehicle = ref('')
+const breakdown = ref(null)
+const granularityOptions = computed(() => [
+  { value: 'day', label: t('vehicles.charts.granularity.day') },
+  { value: 'month', label: t('vehicles.charts.granularity.month') },
+  { value: 'year', label: t('vehicles.charts.granularity.year') },
+])
+const chartVehicleOptions = computed(() => [
+  { value: '', label: t('vehicles.charts.allVehicles') },
+  ...vehicles.value.map((v) => ({ value: v.id, label: v.plate })),
+])
+
+async function loadBreakdown() {
+  breakdown.value = await expenseBreakdown({ granularity: granularity.value, vehicleId: chartVehicle.value || undefined })
+}
+watch([granularity, chartVehicle], loadBreakdown)
+
 async function load() {
   loading.value = true
   ;[vehicles.value, expenses.value, prof.value] = await Promise.all([fetchVehicles(), fetchExpenses(), profitability()])
+  await loadBreakdown()
   loading.value = false
 }
 onMounted(load)
@@ -87,7 +111,9 @@ function exportProf() {
         :columns="[
           { key: 'plate', label: t('vehicles.plate'), sortable: true },
           { key: 'type', label: t('vehicles.type') },
-          { key: 'riderName', label: t('vehicles.rider'), sortable: true },
+          { key: 'riders', label: t('vehicles.rider') },
+          { key: 'value', label: t('vehicles.fields.value'), align: 'end', sortable: true, hideBelow: 'md' },
+          { key: 'status', label: t('vehicles.statusLabel') },
           { key: 'actions', label: t('common.actions'), align: 'end' },
         ]"
       >
@@ -98,6 +124,17 @@ function exportProf() {
             {{ loc(VEHICLE_TYPES, row.type) }}
           </span>
         </template>
+        <template #cell-riders="{ row }">
+          <div class="flex flex-wrap gap-1">
+            <Badge v-if="row.morningRiderName" variant="secondary">{{ loc(SHIFTS, 'morning') }} · {{ row.morningRiderName }}</Badge>
+            <Badge v-if="row.eveningRiderName" variant="secondary">{{ loc(SHIFTS, 'evening') }} · {{ row.eveningRiderName }}</Badge>
+            <span v-if="!row.morningRiderName && !row.eveningRiderName" class="text-muted-foreground">{{ t('vehicles.unassigned') }}</span>
+          </div>
+        </template>
+        <template #cell-value="{ row }"><span class="tabular-nums">{{ sar(row.value) }}</span></template>
+        <template #cell-status="{ row }">
+          <Badge :variant="statusVariant(row.status)">{{ loc(VEHICLE_STATUS, row.status) }}</Badge>
+        </template>
         <template #cell-actions="{ row }">
           <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditVehicle(row)">
             <Pencil class="size-4" />
@@ -107,7 +144,32 @@ function exportProf() {
     </Card>
 
     <!-- Expenses -->
-    <Card v-else-if="tab === 'expenses'" class="overflow-hidden">
+    <div v-else-if="tab === 'expenses'" class="space-y-6">
+      <!-- breakdown chart (#9) -->
+      <Card>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+          <div>
+            <h3 class="font-semibold">{{ t('vehicles.charts.title') }}</h3>
+            <p class="text-muted-foreground text-xs">{{ t('vehicles.charts.subtitle') }}</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Select v-model="chartVehicle" :options="chartVehicleOptions" class="w-auto min-w-[150px]" />
+            <Select v-model="granularity" :options="granularityOptions" class="w-auto min-w-[120px]" />
+          </div>
+        </div>
+        <div class="p-4">
+          <ExpenseBreakdownChart v-if="breakdown?.categories?.length" :breakdown="breakdown" />
+          <p v-else class="text-muted-foreground py-12 text-center text-sm">{{ t('common.noData') }}</p>
+        </div>
+        <div v-if="breakdown?.totalsByType?.length" class="flex flex-wrap gap-4 border-t px-5 py-3 text-sm">
+          <span class="text-muted-foreground">{{ t('vehicles.charts.byType') }}:</span>
+          <span v-for="tt in breakdown.totalsByType" :key="tt.type" class="tabular-nums">
+            {{ loc(EXPENSE_TYPES, tt.type) }} <b>{{ sar(tt.total) }}</b>
+          </span>
+        </div>
+      </Card>
+
+      <Card class="overflow-hidden">
       <DataTable
         :loading="loading"
         :rows="expenses"
@@ -126,7 +188,8 @@ function exportProf() {
         <template #cell-invoiceNo="{ row }"><span dir="ltr" class="text-muted-foreground">{{ row.invoiceNo }}</span></template>
         <template #cell-amount="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.amount) }}</span></template>
       </DataTable>
-    </Card>
+      </Card>
+    </div>
 
     <!-- Profitability -->
     <Card v-else class="overflow-hidden">

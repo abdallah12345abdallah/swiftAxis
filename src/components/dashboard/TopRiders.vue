@@ -43,7 +43,7 @@ const RANK = {
         </span>
         <div class="min-w-0 flex-1">
           <div class="flex items-center justify-between gap-2">
-            <p class="truncate text-sm font-semibold">{{ r.name }}</p>
+            <RouterLink :to="`/riders/${r.id}`" class="hover:text-primary truncate text-sm font-semibold hover:underline">{{ r.name }}</RouterLink>
             <p class="text-xs font-semibold tabular-nums">{{ sar(r.commission) }}</p>
           </div>
           <div class="mt-1.5 flex items-center gap-2">

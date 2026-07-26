@@ -273,7 +273,7 @@ function exportCsv() {
                   <div class="flex items-center gap-3">
                     <Avatar :initials="r.name.charAt(0)" />
                     <div class="min-w-0">
-                      <p class="truncate font-medium">{{ r.name }}</p>
+                      <RouterLink :to="`/riders/${r.id}`" class="hover:text-primary block truncate font-medium hover:underline">{{ r.name }}</RouterLink>
                       <p class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ r.nationalId }}</p>
                     </div>
                   </div>
@@ -356,7 +356,7 @@ function exportCsv() {
             <thead>
               <tr class="text-muted-foreground border-b">
                 <th class="px-5 py-3 text-start font-medium">{{ t('riders.contract.company') }}</th>
-                <th class="hidden px-5 py-3 text-start font-medium sm:table-cell">{{ t('riders.contract.city') }}</th>
+                <th class="hidden px-5 py-3 text-start font-medium sm:table-cell">{{ t('riders.contract.amount') }}</th>
                 <th class="hidden px-5 py-3 text-start font-medium md:table-cell">{{ t('riders.contract.start') }}</th>
                 <th class="hidden px-5 py-3 text-start font-medium md:table-cell">{{ t('riders.contract.end') }}</th>
                 <th class="px-5 py-3 text-start font-medium">{{ t('riders.contract.ridersLinked') }}</th>
@@ -367,7 +367,7 @@ function exportCsv() {
             <tbody>
               <tr v-for="c in contracts" :key="c.id" class="hover:bg-muted/40 border-b transition-colors last:border-0">
                 <td class="px-5 py-3 font-medium">{{ c.company }}</td>
-                <td class="text-muted-foreground hidden px-5 py-3 sm:table-cell">{{ cityName(c.city) }}</td>
+                <td class="text-muted-foreground hidden px-5 py-3 tabular-nums sm:table-cell">{{ sar(c.amount) }}</td>
                 <td class="text-muted-foreground hidden px-5 py-3 tabular-nums md:table-cell" dir="ltr">{{ c.start ?? '—' }}</td>
                 <td class="text-muted-foreground hidden px-5 py-3 tabular-nums md:table-cell" dir="ltr">
                   {{ c.end ?? t('riders.contract.ongoing') }}
@@ -409,7 +409,6 @@ function exportCsv() {
     <ContractFormDialog
       v-model:open="contractDialog"
       :contract="editingContract"
-      :city-options="cityOptions"
       @saved="load"
     />
   </div>

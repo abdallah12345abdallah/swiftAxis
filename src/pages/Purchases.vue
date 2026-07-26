@@ -19,6 +19,7 @@ import {
   fetchSuppliers, fetchPurchases, vatReport, purchasesByCostCenter,
 } from '@/api/purchases'
 import { fetchCostCenters } from '@/api/ledger'
+import { fetchVehicles } from '@/api/vehicles'
 
 const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
@@ -31,6 +32,7 @@ const suppliers = ref([])
 const vat = ref({ rows: [], totalVat: 0, totalPreTax: 0 })
 const byCenter = ref([])
 const centers = ref([])
+const vehicles = ref([])
 
 const purchaseDialog = ref(false)
 const supplierDialog = ref(false)
@@ -40,6 +42,10 @@ const loc = (map, k) => map[k]?.[locale.value] ?? map[k]?.ar ?? k
 const categoryOptions = computed(() => Object.keys(SUPPLIER_CATEGORIES).map((k) => ({ value: k, label: loc(SUPPLIER_CATEGORIES, k) })))
 const supplierOptions = computed(() => suppliers.value.filter((s) => s.active).map((s) => ({ value: s.id, label: s.name })))
 const costCenterOptions = computed(() => centers.value.map((c) => ({ value: c.id, label: c.name })))
+const vehicleOptions = computed(() => [
+  { value: '', label: t('purchases.fields.noVehicle') },
+  ...vehicles.value.map((v) => ({ value: v.id, label: v.plate, costCenter: v.costCenter })),
+])
 
 const tabs = computed(() => [
   { value: 'purchases', label: t('purchases.tabs.purchases') },
@@ -50,8 +56,8 @@ const tabs = computed(() => [
 
 async function load() {
   loading.value = true
-  ;[purchases.value, suppliers.value, vat.value, byCenter.value, centers.value] = await Promise.all([
-    fetchPurchases(), fetchSuppliers(), vatReport(), purchasesByCostCenter(), fetchCostCenters(),
+  ;[purchases.value, suppliers.value, vat.value, byCenter.value, centers.value, vehicles.value] = await Promise.all([
+    fetchPurchases(), fetchSuppliers(), vatReport(), purchasesByCostCenter(), fetchCostCenters(), fetchVehicles(),
   ])
   loading.value = false
 }
@@ -94,6 +100,8 @@ function exportVat() {
           { key: 'ref', label: t('ledger.ref'), sortable: true },
           { key: 'date', label: t('purchases.fields.date'), sortable: true },
           { key: 'supplierName', label: t('purchases.fields.supplier'), sortable: true },
+          { key: 'supplierTaxNo', label: t('purchases.fields.supplierTaxNo'), hideBelow: 'xl' },
+          { key: 'vehiclePlate', label: t('purchases.fields.vehicle'), hideBelow: 'lg' },
           { key: 'itemType', label: t('purchases.fields.itemType'), hideBelow: 'md' },
           { key: 'preTax', label: t('purchases.fields.preTax'), align: 'end', hideBelow: 'lg' },
           { key: 'vat', label: t('purchases.fields.vat'), align: 'end', hideBelow: 'sm' },
@@ -102,6 +110,11 @@ function exportVat() {
       >
         <template #cell-ref="{ row }"><span dir="ltr" class="font-medium">{{ row.ref }}</span></template>
         <template #cell-date="{ row }">{{ formatDate(row.date) }}</template>
+        <template #cell-supplierTaxNo="{ row }"><span dir="ltr" class="text-muted-foreground tabular-nums">{{ row.supplierTaxNo }}</span></template>
+        <template #cell-vehiclePlate="{ row }">
+          <span v-if="row.vehiclePlate" dir="ltr">{{ row.vehiclePlate }}</span>
+          <span v-else class="text-muted-foreground">—</span>
+        </template>
         <template #cell-preTax="{ row }"><span class="tabular-nums">{{ sar(row.preTax) }}</span></template>
         <template #cell-vat="{ row }"><span class="text-orange tabular-nums">{{ sar(row.vat) }}</span></template>
         <template #cell-total="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.total) }}</span></template>
@@ -178,7 +191,7 @@ function exportVat() {
       </DataTable>
     </Card>
 
-    <PurchaseDialog v-model:open="purchaseDialog" :supplier-options="supplierOptions" :cost-center-options="costCenterOptions" @saved="load" />
+    <PurchaseDialog v-model:open="purchaseDialog" :supplier-options="supplierOptions" :cost-center-options="costCenterOptions" :vehicle-options="vehicleOptions" :suppliers="suppliers" @saved="load" />
     <SupplierDialog v-model:open="supplierDialog" :supplier="editingSupplier" :category-options="categoryOptions" @saved="load" />
   </div>
 </template>

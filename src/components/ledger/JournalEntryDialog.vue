@@ -1,14 +1,17 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, Trash2, Check } from 'lucide-vue-next'
+import { Plus, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/composables/useCurrency'
+import { useDate } from '@/lib/format'
 import { useToast } from '@/composables/useToast'
 import { postEntry } from '@/api/ledger'
+import { vehicleByCostCenter } from '@/api/vehicles'
+import { VEHICLE_STATUS } from '@/api/fixtures'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -17,10 +20,26 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'saved'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { sar } = useCurrency()
+const { formatDate } = useDate()
 const toast = useToast()
 const saving = ref(false)
+
+/** #11 — warn when a line's cost center belongs to a vehicle in maintenance/fault. */
+function lineWarning(l) {
+  if (!l.costCenter) return null
+  const v = vehicleByCostCenter(l.costCenter)
+  if (!v || v.status === 'active') return null
+  const status = VEHICLE_STATUS[v.status]?.[locale.value] ?? VEHICLE_STATUS[v.status]?.ar ?? v.status
+  if (v.statusFrom && v.statusTo) {
+    return t('ledger.vehicleWarning', { plate: v.plate, status, from: formatDate(v.statusFrom), to: formatDate(v.statusTo) })
+  }
+  if (v.statusFrom) {
+    return t('ledger.vehicleWarningOpenEnded', { plate: v.plate, status, from: formatDate(v.statusFrom) })
+  }
+  return t('ledger.vehicleWarningNoPeriod', { plate: v.plate, status })
+}
 
 const blankLine = () => ({ account: '', costCenter: '', debit: '', credit: '' })
 const form = reactive({ date: new Date().toISOString().slice(0, 10), description: '', lines: [blankLine(), blankLine()] })
@@ -82,15 +101,20 @@ async function submit() {
           <span class="w-24">{{ t('ledger.credit') }}</span>
           <span class="w-8" />
         </div>
-        <div v-for="(l, i) in form.lines" :key="i" class="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2">
-          <Select v-model="l.account" :options="accountOptions" :placeholder="t('ledger.account')" />
-          <Select v-model="l.costCenter" :options="costCenterOptions" :placeholder="t('ledger.costCenter')" />
-          <Input v-model="l.debit" type="number" class="w-24" dir="ltr" placeholder="0" />
-          <Input v-model="l.credit" type="number" class="w-24" dir="ltr" placeholder="0" />
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-danger grid size-8 place-items-center rounded-lg" @click="removeLine(i)">
-            <Trash2 class="size-4" />
-          </button>
-        </div>
+        <template v-for="(l, i) in form.lines" :key="i">
+          <div class="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2">
+            <Select v-model="l.account" :options="accountOptions" :placeholder="t('ledger.account')" />
+            <Select v-model="l.costCenter" :options="costCenterOptions" :placeholder="t('ledger.costCenter')" />
+            <Input v-model="l.debit" type="number" class="w-24" dir="ltr" placeholder="0" />
+            <Input v-model="l.credit" type="number" class="w-24" dir="ltr" placeholder="0" />
+            <button type="button" class="hover:bg-accent text-muted-foreground hover:text-danger grid size-8 place-items-center rounded-lg" @click="removeLine(i)">
+              <Trash2 class="size-4" />
+            </button>
+          </div>
+          <p v-if="lineWarning(l)" class="bg-warning/12 text-warning-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-xs">
+            <AlertTriangle class="mt-0.5 size-3.5 shrink-0" /> {{ lineWarning(l) }}
+          </p>
+        </template>
         <Button type="button" variant="ghost" size="sm" @click="addLine"><Plus /> {{ t('ledger.addLine') }}</Button>
       </div>
 

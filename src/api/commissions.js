@@ -8,19 +8,42 @@ import { logAudit } from './audit'
 
 /* Flexible commission engine (EP-03). */
 
-const DEFAULT_FORMULA = { target: 480, base: 2000, perOrder: 5 }
+const DEFAULT_FORMULA = { target: 480, base: 2000, tiers: [{ upTo: null, perOrder: 5 }] }
 
 /** Resolve the effective formula for a rider (override → contract → default). */
 export function formulaFor(rider) {
   return RIDER_FORMULA_OVERRIDES[rider.id] || COMMISSION_FORMULAS[rider.contract] || DEFAULT_FORMULA
 }
 
-/** Compute a commission breakdown. Pure — reused by the orders live preview. */
+/** Tiers of a formula, tolerating the legacy single-rate `{ perOrder }` shape. */
+export function tiersOf(formula) {
+  if (Array.isArray(formula.tiers) && formula.tiers.length) return formula.tiers
+  return [{ upTo: null, perOrder: Number(formula.perOrder) || 0 }]
+}
+
+/** Compute a commission breakdown. Pure — reused by the orders live preview.
+    Tiers bracket the absolute order count above target; upTo:null = unbounded. */
 export function computeCommission(orders, formula) {
   const f = formula || DEFAULT_FORMULA
+  const tiers = tiersOf(f)
   const extra = Math.max(0, orders - f.target)
-  const extraAmount = extra * f.perOrder
-  return { base: f.base, target: f.target, perOrder: f.perOrder, extra, extraAmount, total: f.base + extraAmount }
+  const tierBreakdown = []
+  let remaining = extra
+  let floor = f.target
+  let extraAmount = 0
+  for (const tier of tiers) {
+    if (remaining <= 0) break
+    const cap = tier.upTo == null ? Infinity : Math.max(0, tier.upTo - floor)
+    const count = Math.min(remaining, cap)
+    if (count > 0) {
+      const amount = count * tier.perOrder
+      tierBreakdown.push({ from: floor + 1, upTo: tier.upTo, count, perOrder: tier.perOrder, amount })
+      extraAmount += amount
+      remaining -= count
+    }
+    if (tier.upTo != null) floor = Math.max(floor, tier.upTo)
+  }
+  return { base: f.base, target: f.target, perOrder: tiers[0].perOrder, tiers, extra, extraAmount, total: f.base + extraAmount, tierBreakdown }
 }
 
 /** Formulas per contract with linked-rider counts. */
@@ -38,10 +61,14 @@ export function fetchFormulas() {
 /** Update a contract's formula, keeping history (US-010). */
 export function updateFormula(contract, formula) {
   const before = { ...(COMMISSION_FORMULAS[contract] || DEFAULT_FORMULA) }
+  const tiers = tiersOf(formula)
+    .map((tier) => ({ upTo: tier.upTo === null || tier.upTo === '' ? null : Number(tier.upTo) || 0, perOrder: Number(tier.perOrder) || 0 }))
+    .sort((a, b) => (a.upTo == null ? Infinity : a.upTo) - (b.upTo == null ? Infinity : b.upTo))
+  if (tiers.length) tiers[tiers.length - 1].upTo = null
   COMMISSION_FORMULAS[contract] = {
     target: Number(formula.target) || 0,
     base: Number(formula.base) || 0,
-    perOrder: Number(formula.perOrder) || 0,
+    tiers,
   }
   FORMULA_HISTORY.unshift({ contract, at: new Date().toISOString().slice(0, 10), before, after: { ...COMMISSION_FORMULAS[contract] } })
   logAudit({ action: 'update', entity: 'commissions', detail: `تعديل معادلة ${contract}` })

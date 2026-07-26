@@ -15,6 +15,8 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   supplierOptions: { type: Array, default: () => [] },
   costCenterOptions: { type: Array, default: () => [] },
+  vehicleOptions: { type: Array, default: () => [] }, // [{ value, label, costCenter }]
+  suppliers: { type: Array, default: () => [] }, // raw list (taxNo lookup)
 })
 const emit = defineEmits(['update:open', 'saved'])
 
@@ -25,7 +27,7 @@ const saving = ref(false)
 const receipt = ref(null)
 const form = reactive({
   supplierId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10),
-  inclVat: false, taxable: true, costCenter: '', invoiceNo: '',
+  inclVat: false, taxable: true, vehicleId: '', costCenter: '', invoiceNo: '',
 })
 const errors = reactive({})
 
@@ -33,7 +35,7 @@ watch(
   () => props.open,
   (v) => {
     if (!v) return
-    Object.assign(form, { supplierId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10), inclVat: false, taxable: true, costCenter: '', invoiceNo: '' })
+    Object.assign(form, { supplierId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10), inclVat: false, taxable: true, vehicleId: '', costCenter: '', invoiceNo: '' })
     receipt.value = null
     Object.keys(errors).forEach((k) => delete errors[k])
   },
@@ -41,11 +43,22 @@ watch(
 
 const totals = computed(() => computeTotals(form))
 
+const supplierTaxNo = computed(() => props.suppliers.find((s) => s.id === form.supplierId)?.taxNo ?? null)
+
+// vehicle chosen → cost center derived from it (#10)
+const derivedCostCenter = computed(() => {
+  if (!form.vehicleId) return null
+  return props.vehicleOptions.find((v) => v.value === form.vehicleId)?.costCenter ?? null
+})
+const derivedCostCenterName = computed(() =>
+  props.costCenterOptions.find((c) => c.value === derivedCostCenter.value)?.label ?? derivedCostCenter.value,
+)
+
 async function submit() {
   if (saving.value) return
   Object.keys(errors).forEach((k) => delete errors[k])
   if (!form.supplierId) errors.supplierId = t('common.required')
-  if (!form.costCenter) errors.costCenter = t('common.required')
+  if (!form.vehicleId && !form.costCenter) errors.costCenter = t('common.required')
   if (!(Number(form.unitPrice) > 0)) errors.unitPrice = t('common.required')
   if (Object.keys(errors).length) return
   saving.value = true
@@ -67,6 +80,9 @@ async function submit() {
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.supplier') }}</label>
           <Select v-model="form.supplierId" :options="supplierOptions" :placeholder="t('purchases.fields.supplier')" :invalid="!!errors.supplierId" />
+          <p v-if="supplierTaxNo" class="text-muted-foreground text-xs">
+            {{ t('purchases.fields.supplierTaxNo') }}: <span dir="ltr" class="tabular-nums">{{ supplierTaxNo }}</span>
+          </p>
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.itemType') }}</label>
@@ -85,8 +101,15 @@ async function submit() {
           <Input v-model="form.date" type="date" dir="ltr" />
         </div>
         <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('purchases.fields.vehicle') }}</label>
+          <Select v-model="form.vehicleId" :options="vehicleOptions" :placeholder="t('purchases.fields.noVehicle')" />
+        </div>
+        <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.costCenter') }}</label>
-          <Select v-model="form.costCenter" :options="costCenterOptions" :placeholder="t('purchases.fields.costCenter')" :invalid="!!errors.costCenter" />
+          <Select v-if="!form.vehicleId" v-model="form.costCenter" :options="costCenterOptions" :placeholder="t('purchases.fields.costCenter')" :invalid="!!errors.costCenter" />
+          <div v-else class="bg-muted/40 text-muted-foreground flex h-10 items-center rounded-lg px-3 text-sm">
+            {{ t('purchases.fields.derivedCostCenter') }}: {{ derivedCostCenterName }}
+          </div>
         </div>
         <div class="space-y-1.5 sm:col-span-2">
           <label class="text-sm font-medium">{{ t('purchases.fields.invoiceNo') }}</label>

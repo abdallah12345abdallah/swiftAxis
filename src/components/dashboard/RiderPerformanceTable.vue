@@ -61,7 +61,9 @@ function barClass(r) {
               :key="r.id"
               class="hover:bg-muted/40 border-b transition-colors last:border-0"
             >
-              <td class="px-5 py-3 font-medium">{{ r.name }}</td>
+              <td class="px-5 py-3 font-medium">
+                <RouterLink :to="`/riders/${r.id}`" class="hover:text-primary hover:underline">{{ r.name }}</RouterLink>
+              </td>
               <td class="text-muted-foreground px-5 py-3">{{ contractLabel(r.contract) }}</td>
               <td class="px-5 py-3 tabular-nums">{{ num(r.orders) }}</td>
               <td class="hidden px-5 py-3 md:table-cell">
