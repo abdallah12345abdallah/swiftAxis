@@ -1,7 +1,6 @@
 {
   "app": {
     "name": "SwiftAxis",
-    "logistics": "LOGISTICS",
     "tagline": "Delivery Rider Commission Management"
   },
   "common": {
@@ -51,7 +50,8 @@
     "approve": "Approve",
     "saved": "Saved successfully",
     "none": "None",
-    "required": "Required"
+    "required": "Required",
+    "clear": "Clear"
   },
   "roles": {
     "manager": "System Manager",
@@ -59,9 +59,20 @@
     "accountant": "Accountant",
     "rider": "Rider"
   },
+  "datepicker": {
+    "selectDate": "Pick a date",
+    "selectRange": "Pick a range",
+    "today": "Today",
+    "last7": "Last 7 days",
+    "last30": "Last 30 days",
+    "thisMonth": "This month",
+    "prev": "Previous",
+    "next": "Next"
+  },
   "nav": {
     "dashboard": "Dashboard",
-    "riders": "Riders & Contracts",
+    "riders": "Riders",
+    "contracts": "Contracts",
     "orders": "Daily Orders",
     "commissions": "Commissions",
     "wallets": "Cash Wallets",
@@ -152,12 +163,8 @@
     }
   },
   "riders": {
-    "title": "Riders & Contracts",
-    "subtitle": "Manage your delivery riders and their contracts",
-    "tabs": {
-      "riders": "Riders",
-      "contracts": "Contracts"
-    },
+    "title": "Riders",
+    "subtitle": "Manage delivery riders and link them to contracts",
     "searchPlaceholder": "Search by name or national ID…",
     "filters": {
       "all": "All",
@@ -202,10 +209,9 @@
       "mobilePh": "05xxxxxxxx",
       "city": "City",
       "cityPh": "Select a city",
-      "vehicleType": "Vehicle type",
-      "vehicleTypePh": "Select a type",
-      "vehiclePlate": "Plate number",
-      "vehiclePlatePh": "e.g. ABC-1234",
+      "vehicle": "Vehicle",
+      "vehiclePh": "Pick a vehicle from the fleet",
+      "vehicleFree": "Available",
       "contracts": "Contracts",
       "contractsHint": "Link the rider to one or more contracts",
       "activeAccount": "Account active",
@@ -218,24 +224,27 @@
       "errDuplicate": "This national ID already exists in the system",
       "errMobile": "Enter a valid mobile (05xxxxxxxx)",
       "errContract": "Select at least one contract"
-    },
-    "contract": {
-      "add": "Add contract",
-      "addTitle": "Add a new contract",
-      "editTitle": "Edit contract",
-      "company": "Company",
-      "companyPh": "e.g. Hunger Station",
-      "amount": "Contract value (SAR)",
-      "start": "Start date",
-      "end": "End date",
-      "ongoing": "Ongoing",
-      "ridersLinked": "Riders",
-      "status": "Status",
-      "actions": "Actions",
-      "save": "Save contract",
-      "cancel": "Cancel",
-      "errCompany": "Please enter the company name"
     }
+  },
+  "contracts": {
+    "title": "Contracts",
+    "subtitle": "Delivery company contracts and the riders linked to each",
+    "empty": "No contracts yet",
+    "add": "Add contract",
+    "addTitle": "Add a new contract",
+    "editTitle": "Edit contract",
+    "company": "Company",
+    "companyPh": "e.g. Hunger Station",
+    "amount": "Contract value (SAR)",
+    "start": "Start date",
+    "end": "End date",
+    "ongoing": "Ongoing",
+    "ridersLinked": "Riders",
+    "status": "Status",
+    "actions": "Actions",
+    "save": "Save contract",
+    "cancel": "Cancel",
+    "errCompany": "Please enter the company name"
   },
   "riderDetail": {
     "back": "Back to riders",
@@ -282,6 +291,7 @@
     "tabs": { "monthly": "Monthly report", "period": "Riders period report", "best": "Best riders" },
     "period": {
       "title": "Riders report for a period",
+      "range": "Period",
       "from": "From",
       "to": "To",
       "rider": "Rider",

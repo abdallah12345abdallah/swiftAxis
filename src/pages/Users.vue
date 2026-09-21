@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Button } from '@/components/ui/button'
 import UserDialog from '@/components/users/UserDialog.vue'
 import { NAV_ITEMS, ALL_ROLES } from '@/lib/constants'
@@ -144,7 +144,7 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
           <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3.5" />
           <Input v-model="auditQuery" :placeholder="t('users.audit.search')" class="ps-10" />
         </div>
-        <Select v-model="auditAction" :options="actionOptions" class="w-auto min-w-[150px]" />
+        <Dropdown v-model="auditAction" :options="actionOptions" class="w-auto min-w-[150px]" />
         <span class="text-muted-foreground text-xs">{{ t('users.audit.immutable') }}</span>
       </div>
       <DataTable

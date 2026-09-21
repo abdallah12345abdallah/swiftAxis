@@ -1,10 +1,11 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Info } from 'lucide-vue-next'
+import { Bike, Car, Info } from 'lucide-vue-next'
+import { VEHICLE_TYPES } from '@/api/fixtures'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,11 +16,11 @@ const props = defineProps({
   rider: { type: Object, default: null }, // null = create
   contractOptions: { type: Array, default: () => [] }, // [{ value, label }]
   cityOptions: { type: Array, default: () => [] },
-  vehicleTypeOptions: { type: Array, default: () => [] },
+  vehicles: { type: Array, default: () => [] }, // the fleet, from fetchVehicles()
 })
 const emit = defineEmits(['update:open', 'saved'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const isEdit = computed(() => !!props.rider)
 const saving = ref(false)
@@ -29,11 +30,30 @@ const blank = () => ({
   nationalId: '',
   mobile: '',
   city: '',
-  vehicleType: '',
-  vehicle: '',
+  vehicleId: '',
   contracts: [],
   active: true,
 })
+
+/* The fleet as one pickable list: "type · plate", with the current assignment
+   as a hint. A vehicle seats one rider per shift, so one whose two shifts are
+   both taken by other riders can't be picked. */
+const typeName = (k) => VEHICLE_TYPES[k]?.[locale.value] ?? VEHICLE_TYPES[k]?.ar ?? k
+
+const vehicleOptions = computed(() =>
+  props.vehicles.map((v) => {
+    const riderId = props.rider?.id
+    const shiftsTaken = [v.morningRiderId, v.eveningRiderId].filter(Boolean)
+    const mine = riderId && shiftsTaken.includes(riderId)
+    return {
+      value: v.id,
+      label: `${typeName(v.type)} · ${v.plate}`,
+      icon: v.type === 'car' ? Car : Bike,
+      hint: shiftsTaken.length ? v.ridersLabel : t('riders.form.vehicleFree'),
+      disabled: !mine && shiftsTaken.length >= 2,
+    }
+  }),
+)
 
 const form = reactive(blank())
 const errors = reactive({})
@@ -50,8 +70,11 @@ watch(
         nationalId: props.rider.nationalId,
         mobile: props.rider.mobile,
         city: props.rider.city,
-        vehicleType: props.rider.vehicleType,
-        vehicle: props.rider.vehicle,
+        // older records only carry the plate — match it back to the fleet
+        vehicleId:
+          props.rider.vehicleId ??
+          props.vehicles.find((v) => v.plate === props.rider.vehicle)?.id ??
+          '',
         contracts: [...(props.rider.contracts ?? [])],
         active: props.rider.active,
       })
@@ -81,9 +104,17 @@ async function submit() {
   if (saving.value || !validate()) return
   saving.value = true
   try {
+    // the picker holds the vehicle id; plate + type stay denormalised on the
+    // rider so tables, exports and reports keep reading them directly
+    const picked = props.vehicles.find((v) => v.id === form.vehicleId) ?? null
+    const payload = {
+      ...form,
+      vehicle: picked?.plate ?? '',
+      vehicleType: picked?.type ?? '',
+    }
     const saved = isEdit.value
-      ? await updateRider(props.rider.id, { ...form })
-      : await createRider({ ...form })
+      ? await updateRider(props.rider.id, payload)
+      : await createRider(payload)
     emit('saved', saved)
     emit('update:open', false)
   } catch (e) {
@@ -134,19 +165,18 @@ async function submit() {
         <!-- city -->
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('riders.form.city') }}</label>
-          <Select v-model="form.city" :options="cityOptions" :placeholder="t('riders.form.cityPh')" />
+          <Dropdown v-model="form.city" :options="cityOptions" :placeholder="t('riders.form.cityPh')" />
         </div>
 
-        <!-- vehicle type -->
+        <!-- vehicle — one pick from the fleet (type + plate) -->
         <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('riders.form.vehicleType') }}</label>
-          <Select v-model="form.vehicleType" :options="vehicleTypeOptions" :placeholder="t('riders.form.vehicleTypePh')" />
-        </div>
-
-        <!-- plate -->
-        <div class="space-y-1.5 sm:col-span-2">
-          <label class="text-sm font-medium">{{ t('riders.form.vehiclePlate') }}</label>
-          <Input v-model="form.vehicle" :placeholder="t('riders.form.vehiclePlatePh')" dir="ltr" />
+          <label class="text-sm font-medium">{{ t('riders.form.vehicle') }}</label>
+          <Dropdown
+            v-model="form.vehicleId"
+            :options="vehicleOptions"
+            :placeholder="t('riders.form.vehiclePh')"
+            clearable
+          />
         </div>
       </div>
 

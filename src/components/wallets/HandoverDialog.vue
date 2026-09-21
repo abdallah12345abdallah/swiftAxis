@@ -3,6 +3,7 @@ import { ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/datepicker'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
@@ -57,7 +58,7 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('common.date') }}</label>
-          <Input v-model="form.date" type="date" dir="ltr" />
+          <DatePicker v-model="form.date" />
         </div>
       </div>
       <div class="space-y-1.5">

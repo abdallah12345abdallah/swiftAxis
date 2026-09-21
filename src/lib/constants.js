@@ -27,6 +27,13 @@ export const NAV_ITEMS = [
     epic: 'EP-01',
   },
   {
+    key: 'contracts',
+    to: '/contracts',
+    icon: 'FileSignature',
+    roles: [ROLES.MANAGER, ROLES.SUPERVISOR],
+    epic: 'EP-01',
+  },
+  {
     key: 'orders',
     to: '/orders',
     icon: 'ClipboardList',

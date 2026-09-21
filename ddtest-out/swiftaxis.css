@@ -1,0 +1,173 @@
+
+/* ── overlay: soft fade ─────────────────────────────────── */
+.modal-overlay[data-state='open'][data-v-4f9e5232] {
+  animation: overlay-in-4f9e5232 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-overlay[data-state='closed'][data-v-4f9e5232] {
+  animation: overlay-out-4f9e5232 0.2s ease-in forwards;
+}
+@keyframes overlay-in-4f9e5232 {
+from { opacity: 0;
+}
+}
+@keyframes overlay-out-4f9e5232 {
+to { opacity: 0;
+}
+}
+
+/* ── panel: mobile = bottom sheet slide, desktop = springy rise with blur-to-sharp ──
+   Tailwind v4 centers via the standalone `translate` property, so the keyframes
+   must animate `translate`/`scale` (not `transform`) or the two would stack. */
+.modal-panel[data-state='open'][data-v-4f9e5232] {
+  animation: sheet-in-4f9e5232 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-panel[data-state='closed'][data-v-4f9e5232] {
+  animation: sheet-out-4f9e5232 0.22s ease-in forwards;
+}
+@keyframes sheet-in-4f9e5232 {
+from { opacity: 0; translate: 0 100%;
+}
+}
+@keyframes sheet-out-4f9e5232 {
+to { opacity: 0; translate: 0 100%;
+}
+}
+@media (min-width: 40rem) {
+.modal-panel[data-state='open'][data-v-4f9e5232] {
+    animation: panel-in-4f9e5232 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-panel[data-state='closed'][data-v-4f9e5232] {
+    animation: panel-out-4f9e5232 0.2s ease-in forwards;
+}
+}
+@keyframes panel-in-4f9e5232 {
+from { opacity: 0; translate: var(--modal-x, -50%) -42%; scale: 0.94; filter: blur(6px);
+}
+to { opacity: 1; translate: var(--modal-x, -50%) -50%; scale: 1; filter: blur(0);
+}
+}
+@keyframes panel-out-4f9e5232 {
+from { opacity: 1; translate: var(--modal-x, -50%) -50%; scale: 1;
+}
+to { opacity: 0; translate: var(--modal-x, -50%) -46%; scale: 0.97; filter: blur(4px);
+}
+}
+[dir='rtl'] .modal-panel[data-v-4f9e5232] {
+  --modal-x: 50%;
+}
+@media (prefers-reduced-motion: reduce) {
+.modal-overlay[data-state='open'][data-v-4f9e5232],
+  .modal-overlay[data-state='closed'][data-v-4f9e5232],
+  .modal-panel[data-state='open'][data-v-4f9e5232],
+  .modal-panel[data-state='closed'][data-v-4f9e5232] {
+    animation: none;
+}
+}
+
+/* ── panel: same springy drop as the dropdown ─────────────────────── */
+.dp-down-enter-active[data-v-f9cbe017],
+.dp-up-enter-active[data-v-f9cbe017] {
+  transition:
+    opacity 0.18s ease-out,
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dp-down-leave-active[data-v-f9cbe017],
+.dp-up-leave-active[data-v-f9cbe017] {
+  transition:
+    opacity 0.12s ease-in,
+    transform 0.12s ease-in;
+}
+.dp-down-enter-from[data-v-f9cbe017],
+.dp-down-leave-to[data-v-f9cbe017] {
+  opacity: 0;
+  transform: translateY(-0.4rem) scale(0.97);
+}
+.dp-up-enter-from[data-v-f9cbe017],
+.dp-up-leave-to[data-v-f9cbe017] {
+  opacity: 0;
+  transform: translateY(0.4rem) scale(0.97);
+}
+
+/* ── month change: the grid slides the way you navigated ──────────── */
+.dp-month-next-enter-active[data-v-f9cbe017],
+.dp-month-prev-enter-active[data-v-f9cbe017] {
+  transition:
+    opacity 0.18s ease-out,
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dp-month-next-leave-active[data-v-f9cbe017],
+.dp-month-prev-leave-active[data-v-f9cbe017] {
+  transition:
+    opacity 0.1s ease-in,
+    transform 0.1s ease-in;
+}
+.dp-month-next-enter-from[data-v-f9cbe017] {
+  opacity: 0;
+  transform: translateX(12%);
+}
+.dp-month-next-leave-to[data-v-f9cbe017] {
+  opacity: 0;
+  transform: translateX(-8%);
+}
+.dp-month-prev-enter-from[data-v-f9cbe017] {
+  opacity: 0;
+  transform: translateX(-12%);
+}
+.dp-month-prev-leave-to[data-v-f9cbe017] {
+  opacity: 0;
+  transform: translateX(8%);
+}
+[dir='rtl'] .dp-month-next-enter-from[data-v-f9cbe017] {
+  transform: translateX(-12%);
+}
+[dir='rtl'] .dp-month-next-leave-to[data-v-f9cbe017] {
+  transform: translateX(8%);
+}
+[dir='rtl'] .dp-month-prev-enter-from[data-v-f9cbe017] {
+  transform: translateX(12%);
+}
+[dir='rtl'] .dp-month-prev-leave-to[data-v-f9cbe017] {
+  transform: translateX(-8%);
+}
+
+/* ── cells: staggered fade-in, selected day pops ──────────────────── */
+.dp-day[data-v-f9cbe017],
+.dp-cell[data-v-f9cbe017] {
+  animation: dp-cell-in-f9cbe017 0.22s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+@keyframes dp-cell-in-f9cbe017 {
+from {
+    opacity: 0;
+    transform: translateY(-0.15rem) scale(0.94);
+}
+}
+.dp-day[data-v-f9cbe017]:not(:disabled):hover {
+  scale: 1.06;
+}
+.dp-day[aria-selected='true'][data-v-f9cbe017] {
+  animation: dp-pop-f9cbe017 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes dp-pop-f9cbe017 {
+from {
+    scale: 0.82;
+}
+}
+@media (prefers-reduced-motion: reduce) {
+.dp-day[data-v-f9cbe017],
+  .dp-cell[data-v-f9cbe017],
+  .dp-down-enter-active[data-v-f9cbe017],
+  .dp-up-enter-active[data-v-f9cbe017],
+  .dp-down-leave-active[data-v-f9cbe017],
+  .dp-up-leave-active[data-v-f9cbe017],
+  .dp-month-next-enter-active[data-v-f9cbe017],
+  .dp-month-prev-enter-active[data-v-f9cbe017],
+  .dp-month-next-leave-active[data-v-f9cbe017],
+  .dp-month-prev-leave-active[data-v-f9cbe017] {
+    animation: none;
+    transition: none;
+}
+.dp-day[data-v-f9cbe017]:not(:disabled):hover {
+    scale: 1;
+}
+}
+/*$vite$:1*/

@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import OrderEntryForm from '@/components/orders/OrderEntryForm.vue'
 import OrderEditDialog from '@/components/orders/OrderEditDialog.vue'
 import ImportOrdersDialog from '@/components/orders/ImportOrdersDialog.vue'
@@ -110,7 +110,7 @@ function exportLogs() {
     <!-- Manager/Supervisor view -->
     <div v-else class="space-y-4">
       <div class="flex flex-wrap items-center gap-3">
-        <Select v-model="filterRider" :options="riderOptions" class="w-auto min-w-[200px]" />
+        <Dropdown v-model="filterRider" :options="riderOptions" class="w-auto min-w-[200px]" />
       </div>
       <Card class="overflow-hidden">
         <DataTable :loading="loading" :rows="logs" :empty="t('orders.empty')" :columns="columns" :page-size="12">

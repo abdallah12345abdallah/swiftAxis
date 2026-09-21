@@ -9,8 +9,8 @@ import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
+import { DatePicker } from '@/components/ui/datepicker'
 import JournalEntryDialog from '@/components/ledger/JournalEntryDialog.vue'
 import CostCenterDialog from '@/components/ledger/CostCenterDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
@@ -37,6 +37,15 @@ const ccReport = ref([])
 
 const from = ref('')
 const to = ref('')
+
+/* one range control, two refs — the filters below stay as they were */
+const dateRange = computed({
+  get: () => [from.value, to.value],
+  set: ([a, b]) => {
+    from.value = a || ''
+    to.value = b || ''
+  },
+})
 const filterCenter = ref('')
 
 const entryDialog = ref(false)
@@ -107,10 +116,8 @@ function exportTrial() {
     <div class="mb-6 flex flex-wrap items-end gap-3">
       <Tabs v-model="tab" :tabs="tabs" />
       <div class="ms-auto flex flex-wrap items-center gap-2">
-        <Input v-model="from" type="date" dir="ltr" class="h-10 w-auto" />
-        <span class="text-muted-foreground text-sm">—</span>
-        <Input v-model="to" type="date" dir="ltr" class="h-10 w-auto" />
-        <Select v-model="filterCenter" :options="centerFilterOptions" class="w-auto min-w-[160px]" />
+        <DatePicker v-model="dateRange" range class="h-10 w-auto min-w-[240px]" />
+        <Dropdown v-model="filterCenter" :options="centerFilterOptions" class="w-auto min-w-[160px]" />
       </div>
     </div>
 

@@ -12,22 +12,22 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Skeleton } from '@/components/ui/skeleton'
 import RiderFormDialog from '@/components/riders/RiderFormDialog.vue'
-import ContractFormDialog from '@/components/riders/ContractFormDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { WALLET_WARNING_THRESHOLD } from '@/lib/constants'
 import { CITIES, VEHICLE_TYPES } from '@/api/fixtures'
 import { fetchRiders, fetchContracts, toggleRiderActive } from '@/api/riders'
+import { fetchVehicles } from '@/api/vehicles'
 
 const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
 
-const tab = ref('riders')
 const loading = ref(true)
 const riders = ref([])
 const contracts = ref([])
+const vehicles = ref([])
 
 // filters
 const query = ref('')
@@ -38,12 +38,14 @@ const filterCity = ref('')
 // dialogs
 const riderDialog = ref(false)
 const editingRider = ref(null)
-const contractDialog = ref(false)
-const editingContract = ref(null)
 
 async function load() {
   loading.value = true
-  ;[riders.value, contracts.value] = await Promise.all([fetchRiders(), fetchContracts()])
+  ;[riders.value, contracts.value, vehicles.value] = await Promise.all([
+    fetchRiders(),
+    fetchContracts(),
+    fetchVehicles(),
+  ])
   loading.value = false
 }
 onMounted(load)
@@ -52,9 +54,6 @@ onMounted(load)
 const loc = (map, key) => map[key]?.[locale.value] ?? map[key]?.ar ?? key
 const cityOptions = computed(() =>
   Object.keys(CITIES).map((k) => ({ value: k, label: loc(CITIES, k) })),
-)
-const vehicleTypeOptions = computed(() =>
-  Object.keys(VEHICLE_TYPES).map((k) => ({ value: k, label: loc(VEHICLE_TYPES, k) })),
 )
 const contractOptions = computed(() =>
   contracts.value.map((c) => ({ value: c.id, label: c.company })),
@@ -108,14 +107,6 @@ function openEditRider(r) {
   editingRider.value = r
   riderDialog.value = true
 }
-function openAddContract() {
-  editingContract.value = null
-  contractDialog.value = true
-}
-function openEditContract(c) {
-  editingContract.value = c
-  contractDialog.value = true
-}
 async function toggleActive(r) {
   await toggleRiderActive(r.id)
   await load()
@@ -167,34 +158,15 @@ function exportCsv() {
   <div>
     <PageHeader :title="t('riders.title')" :subtitle="t('riders.subtitle')">
       <template #actions>
-        <Button v-if="tab === 'riders'" variant="outline" @click="exportCsv">
+        <Button variant="outline" @click="exportCsv">
           <Download /> {{ t('riders.actions.export') }}
         </Button>
-        <Button v-if="tab === 'riders'" @click="openAddRider">
+        <Button @click="openAddRider">
           <Plus /> {{ t('riders.actions.add') }}
-        </Button>
-        <Button v-else @click="openAddContract">
-          <Plus /> {{ t('riders.contract.add') }}
         </Button>
       </template>
     </PageHeader>
-
-    <!-- tabs -->
-    <div class="bg-muted mb-6 inline-flex rounded-lg p-1">
-      <button
-        v-for="tb in ['riders', 'contracts']"
-        :key="tb"
-        type="button"
-        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
-        :class="tab === tb ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'"
-        @click="tab = tb"
-      >
-        {{ t(`riders.tabs.${tb}`) }}
-      </button>
-    </div>
-
-    <!-- ── RIDERS TAB ───────────────────────────────────────── -->
-    <div v-if="tab === 'riders'" class="space-y-6">
+    <div class="space-y-6">
       <!-- stats -->
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card class="flex items-center gap-3 p-4">
@@ -233,9 +205,9 @@ function exportCsv() {
           <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3.5" />
           <Input v-model="query" :placeholder="t('riders.searchPlaceholder')" class="ps-10" />
         </div>
-        <Select v-model="filterContract" :options="contractOptions" :placeholder="t('riders.filters.contract')" class="w-auto min-w-[160px]" />
-        <Select v-model="filterCity" :options="cityOptions" :placeholder="t('riders.filters.city')" class="w-auto min-w-[140px]" />
-        <Select v-model="filterStatus" :options="statusOptions" :placeholder="t('riders.filters.status')" class="w-auto min-w-[140px]" />
+        <Dropdown v-model="filterContract" :options="contractOptions" :placeholder="t('riders.filters.contract')" class="w-auto min-w-[160px]" />
+        <Dropdown v-model="filterCity" :options="cityOptions" :placeholder="t('riders.filters.city')" class="w-auto min-w-[140px]" />
+        <Dropdown v-model="filterStatus" :options="statusOptions" :placeholder="t('riders.filters.status')" class="w-auto min-w-[140px]" />
       </div>
 
       <!-- table -->
@@ -345,70 +317,13 @@ function exportCsv() {
       </Card>
     </div>
 
-    <!-- ── CONTRACTS TAB ────────────────────────────────────── -->
-    <div v-else class="space-y-6">
-      <Card class="overflow-hidden">
-        <div v-if="loading" class="space-y-3 p-5">
-          <Skeleton v-for="i in 3" :key="i" class="h-12 rounded-lg" />
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-muted-foreground border-b">
-                <th class="px-5 py-3 text-start font-medium">{{ t('riders.contract.company') }}</th>
-                <th class="hidden px-5 py-3 text-start font-medium sm:table-cell">{{ t('riders.contract.amount') }}</th>
-                <th class="hidden px-5 py-3 text-start font-medium md:table-cell">{{ t('riders.contract.start') }}</th>
-                <th class="hidden px-5 py-3 text-start font-medium md:table-cell">{{ t('riders.contract.end') }}</th>
-                <th class="px-5 py-3 text-start font-medium">{{ t('riders.contract.ridersLinked') }}</th>
-                <th class="px-5 py-3 text-start font-medium">{{ t('riders.contract.status') }}</th>
-                <th class="px-5 py-3 text-end font-medium">{{ t('riders.contract.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="c in contracts" :key="c.id" class="hover:bg-muted/40 border-b transition-colors last:border-0">
-                <td class="px-5 py-3 font-medium">{{ c.company }}</td>
-                <td class="text-muted-foreground hidden px-5 py-3 tabular-nums sm:table-cell">{{ sar(c.amount) }}</td>
-                <td class="text-muted-foreground hidden px-5 py-3 tabular-nums md:table-cell" dir="ltr">{{ c.start ?? '—' }}</td>
-                <td class="text-muted-foreground hidden px-5 py-3 tabular-nums md:table-cell" dir="ltr">
-                  {{ c.end ?? t('riders.contract.ongoing') }}
-                </td>
-                <td class="px-5 py-3 tabular-nums">{{ num(c.riderCount) }}</td>
-                <td class="px-5 py-3">
-                  <Badge :variant="c.active ? 'success' : 'secondary'">
-                    {{ c.active ? t('dashboard.status.active') : t('dashboard.status.inactive') }}
-                  </Badge>
-                </td>
-                <td class="px-5 py-3">
-                  <div class="flex justify-end">
-                    <button
-                      type="button"
-                      class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg transition-colors"
-                      :title="t('riders.actions.edit')"
-                      @click="openEditContract(c)"
-                    >
-                      <Pencil class="size-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-
     <!-- dialogs -->
     <RiderFormDialog
       v-model:open="riderDialog"
       :rider="editingRider"
       :contract-options="contractOptions"
       :city-options="cityOptions"
-      :vehicle-type-options="vehicleTypeOptions"
-      @saved="load"
-    />
-    <ContractFormDialog
-      v-model:open="contractDialog"
-      :contract="editingContract"
+      :vehicles="vehicles"
       @saved="load"
     />
   </div>

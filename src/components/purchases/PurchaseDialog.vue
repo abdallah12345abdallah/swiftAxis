@@ -3,7 +3,8 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/datepicker'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { FileDrop } from '@/components/ui/file-drop'
 import { Button } from '@/components/ui/button'
@@ -79,7 +80,7 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.supplier') }}</label>
-          <Select v-model="form.supplierId" :options="supplierOptions" :placeholder="t('purchases.fields.supplier')" :invalid="!!errors.supplierId" />
+          <Dropdown v-model="form.supplierId" :options="supplierOptions" :placeholder="t('purchases.fields.supplier')" :invalid="!!errors.supplierId" />
           <p v-if="supplierTaxNo" class="text-muted-foreground text-xs">
             {{ t('purchases.fields.supplierTaxNo') }}: <span dir="ltr" class="tabular-nums">{{ supplierTaxNo }}</span>
           </p>
@@ -98,15 +99,15 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.date') }}</label>
-          <Input v-model="form.date" type="date" dir="ltr" />
+          <DatePicker v-model="form.date" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.vehicle') }}</label>
-          <Select v-model="form.vehicleId" :options="vehicleOptions" :placeholder="t('purchases.fields.noVehicle')" />
+          <Dropdown v-model="form.vehicleId" :options="vehicleOptions" :placeholder="t('purchases.fields.noVehicle')" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.costCenter') }}</label>
-          <Select v-if="!form.vehicleId" v-model="form.costCenter" :options="costCenterOptions" :placeholder="t('purchases.fields.costCenter')" :invalid="!!errors.costCenter" />
+          <Dropdown v-if="!form.vehicleId" v-model="form.costCenter" :options="costCenterOptions" :placeholder="t('purchases.fields.costCenter')" :invalid="!!errors.costCenter" />
           <div v-else class="bg-muted/40 text-muted-foreground flex h-10 items-center rounded-lg px-3 text-sm">
             {{ t('purchases.fields.derivedCostCenter') }}: {{ derivedCostCenterName }}
           </div>

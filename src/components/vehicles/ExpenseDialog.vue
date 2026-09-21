@@ -3,7 +3,8 @@ import { ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/datepicker'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Textarea } from '@/components/ui/textarea'
 import { FileDrop } from '@/components/ui/file-drop'
 import { Button } from '@/components/ui/button'
@@ -58,11 +59,11 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.fields.vehicle') }}</label>
-          <Select v-model="form.vehicleId" :options="vehicleOptions" :placeholder="t('vehicles.fields.vehicle')" :invalid="!!errors.vehicleId" />
+          <Dropdown v-model="form.vehicleId" :options="vehicleOptions" :placeholder="t('vehicles.fields.vehicle')" :invalid="!!errors.vehicleId" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.fields.type') }}</label>
-          <Select v-model="form.type" :options="typeOptions" />
+          <Dropdown v-model="form.type" :options="typeOptions" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.fields.amount') }}</label>
@@ -70,7 +71,7 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.fields.date') }}</label>
-          <Input v-model="form.date" type="date" dir="ltr" />
+          <DatePicker v-model="form.date" />
         </div>
         <div class="space-y-1.5 sm:col-span-2">
           <label class="text-sm font-medium">{{ t('vehicles.fields.invoiceNo') }}</label>

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import VehicleDialog from '@/components/vehicles/VehicleDialog.vue'
 import ExpenseDialog from '@/components/vehicles/ExpenseDialog.vue'
 import ExpenseBreakdownChart from '@/components/vehicles/ExpenseBreakdownChart.vue'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { exportCsv, todayStamp } from '@/lib/export'
@@ -153,8 +153,8 @@ function exportProf() {
             <p class="text-muted-foreground text-xs">{{ t('vehicles.charts.subtitle') }}</p>
           </div>
           <div class="flex flex-wrap gap-2">
-            <Select v-model="chartVehicle" :options="chartVehicleOptions" class="w-auto min-w-[150px]" />
-            <Select v-model="granularity" :options="granularityOptions" class="w-auto min-w-[120px]" />
+            <Dropdown v-model="chartVehicle" :options="chartVehicleOptions" class="w-auto min-w-[150px]" />
+            <Dropdown v-model="granularity" :options="granularityOptions" class="w-auto min-w-[120px]" />
           </div>
         </div>
         <div class="p-4">

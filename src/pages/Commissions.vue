@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Dialog } from '@/components/ui/dialog'
 import FormulaDialog from '@/components/commissions/FormulaDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
@@ -97,7 +97,7 @@ function exportReview() {
 
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <Tabs v-model="tab" :tabs="tabs" />
-      <Select v-if="tab === 'monthly'" v-model="month" :options="monthOptions" class="ms-auto w-auto min-w-[140px]" />
+      <Dropdown v-if="tab === 'monthly'" v-model="month" :options="monthOptions" class="ms-auto w-auto min-w-[140px]" />
     </div>
 
     <!-- Formulas -->

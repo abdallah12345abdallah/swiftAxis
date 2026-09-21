@@ -3,6 +3,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/datepicker'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/composables/useCurrency'
@@ -48,7 +49,7 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('orders.fields.date') }}</label>
-          <Input v-model="form.date" type="date" :max="today" dir="ltr" />
+          <DatePicker v-model="form.date" :max="today" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('orders.fields.orders') }}</label>

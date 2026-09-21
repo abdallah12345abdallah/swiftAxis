@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
@@ -75,7 +75,7 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.supplier.category') }}</label>
-          <Select v-model="form.category" :options="categoryOptions" />
+          <Dropdown v-model="form.category" :options="categoryOptions" />
         </div>
       </div>
       <div class="bg-muted/40 flex items-center justify-between rounded-lg px-4 py-3">

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
-  FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings,
+  FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
   Bell, LogOut, User, ChevronDown, UserCircle,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
@@ -13,14 +13,14 @@ import BrandLogo from '@/components/common/BrandLogo.vue'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import LangToggle from '@/components/common/LangToggle.vue'
 import RoleSwitcher from '@/components/common/RoleSwitcher.vue'
-import Dropdown from '@/components/common/Dropdown.vue'
+import Menu from '@/components/common/Menu.vue'
 import Avatar from '@/components/common/Avatar.vue'
 import { Badge } from '@/components/ui/badge'
 import { ToastHost } from '@/components/ui/toast'
 
 const ICONS = {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
-  FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings,
+  FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
 }
 
 const { t, locale } = useI18n()
@@ -87,7 +87,7 @@ function logout() {
           </button>
 
           <!-- User menu -->
-          <Dropdown align="end" content-class="w-72">
+          <Menu align="end" content-class="w-72">
             <template #trigger="{ open }">
               <button type="button" class="border-border bg-card/50 hover:bg-accent flex h-9 items-center gap-2 rounded-lg border px-1.5 transition-colors">
                 <span class="hidden text-end lg:block">
@@ -131,7 +131,7 @@ function logout() {
               <LogOut class="size-4" />
               {{ t('common.logout') }}
             </button>
-          </Dropdown>
+          </Menu>
         </div>
       </div>
 

@@ -6,8 +6,8 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Tabs } from '@/components/ui/tabs'
-import { Select } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { Dropdown } from '@/components/ui/dropdown'
+import { DatePicker } from '@/components/ui/datepicker'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/table'
@@ -50,6 +50,15 @@ onMounted(generate)
 /* ── riders period report (#2) ──────────────────────────── */
 const from = ref('2026-06-25')
 const to = ref('2026-07-05')
+
+/* one range control, two refs — the report queries stay as they were */
+const dateRange = computed({
+  get: () => [from.value, to.value],
+  set: ([a, b]) => {
+    from.value = a || ''
+    to.value = b || ''
+  },
+})
 const periodLoading = ref(false)
 const period = ref(null)
 
@@ -106,7 +115,7 @@ function exportBest() {
     <PageHeader :title="t('reports.title')" :subtitle="t('reports.subtitle')">
       <template #actions>
         <template v-if="tab === 'monthly'">
-          <Select v-model="month" :options="monthOptions" class="w-auto min-w-[140px]" />
+          <Dropdown v-model="month" :options="monthOptions" class="w-auto min-w-[140px]" />
           <Button variant="outline" @click="generate"><FileText /> {{ t('reports.generate') }}</Button>
           <Button v-if="report" @click="printReport"><Printer /> {{ t('reports.print') }}</Button>
         </template>
@@ -220,12 +229,8 @@ function exportBest() {
     <template v-else-if="tab === 'period'">
       <div class="no-print mb-4 flex flex-wrap items-end gap-3">
         <div class="space-y-1.5">
-          <label class="text-muted-foreground text-xs font-medium">{{ t('reports.period.from') }}</label>
-          <Input v-model="from" type="date" dir="ltr" class="w-auto" />
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-muted-foreground text-xs font-medium">{{ t('reports.period.to') }}</label>
-          <Input v-model="to" type="date" dir="ltr" class="w-auto" />
+          <label class="text-muted-foreground text-xs font-medium">{{ t('reports.period.range') }}</label>
+          <DatePicker v-model="dateRange" range class="w-auto min-w-[240px]" />
         </div>
       </div>
 

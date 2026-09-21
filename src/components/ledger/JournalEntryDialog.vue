@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { Plus, Trash2, Check, AlertTriangle } from 'lucide-vue-next'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/datepicker'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
@@ -84,7 +85,7 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('common.date') }}</label>
-          <Input v-model="form.date" type="date" dir="ltr" />
+          <DatePicker v-model="form.date" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('ledger.description') }}</label>
@@ -103,8 +104,8 @@ async function submit() {
         </div>
         <template v-for="(l, i) in form.lines" :key="i">
           <div class="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2">
-            <Select v-model="l.account" :options="accountOptions" :placeholder="t('ledger.account')" />
-            <Select v-model="l.costCenter" :options="costCenterOptions" :placeholder="t('ledger.costCenter')" />
+            <Dropdown v-model="l.account" :options="accountOptions" :placeholder="t('ledger.account')" />
+            <Dropdown v-model="l.costCenter" :options="costCenterOptions" :placeholder="t('ledger.costCenter')" />
             <Input v-model="l.debit" type="number" class="w-24" dir="ltr" placeholder="0" />
             <Input v-model="l.credit" type="number" class="w-24" dir="ltr" placeholder="0" />
             <button type="button" class="hover:bg-accent text-muted-foreground hover:text-danger grid size-8 place-items-center rounded-lg" @click="removeLine(i)">

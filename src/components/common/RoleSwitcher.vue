@@ -4,7 +4,7 @@ import { ChevronDown, UserCog, Check, ShieldCheck, Calculator, Bike } from 'luci
 import { useAuthStore } from '@/stores/auth'
 import { ALL_ROLES, ROLES } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import Dropdown from './Dropdown.vue'
+import Menu from './Menu.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -18,7 +18,7 @@ const ROLE_ICONS = {
 </script>
 
 <template>
-  <Dropdown align="end" content-class="w-60">
+  <Menu align="end" content-class="w-60">
     <template #trigger="{ open }">
       <button
         type="button"
@@ -55,5 +55,5 @@ const ROLE_ICONS = {
       <span class="flex-1 text-start">{{ t(`roles.${r}`) }}</span>
       <Check v-if="auth.role === r" class="text-primary size-4 shrink-0" />
     </button>
-  </Dropdown>
+  </Menu>
 </template>

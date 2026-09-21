@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
@@ -61,7 +61,7 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('users.role') }}</label>
-          <Select v-model="form.role" :options="roleOptions" />
+          <Dropdown v-model="form.role" :options="roleOptions" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('users.mobile') }}</label>

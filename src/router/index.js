@@ -8,6 +8,7 @@ import Login from '@/pages/Login.vue'
 import Dashboard from '@/pages/Dashboard.vue'
 import Riders from '@/pages/Riders.vue'
 import RiderDetail from '@/pages/RiderDetail.vue'
+import Contracts from '@/pages/Contracts.vue'
 import Ledger from '@/pages/Ledger.vue'
 import Orders from '@/pages/Orders.vue'
 import Commissions from '@/pages/Commissions.vue'
@@ -23,7 +24,7 @@ import StyleGuide from '@/pages/StyleGuide.vue'
 
 // Pages that have a real implementation (skip the placeholder for these).
 const BUILT = new Set([
-  'dashboard', 'riders', 'ledger', 'orders', 'commissions',
+  'dashboard', 'riders', 'contracts', 'ledger', 'orders', 'commissions',
   'wallets', 'vehicles', 'purchases', 'reports', 'users', 'settings',
 ])
 
@@ -54,6 +55,7 @@ const routes = [
       { path: 'dashboard', name: 'dashboard', component: Dashboard },
       { path: 'riders', name: 'riders', component: Riders, meta: { roles: ridersItem.roles, titleKey: 'nav.riders' } },
       { path: 'riders/:id', name: 'rider-detail', component: RiderDetail, meta: { roles: ridersItem.roles, titleKey: 'nav.riders' } },
+      { path: 'contracts', name: 'contracts', component: Contracts, meta: { roles: rolesOf('contracts'), titleKey: 'nav.contracts' } },
       { path: 'ledger', name: 'ledger', component: Ledger, meta: { roles: rolesOf('ledger'), titleKey: 'nav.ledger' } },
       { path: 'orders', name: 'orders', component: Orders, meta: { roles: rolesOf('orders'), titleKey: 'nav.orders' } },
       { path: 'commissions', name: 'commissions', component: Commissions, meta: { roles: rolesOf('commissions'), titleKey: 'nav.commissions' } },

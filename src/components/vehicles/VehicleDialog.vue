@@ -3,7 +3,8 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/datepicker'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
 import { createVehicle, updateVehicle } from '@/api/vehicles'
@@ -85,7 +86,7 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.type') }}</label>
-          <Select v-model="form.type" :options="typeOptions" />
+          <Dropdown v-model="form.type" :options="typeOptions" />
         </div>
       </div>
 
@@ -97,28 +98,28 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.riders.morning') }}</label>
-          <Select v-model="form.morningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" />
+          <Dropdown v-model="form.morningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.riders.evening') }}</label>
-          <Select v-model="form.eveningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" />
+          <Dropdown v-model="form.eveningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" />
         </div>
       </div>
       <p v-if="errors.riders" class="text-danger text-xs">{{ errors.riders }}</p>
 
       <div class="space-y-1.5">
         <label class="text-sm font-medium">{{ t('vehicles.statusLabel') }}</label>
-        <Select v-model="form.status" :options="statusOptions" />
+        <Dropdown v-model="form.status" :options="statusOptions" />
       </div>
 
       <div v-if="form.status !== 'active'" class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.statusFrom') }}</label>
-          <Input v-model="form.statusFrom" type="date" dir="ltr" />
+          <DatePicker v-model="form.statusFrom" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.statusTo') }}</label>
-          <Input v-model="form.statusTo" type="date" dir="ltr" />
+          <DatePicker v-model="form.statusTo" />
         </div>
       </div>
     </form>
