@@ -156,58 +156,63 @@ onBeforeUnmount(() => ro?.disconnect())
 
       <DialogContent
         data-sa-panel
-        class="modal-panel bg-card text-card-foreground fixed z-50 flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden border shadow-2xl outline-none
+        class="modal-panel bg-card text-card-foreground fixed z-50 flex max-h-[calc(100dvh-2rem)] w-full flex-col border shadow-2xl outline-none
                inset-x-0 bottom-0 rounded-t-2xl
                sm:bottom-auto sm:inset-x-auto sm:start-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl rtl:sm:translate-x-1/2
                sm:max-h-[calc(100dvh-4rem)]"
         :class="SIZES[size]"
       >
-        <!-- header — rule appears only once content scrolls beneath it -->
-        <div
-          v-if="title || description || $slots.header"
-          class="flex shrink-0 items-start gap-3.5 border-b px-5 pt-5 pb-4 transition-colors duration-200"
-          :class="headStuck ? 'border-border' : 'border-transparent'"
+        <!-- close — straddles the corner from sm up, so the clipping that keeps
+             the rounded corners and the scrolling body tidy moves inside -->
+        <DialogClose
+          class="text-muted-foreground hover:bg-accent hover:text-foreground absolute end-3 top-3 z-10 inline-flex size-9 items-center justify-center rounded-xl transition-all duration-200 hover:rotate-90
+                 sm:-end-2.5 sm:-top-2.5 sm:border sm:bg-card sm:shadow-lg"
         >
-          <span
-            v-if="icon"
-            class="bg-primary/10 text-primary mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl"
-          >
-            <component :is="icon" class="size-5" />
-          </span>
+          <X class="size-4" />
+        </DialogClose>
 
-          <div class="min-w-0 flex-1">
-            <slot name="header">
-              <DialogTitle class="text-lg leading-tight font-bold tracking-tight">{{ title }}</DialogTitle>
-              <DialogDescription v-if="description" class="text-muted-foreground mt-1.5 text-[13px] leading-relaxed">
-                {{ description }}
-              </DialogDescription>
-            </slot>
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
+          <!-- header — rule appears only once content scrolls beneath it -->
+          <div
+            v-if="title || description || $slots.header"
+            class="flex shrink-0 items-start gap-3.5 border-b ps-5 pe-14 pt-5 pb-4 transition-colors duration-200 sm:pe-5"
+            :class="headStuck ? 'border-border' : 'border-transparent'"
+          >
+            <span
+              v-if="icon"
+              class="bg-primary/10 text-primary mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl"
+            >
+              <component :is="icon" class="size-5" />
+            </span>
+
+            <div class="min-w-0 flex-1">
+              <slot name="header">
+                <DialogTitle class="text-lg leading-tight font-bold tracking-tight">{{ title }}</DialogTitle>
+                <DialogDescription v-if="description" class="text-muted-foreground mt-1.5 text-[13px] leading-relaxed">
+                  {{ description }}
+                </DialogDescription>
+              </slot>
+            </div>
           </div>
 
-          <DialogClose
-            class="hover:bg-accent text-muted-foreground hover:text-foreground -me-1.5 -mt-1.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 hover:rotate-90"
-          >
-            <X class="size-4" />
-          </DialogClose>
-        </div>
-
-        <!-- body (scrolls when content is taller than the viewport) -->
-        <div ref="bodyRef" class="overflow-y-auto px-5 pt-4 pb-5" @scroll.passive="measure">
-          <div ref="contentRef"><slot /></div>
-        </div>
-
-        <!-- footer — tinted only while content is still hidden below it;
-             actions stretch to full width on phones -->
-        <div
-          v-if="$slots.footer || $slots['footer-start']"
-          class="flex shrink-0 flex-wrap items-center gap-2 border-t px-5 py-4 transition-colors duration-200"
-          :class="footStuck ? 'bg-muted/30 border-border' : 'border-transparent'"
-        >
-          <div v-if="$slots['footer-start']" class="text-muted-foreground min-w-0 text-xs">
-            <slot name="footer-start" />
+          <!-- body (scrolls when content is taller than the viewport) -->
+          <div ref="bodyRef" class="overflow-y-auto px-5 pt-4 pb-5" @scroll.passive="measure">
+            <div ref="contentRef"><slot /></div>
           </div>
-          <div class="ms-auto flex flex-1 items-center justify-end gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
-            <slot name="footer" />
+
+          <!-- footer — tinted only while content is still hidden below it;
+               actions stretch to full width on phones -->
+          <div
+            v-if="$slots.footer || $slots['footer-start']"
+            class="flex shrink-0 flex-wrap items-center gap-2 border-t px-5 py-4 transition-colors duration-200"
+            :class="footStuck ? 'bg-muted/30 border-border' : 'border-transparent'"
+          >
+            <div v-if="$slots['footer-start']" class="text-muted-foreground min-w-0 text-xs">
+              <slot name="footer-start" />
+            </div>
+            <div class="ms-auto flex flex-1 items-center justify-end gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
+              <slot name="footer" />
+            </div>
           </div>
         </div>
       </DialogContent>
