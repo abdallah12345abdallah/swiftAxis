@@ -60,7 +60,7 @@ const expenseTypeOptions = computed(() => expenseItems.value.filter((i) => i.act
 const riderOptions = computed(() => RIDERS.map((r) => ({ value: r.id, label: r.name, hint: r.id })))
 const vehicleOptions = computed(() => vehicles.value.map((v) => ({ value: v.id, label: `${v.plate} — ${v.ridersLabel}` })))
 const shiftOptions = computed(() => shifts.value.filter((s) => s.active).map((s) => ({ value: s.id, label: locale.value === 'ar' ? s.name : s.en, hint: `${s.from}–${s.to}` })))
-const expenseAccountOptions = computed(() => accounts.value.filter((a) => a.type === 'expense').map((a) => ({ value: a.id, label: locale.value === 'ar' ? a.name : a.en, hint: a.code })))
+const expenseAccountOptions = computed(() => accounts.value.filter((a) => a.type === 'expense' && !a.isGroup && a.active !== false).map((a) => ({ value: a.id, label: locale.value === 'ar' ? a.name : a.en, hint: a.code })))
 const accName = (id) => {
   const a = accounts.value.find((x) => x.id === id)
   return a ? (locale.value === 'ar' ? a.name : a.en) : id

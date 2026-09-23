@@ -3,6 +3,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
@@ -11,6 +12,7 @@ import { createCostCenter, updateCostCenter } from '@/api/ledger'
 const props = defineProps({
   open: { type: Boolean, default: false },
   center: { type: Object, default: null },
+  unitOptions: { type: Array, default: () => [] }, // administrative units (accounting module)
 })
 const emit = defineEmits(['update:open', 'saved'])
 
@@ -18,14 +20,14 @@ const { t } = useI18n()
 const toast = useToast()
 const isEdit = computed(() => !!props.center)
 const saving = ref(false)
-const form = reactive({ name: '', budget: '', active: true })
+const form = reactive({ name: '', code: '', unitId: '', budget: '', active: true })
 const errors = reactive({})
 
 watch(
   () => props.open,
   (v) => {
     if (!v) return
-    Object.assign(form, { name: props.center?.name ?? '', budget: props.center?.budget ?? '', active: props.center?.active ?? true })
+    Object.assign(form, { name: props.center?.name ?? '', code: props.center?.code ?? '', unitId: props.center?.unitId ?? '', budget: props.center?.budget ?? '', active: props.center?.active ?? true })
     delete errors.name
   },
 )
@@ -56,9 +58,19 @@ async function submit() {
         <Input v-model="form.name" :invalid="!!errors.name" />
         <p v-if="errors.name" class="text-danger text-xs">{{ errors.name }}</p>
       </div>
-      <div class="space-y-1.5">
-        <label class="text-sm font-medium">{{ t('ledger.cc.budget') }}</label>
-        <Input v-model="form.budget" type="number" dir="ltr" />
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('ledger.cc.code') }}</label>
+          <Input v-model="form.code" dir="ltr" placeholder="CC-500" />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('ledger.cc.budget') }}</label>
+          <Input v-model="form.budget" type="number" dir="ltr" />
+        </div>
+      </div>
+      <div v-if="unitOptions.length" class="space-y-1.5">
+        <label class="text-sm font-medium">{{ t('ledger.cc.unit') }}</label>
+        <Dropdown v-model="form.unitId" :options="unitOptions" clearable :placeholder="t('ledger.cc.noUnit')" />
       </div>
       <div class="bg-muted/40 flex items-center justify-between rounded-lg px-4 py-3">
         <span class="text-sm font-medium">{{ t('common.status') }}</span>

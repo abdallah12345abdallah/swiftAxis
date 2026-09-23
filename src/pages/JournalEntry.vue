@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLeft, Save, Printer, Search, FilePlus2, Copy, RefreshCw, Plus, Trash2, Check, AlertTriangle, Lock, X,
+  ArrowLeft, Save, Printer, Search, FilePlus2, Copy, RefreshCw, Plus, Trash2, Check, AlertTriangle, Lock, X, Ban,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BrandLogo from '@/components/common/BrandLogo.vue'
@@ -24,7 +24,7 @@ import { VEHICLE_STATUS } from '@/api/fixtures'
 import { vehicleByCostCenter } from '@/api/vehicles'
 import {
   fetchAccounts, fetchCostCenters, fetchDocumentTypes, fetchFiscalYears, fetchJournalEntry,
-  saveJournalEntry, findJournalEntry, duplicateJournalEntry, validateJournalEntry,
+  saveJournalEntry, findJournalEntry, duplicateJournalEntry, validateJournalEntry, voidJournalEntry,
 } from '@/api/ledger'
 
 /* General journal entry screen — rebuilt from the Toby desktop spec:
@@ -53,7 +53,7 @@ const docTypes = ref([])
 const years = ref([])
 
 const accountOptions = computed(() =>
-  accounts.value.map((a) => ({ value: a.id, label: `${a.code} — ${locale.value === 'ar' ? a.name : a.en}`, hint: a.type })),
+  accounts.value.filter((a) => !a.isGroup && a.active !== false).map((a) => ({ value: a.id, label: `${a.code} — ${locale.value === 'ar' ? a.name : a.en}`, hint: a.type })),
 )
 const centerOptions = computed(() => centers.value.filter((c) => c.active).map((c) => ({ value: c.id, label: `${c.code ?? ''} — ${c.name}`.replace(/^ — /, '') })))
 const docTypeOptions = computed(() => docTypes.value.map((d) => ({ value: d.id, label: locale.value === 'ar' ? d.name : d.en, hint: d.prefix })))
@@ -72,7 +72,7 @@ async function loadReference() {
 }
 
 /* ── the entry ──────────────────────────────────────────── */
-const blankHeader = () => ({ id: null, serial: null, ref: '', date: today(), description: '', docType: 'jv', fiscalYear: defaultYear(), source: 'manual', editable: true, createdBy: '' })
+const blankHeader = () => ({ id: null, serial: null, ref: '', date: today(), description: '', docType: 'jv', fiscalYear: defaultYear(), source: 'manual', editable: true, createdBy: '', status: 'posted', voidReason: '' })
 const header = reactive(blankHeader())
 const lines = ref([])
 let snapshot = ''
@@ -88,7 +88,7 @@ function resetEntry() {
   nextTick(() => accountDd.value?.focus?.())
 }
 function loadEntry(e) {
-  Object.assign(header, { id: e.id, serial: e.serial, ref: e.ref, date: e.date, description: e.description, docType: e.docType, fiscalYear: e.fiscalYear, source: e.source, editable: e.editable, createdBy: e.createdBy })
+  Object.assign(header, { id: e.id, serial: e.serial, ref: e.ref, date: e.date, description: e.description, docType: e.docType, fiscalYear: e.fiscalYear, source: e.source, editable: e.editable, createdBy: e.createdBy, status: e.status, voidReason: e.voidReason ?? '' })
   lines.value = e.lines.map((l) => ({ account: l.account, costCenter: l.costCenter ?? '', debit: l.debit, credit: l.credit, description: l.description ?? '' }))
   snapshot = snap()
 }
@@ -185,7 +185,7 @@ const saving = ref(false)
 const ERR = {
   FISCAL_YEAR_REQUIRED: 'journal.errYear', DOC_TYPE_REQUIRED: 'journal.errDocType', YEAR_CLOSED: 'journal.errYearClosed',
   DATE_OUT_OF_YEAR: 'journal.errDate', EMPTY: 'journal.errEmpty', NEGATIVE: 'journal.errLine', BOTH_SIDES: 'journal.errLine',
-  UNBALANCED: 'journal.errUnbalanced', NOT_EDITABLE: 'journal.notEditable', NOT_FOUND: 'journal.notFound',
+  UNBALANCED: 'journal.errUnbalanced', NOT_EDITABLE: 'journal.notEditable', NOT_FOUND: 'journal.notFound', MONTH_CLOSED: 'journal.errMonthClosed', REASON_REQUIRED: 'journal.errReason',
 }
 const payload = () => ({ id: header.id, date: header.date, description: header.description, docType: header.docType, fiscalYear: header.fiscalYear, lines: lines.value, createdBy: auth.user?.name })
 
@@ -279,6 +279,28 @@ async function doSearch() {
   }
 }
 
+/* void (cancel) a saved manual entry — needs a reason, keeps the audit trail */
+const voidOpen = ref(false)
+const voidReason = ref('')
+async function doVoid() {
+  if (saving.value) return
+  if (!voidReason.value.trim()) {
+    toast.error(t('journal.errReason'))
+    return
+  }
+  saving.value = true
+  try {
+    const e = await voidJournalEntry(header.id, { reason: voidReason.value, by: auth.user?.name })
+    loadEntry(e)
+    voidOpen.value = false
+    toast.success(t('journal.voided', { ref: e.ref }))
+  } catch (e) {
+    toast.error(t(ERR[e.message] ?? 'journal.errGeneric'))
+  } finally {
+    saving.value = false
+  }
+}
+
 /* refresh reference lists */
 const confirmRefresh = ref(false)
 const refreshing = ref(false)
@@ -312,6 +334,7 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
         <Button variant="outline" @click="openSearch"><Search /> {{ t('journal.show') }}</Button>
         <Button variant="outline" :disabled="!header.id" @click="duplicate"><Copy /> {{ t('journal.duplicate') }}</Button>
         <Button variant="outline" :disabled="!header.id" @click="print"><Printer /> {{ t('journal.print') }}</Button>
+        <Button v-if="header.id && !readOnly" variant="outline" class="text-danger" @click="voidOpen = true"><Ban /> {{ t('journal.void') }}</Button>
         <Button :disabled="saving || readOnly" @click="save"><Save /> {{ t('journal.save') }}</Button>
       </template>
     </PageHeader>
@@ -324,7 +347,10 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
 
     <div v-else class="no-print space-y-5">
       <!-- read-only notice for auto-posted / closed-year entries -->
-      <div v-if="readOnly" class="bg-muted/60 text-muted-foreground flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm">
+      <div v-if="header.status === 'voided'" class="bg-danger/10 text-danger flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm">
+        <Ban class="size-4" /> {{ t('journal.voidedNotice', { reason: header.voidReason }) }}
+      </div>
+      <div v-else-if="readOnly" class="bg-muted/60 text-muted-foreground flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm">
         <Lock class="size-4" /> {{ t('journal.readOnly', { source: header.source }) }}
       </div>
 
@@ -537,6 +563,21 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
       <template #footer>
         <Button variant="ghost" @click="confirmNew = false">{{ t('common.cancel') }}</Button>
         <Button variant="destructive" @click="doNew"><X /> {{ t('journal.discard') }}</Button>
+      </template>
+    </Dialog>
+
+    <!-- void confirmation -->
+    <Dialog v-model:open="voidOpen" :title="t('journal.voidTitle')" size="sm" :icon="Ban">
+      <div class="space-y-3">
+        <p class="text-muted-foreground text-sm">{{ t('journal.voidHint', { ref: header.ref }) }}</p>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('journal.voidReason') }}</label>
+          <Input v-model="voidReason" />
+        </div>
+      </div>
+      <template #footer>
+        <Button variant="ghost" @click="voidOpen = false">{{ t('common.cancel') }}</Button>
+        <Button variant="destructive" :disabled="saving" @click="doVoid"><Ban /> {{ t('journal.void') }}</Button>
       </template>
     </Dialog>
 

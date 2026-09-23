@@ -97,6 +97,13 @@ export const NAV_ITEMS = [
     epic: 'EP-07',
   },
   {
+    key: 'accounting',
+    to: '/accounting',
+    icon: 'Calculator',
+    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT],
+    epic: 'EP-12',
+  },
+  {
     key: 'purchases',
     to: '/purchases',
     icon: 'ShoppingCart',

@@ -68,7 +68,7 @@ const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active).
 const nonRiderTreasuryOptions = computed(() => treasuryOptions.value.filter((o) => treasuries.value.find((x) => x.id === o.value)?.kind !== 'rider'))
 const mainId = computed(() => treasuries.value.find((x) => x.isMain)?.id ?? '')
 const accountOptions = computed(() =>
-  accounts.value.filter((a) => !['cash', 'bank', 'rider_wallets'].includes(a.id)).map((a) => ({ value: a.id, label: locale.value === 'ar' ? a.name : a.en, hint: a.code })),
+  accounts.value.filter((a) => !a.isGroup && a.active !== false && !['cash', 'bank', 'rider_wallets'].includes(a.id)).map((a) => ({ value: a.id, label: locale.value === 'ar' ? a.name : a.en, hint: a.code })),
 )
 const costCenterOptions = computed(() => centers.value.filter((c) => c.active).map((c) => ({ value: c.id, label: c.name })))
 const expenseItemOptions = computed(() => expenseItems.value.filter((i) => i.active).map((i) => ({ value: i.id, label: locale.value === 'ar' ? i.name : i.en })))

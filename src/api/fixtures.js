@@ -87,40 +87,54 @@ export const RIDER_WALLET = {
 
 /* ── Accounting (EP-07 / cross-epic) ────────────────────── */
 
-/** Chart of accounts. type ∈ asset|liability|equity|revenue|expense. */
+/** Chart of accounts as a tree. Groups (isGroup) only structure the tree; postings go
+    to leaves. level 1 = class, 2 = group, 3 = account. statementItem links a leaf to
+    a financial-statement item (see STATEMENT_ITEMS). */
 export const CHART_OF_ACCOUNTS = [
-  { id: 'cash', code: '1010', name: 'الصندوق', en: 'Cash', type: 'asset' },
-  { id: 'bank', code: '1020', name: 'البنك', en: 'Bank', type: 'asset' },
-  { id: 'input_vat', code: '1030', name: 'ضريبة القيمة المضافة — المدخلات', en: 'Input VAT', type: 'asset' },
-  { id: 'rider_wallets', code: '1040', name: 'عُهد المناديب (كاش)', en: 'Rider cash on hand', type: 'asset' },
-  { id: 'receivables', code: '1050', name: 'ذمم العملاء', en: 'Accounts receivable', type: 'asset' },
-  { id: 'rider_receivables', code: '1060', name: 'مديونيات المناديب', en: 'Rider receivables', type: 'asset' },
-  { id: 'riders_payable', code: '2010', name: 'ذمم المناديب (عمولات)', en: 'Riders payable', type: 'liability' },
-  { id: 'suppliers', code: '2020', name: 'الموردون', en: 'Suppliers payable', type: 'liability' },
-  { id: 'output_vat', code: '2030', name: 'ضريبة القيمة المضافة — المخرجات', en: 'Output VAT', type: 'liability' },
-  { id: 'capital', code: '3010', name: 'رأس المال', en: 'Capital', type: 'equity' },
-  { id: 'delivery_revenue', code: '4010', name: 'إيرادات التوصيل', en: 'Delivery revenue', type: 'revenue' },
-  { id: 'commissions_expense', code: '5010', name: 'مصروف العمولات', en: 'Commissions expense', type: 'expense' },
-  { id: 'vehicle_expense', code: '5020', name: 'مصروفات السيارات', en: 'Vehicle expenses', type: 'expense' },
-  { id: 'supplies_expense', code: '5030', name: 'مصروف المستلزمات', en: 'Supplies & purchases', type: 'expense' },
-  { id: 'general_expense', code: '5040', name: 'مصروفات عمومية وإدارية', en: 'General & admin expenses', type: 'expense' },
-  { id: 'salaries_expense', code: '5050', name: 'رواتب وأجور', en: 'Salaries & wages', type: 'expense' },
+  { id: 'assets', code: '1000', name: 'الأصول', en: 'Assets', type: 'asset', parent: null, level: 1, isGroup: true, active: true },
+  { id: 'current_assets', code: '1100', name: 'الأصول المتداولة', en: 'Current assets', type: 'asset', parent: 'assets', level: 2, isGroup: true, active: true },
+  { id: 'cash', code: '1010', name: 'الصندوق', en: 'Cash', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_cash' },
+  { id: 'bank', code: '1020', name: 'البنك', en: 'Bank', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_cash' },
+  { id: 'input_vat', code: '1030', name: 'ضريبة القيمة المضافة — المدخلات', en: 'Input VAT', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_other_current' },
+  { id: 'rider_wallets', code: '1040', name: 'عُهد المناديب (كاش)', en: 'Rider cash on hand', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_cash' },
+  { id: 'receivables', code: '1050', name: 'ذمم العملاء', en: 'Accounts receivable', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_receivables' },
+  { id: 'rider_receivables', code: '1060', name: 'مديونيات المناديب', en: 'Rider receivables', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_receivables' },
+  { id: 'fixed_assets', code: '1200', name: 'الأصول الثابتة', en: 'Fixed assets', type: 'asset', parent: 'assets', level: 2, isGroup: true, active: true },
+  { id: 'vehicles_asset', code: '1210', name: 'السيارات والدراجات', en: 'Vehicles', type: 'asset', parent: 'fixed_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_fixed' },
+  { id: 'liabilities', code: '2000', name: 'الالتزامات', en: 'Liabilities', type: 'liability', parent: null, level: 1, isGroup: true, active: true },
+  { id: 'current_liabilities', code: '2100', name: 'الالتزامات المتداولة', en: 'Current liabilities', type: 'liability', parent: 'liabilities', level: 2, isGroup: true, active: true },
+  { id: 'riders_payable', code: '2010', name: 'ذمم المناديب (عمولات)', en: 'Riders payable', type: 'liability', parent: 'current_liabilities', level: 3, isGroup: false, active: true, statementItem: 'bs_payables' },
+  { id: 'suppliers', code: '2020', name: 'الموردون', en: 'Suppliers payable', type: 'liability', parent: 'current_liabilities', level: 3, isGroup: false, active: true, statementItem: 'bs_payables' },
+  { id: 'output_vat', code: '2030', name: 'ضريبة القيمة المضافة — المخرجات', en: 'Output VAT', type: 'liability', parent: 'current_liabilities', level: 3, isGroup: false, active: true, statementItem: 'bs_tax' },
+  { id: 'equity', code: '3000', name: 'حقوق الملكية', en: 'Equity', type: 'equity', parent: null, level: 1, isGroup: true, active: true },
+  { id: 'capital', code: '3010', name: 'رأس المال', en: 'Capital', type: 'equity', parent: 'equity', level: 3, isGroup: false, active: true, statementItem: 'bs_capital' },
+  { id: 'retained_earnings', code: '3020', name: 'الأرباح المحتجزة', en: 'Retained earnings', type: 'equity', parent: 'equity', level: 3, isGroup: false, active: true, statementItem: 'bs_retained' },
+  { id: 'revenue', code: '4000', name: 'الإيرادات', en: 'Revenue', type: 'revenue', parent: null, level: 1, isGroup: true, active: true },
+  { id: 'delivery_revenue', code: '4010', name: 'إيرادات التوصيل', en: 'Delivery revenue', type: 'revenue', parent: 'revenue', level: 3, isGroup: false, active: true, statementItem: 'is_revenue' },
+  { id: 'expenses', code: '5000', name: 'المصروفات', en: 'Expenses', type: 'expense', parent: null, level: 1, isGroup: true, active: true },
+  { id: 'operating_expenses', code: '5100', name: 'مصروفات تشغيلية', en: 'Operating expenses', type: 'expense', parent: 'expenses', level: 2, isGroup: true, active: true },
+  { id: 'commissions_expense', code: '5010', name: 'مصروف العمولات', en: 'Commissions expense', type: 'expense', parent: 'operating_expenses', level: 3, isGroup: false, active: true, statementItem: 'is_cost' },
+  { id: 'vehicle_expense', code: '5020', name: 'مصروفات السيارات', en: 'Vehicle expenses', type: 'expense', parent: 'operating_expenses', level: 3, isGroup: false, active: true, statementItem: 'is_cost' },
+  { id: 'supplies_expense', code: '5030', name: 'مصروف المستلزمات', en: 'Supplies & purchases', type: 'expense', parent: 'operating_expenses', level: 3, isGroup: false, active: true, statementItem: 'is_cost' },
+  { id: 'admin_expenses', code: '5200', name: 'مصروفات إدارية وعمومية', en: 'General & admin expenses', type: 'expense', parent: 'expenses', level: 2, isGroup: true, active: true },
+  { id: 'general_expense', code: '5040', name: 'مصروفات عمومية وإدارية', en: 'General & admin expenses', type: 'expense', parent: 'admin_expenses', level: 3, isGroup: false, active: true, statementItem: 'is_admin' },
+  { id: 'salaries_expense', code: '5050', name: 'رواتب وأجور', en: 'Salaries & wages', type: 'expense', parent: 'admin_expenses', level: 3, isGroup: false, active: true, statementItem: 'is_admin' },
 ]
 
 /** Cost centers (US-025) with monthly budgets in SAR.
     cc-veh-* centers belong to a single vehicle (vehicleId set). */
 export const COST_CENTERS = [
-  { id: 'cc-hunger', code: 'CC-100', name: 'هانجر — جدة', budget: 120000, active: true },
-  { id: 'cc-jahez', code: 'CC-200', name: 'جاهز — جدة', budget: 80000, active: true },
-  { id: 'cc-internal', code: 'CC-300', name: 'العقود الداخلية', budget: 60000, active: true },
-  { id: 'cc-fleet', code: 'CC-400', name: 'أسطول السيارات — عام', budget: 40000, active: true },
-  { id: 'cc-veh-v1', code: 'CC-401', name: 'مركبة ABC-1234', budget: 0, active: true, vehicleId: 'v1' },
-  { id: 'cc-veh-v2', code: 'CC-402', name: 'مركبة DEF-5678', budget: 0, active: true, vehicleId: 'v2' },
-  { id: 'cc-veh-v3', code: 'CC-403', name: 'مركبة GHI-9012', budget: 0, active: true, vehicleId: 'v3' },
-  { id: 'cc-veh-v4', code: 'CC-404', name: 'مركبة JKL-3456', budget: 0, active: true, vehicleId: 'v4' },
-  { id: 'cc-veh-v5', code: 'CC-405', name: 'مركبة MNO-7890', budget: 0, active: true, vehicleId: 'v5' },
-  { id: 'cc-veh-v6', code: 'CC-406', name: 'مركبة PQR-2345', budget: 0, active: true, vehicleId: 'v6' },
-  { id: 'cc-veh-v7', code: 'CC-407', name: 'مركبة STU-6789', budget: 0, active: true, vehicleId: 'v7' },
+  { id: 'cc-hunger', code: 'CC-100', unitId: 'u-jed', name: 'هانجر — جدة', budget: 120000, active: true },
+  { id: 'cc-jahez', code: 'CC-200', unitId: 'u-jed', name: 'جاهز — جدة', budget: 80000, active: true },
+  { id: 'cc-internal', code: 'CC-300', unitId: 'u-hq', name: 'العقود الداخلية', budget: 60000, active: true },
+  { id: 'cc-fleet', code: 'CC-400', unitId: 'u-hq', name: 'أسطول السيارات — عام', budget: 40000, active: true },
+  { id: 'cc-veh-v1', code: 'CC-401', unitId: 'u-jed', name: 'مركبة ABC-1234', budget: 0, active: true, vehicleId: 'v1' },
+  { id: 'cc-veh-v2', code: 'CC-402', unitId: 'u-jed', name: 'مركبة DEF-5678', budget: 0, active: true, vehicleId: 'v2' },
+  { id: 'cc-veh-v3', code: 'CC-403', unitId: 'u-mak', name: 'مركبة GHI-9012', budget: 0, active: true, vehicleId: 'v3' },
+  { id: 'cc-veh-v4', code: 'CC-404', unitId: 'u-jed', name: 'مركبة JKL-3456', budget: 0, active: true, vehicleId: 'v4' },
+  { id: 'cc-veh-v5', code: 'CC-405', unitId: 'u-taif', name: 'مركبة MNO-7890', budget: 0, active: true, vehicleId: 'v5' },
+  { id: 'cc-veh-v6', code: 'CC-406', unitId: 'u-jed', name: 'مركبة PQR-2345', budget: 0, active: true, vehicleId: 'v6' },
+  { id: 'cc-veh-v7', code: 'CC-407', unitId: 'u-mak', name: 'مركبة STU-6789', budget: 0, active: true, vehicleId: 'v7' },
 ]
 
 /** Document types for journal entries (the "symbol" of the general journal screen).
@@ -142,6 +156,18 @@ export const FISCAL_YEARS = [
 /** Seed journal entries (balanced). serial = global running number, ref = document
     number (per document type). lines: [{account, costCenter, debit, credit, description}] */
 export const JOURNAL = [
+  {
+    id: 'j0', serial: 0, ref: 'OV-2026-0001', docType: 'ov', fiscalYear: 'fy2026', date: '2026-01-01', source: 'opening',
+    description: 'القيد الافتتاحي — أرصدة أول المدة 2026', createdBy: 'سارة الدوسري',
+    lines: [
+      { account: 'bank', costCenter: null, debit: 190000, credit: 0, description: 'رصيد البنك' },
+      { account: 'cash', costCenter: null, debit: 35000, credit: 0, description: 'رصيد الصندوق' },
+      { account: 'vehicles_asset', costCenter: 'cc-fleet', debit: 234500, credit: 0, description: 'قيمة الأسطول' },
+      { account: 'rider_wallets', costCenter: null, debit: 3665, credit: 0, description: 'عُهد المناديب' },
+      { account: 'capital', costCenter: null, debit: 0, credit: 450000, description: 'رأس المال' },
+      { account: 'retained_earnings', costCenter: null, debit: 0, credit: 13165, description: 'أرباح محتجزة من 2025' },
+    ],
+  },
   {
     id: 'j1', serial: 1, ref: 'JV-2026-0001', docType: 'jv', fiscalYear: 'fy2026', date: '2026-06-30', source: 'commissions',
     description: 'عمولات شهر يونيو 2026', createdBy: 'سارة الدوسري',
@@ -173,6 +199,15 @@ export const JOURNAL = [
     lines: [
       { account: 'general_expense', costCenter: 'cc-internal', debit: 4000, credit: 0, description: 'إيجار شهر يوليو' },
       { account: 'bank', costCenter: 'cc-internal', debit: 0, credit: 4000, description: 'تحويل بنكي' },
+    ],
+    modifiedAt: '2026-07-02T10:15', modifiedBy: 'سارة الدوسري',
+  },
+  {
+    id: 'j5', serial: 5, ref: 'JV-2026-0005', docType: 'jv', fiscalYear: 'fy2026', date: '2026-06-12', source: 'manual',
+    description: 'قيد مكرر بالخطأ — ملغى', createdBy: 'سارة الدوسري', status: 'voided', voidedAt: '2026-06-13T09:00', voidedBy: 'أحمد العتيبي', voidReason: 'تكرار قيد الإيجار',
+    lines: [
+      { account: 'general_expense', costCenter: 'cc-internal', debit: 4000, credit: 0, description: 'إيجار' },
+      { account: 'bank', costCenter: 'cc-internal', debit: 0, credit: 4000, description: '' },
     ],
   },
 ]
@@ -424,4 +459,70 @@ export const PURCHASE_ITEMS = [
 export const SALES_INVOICES = [
   { id: 'si1', ref: 'SI-2026-0001', contract: 'hunger', period: '2026-05', date: '2026-06-02', orders: 3120, unitPrice: 12, preTax: 37440, vat: 5616, total: 43056, sheet: 'HS-May-2026.xlsx', status: 'paid', journalRef: null },
   { id: 'si2', ref: 'SI-2026-0002', contract: 'hunger', period: '2026-06', date: '2026-07-01', orders: 3347, unitPrice: 12, preTax: 40164, vat: 6024.6, total: 46188.6, sheet: 'HS-June-2026.xlsx', status: 'issued', journalRef: null },
+]
+
+/* ── General accounts module: settings & master data ─────── */
+
+/** Accounting system settings (settings → اعدادات نظام الحسابات). */
+export const ACCOUNTING_SETTINGS = {
+  baseCurrency: 'SAR',
+  decimals: 2,
+  defaultFiscalYear: 'fy2026',
+  requireCostCenter: true,
+  allowBackdated: true,
+  autoPostModules: true,
+  retainedEarningsAccount: 'retained_earnings',
+  inputVatAccount: 'input_vat',
+  outputVatAccount: 'output_vat',
+  numbering: { jv: 'JV', rv: 'RV', pv: 'PV', ov: 'OV', adj: 'ADJ' },
+}
+
+/** Currencies (settings → إدارة العملات). rate = units of base per 1 unit of currency. */
+export const CURRENCIES = [
+  { id: 'SAR', code: 'SAR', name: 'ريال سعودي', en: 'Saudi riyal', symbol: 'ر.س', rate: 1, isBase: true, active: true },
+  { id: 'USD', code: 'USD', name: 'دولار أمريكي', en: 'US dollar', symbol: '$', rate: 3.75, isBase: false, active: true },
+  { id: 'EGP', code: 'EGP', name: 'جنيه مصري', en: 'Egyptian pound', symbol: 'ج.م', rate: 0.078, isBase: false, active: true },
+  { id: 'AED', code: 'AED', name: 'درهم إماراتي', en: 'UAE dirham', symbol: 'د.إ', rate: 1.02, isBase: false, active: false },
+]
+
+/** Closed months per fiscal year (settings → اغلاق الشهر). 'YYYY-MM'. */
+export const CLOSED_MONTHS = {
+  fy2025: ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'],
+  fy2026: ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05'],
+}
+
+/** Administrative units directory (master data → دليل الوحدات الإدارية). */
+export const ADMIN_UNITS = [
+  { id: 'u-hq', code: 'U-100', name: 'الإدارة العامة — جدة', en: 'Head office — Jeddah', parent: null, active: true },
+  { id: 'u-jed', code: 'U-110', name: 'فرع جدة — العمليات', en: 'Jeddah branch — operations', parent: 'u-hq', active: true },
+  { id: 'u-mak', code: 'U-120', name: 'فرع مكة المكرمة', en: 'Makkah branch', parent: 'u-hq', active: true },
+  { id: 'u-taif', code: 'U-130', name: 'فرع الطائف', en: 'Taif branch', parent: 'u-hq', active: true },
+]
+
+/** Financial-statement items (بنود القوائم المالية). statement ∈ income|balance.
+    section orders the statement; sign tells how a balance is presented. */
+export const STATEMENT_ITEMS = [
+  { id: 'is_revenue', statement: 'income', section: 'revenue', code: 'IS-100', name: 'إيرادات التشغيل', en: 'Operating revenue', order: 1 },
+  { id: 'is_cost', statement: 'income', section: 'cost', code: 'IS-200', name: 'تكلفة التشغيل', en: 'Cost of operations', order: 2 },
+  { id: 'is_admin', statement: 'income', section: 'admin', code: 'IS-300', name: 'مصروفات إدارية وعمومية', en: 'General & admin expenses', order: 3 },
+  { id: 'is_other', statement: 'income', section: 'other', code: 'IS-400', name: 'إيرادات ومصروفات أخرى', en: 'Other income & expenses', order: 4 },
+  { id: 'bs_cash', statement: 'balance', section: 'current_assets', code: 'BS-110', name: 'النقدية وما في حكمها', en: 'Cash & equivalents', order: 1 },
+  { id: 'bs_receivables', statement: 'balance', section: 'current_assets', code: 'BS-120', name: 'الذمم المدينة', en: 'Receivables', order: 2 },
+  { id: 'bs_other_current', statement: 'balance', section: 'current_assets', code: 'BS-130', name: 'أصول متداولة أخرى', en: 'Other current assets', order: 3 },
+  { id: 'bs_fixed', statement: 'balance', section: 'fixed_assets', code: 'BS-200', name: 'الأصول الثابتة', en: 'Fixed assets', order: 4 },
+  { id: 'bs_payables', statement: 'balance', section: 'current_liabilities', code: 'BS-310', name: 'الذمم الدائنة', en: 'Payables', order: 5 },
+  { id: 'bs_tax', statement: 'balance', section: 'current_liabilities', code: 'BS-320', name: 'التزامات ضريبية', en: 'Tax liabilities', order: 6 },
+  { id: 'bs_capital', statement: 'balance', section: 'equity', code: 'BS-410', name: 'رأس المال', en: 'Capital', order: 7 },
+  { id: 'bs_retained', statement: 'balance', section: 'equity', code: 'BS-420', name: 'الأرباح المحتجزة', en: 'Retained earnings', order: 8 },
+]
+
+/** Financial-analysis ratio definitions (reports → اعدادات التحليل المالي).
+    numerator / denominator are aggregate keys computed by the balances engine. */
+export const FINANCIAL_RATIOS = [
+  { id: 'current_ratio', name: 'نسبة التداول', en: 'Current ratio', numerator: 'current_assets', denominator: 'current_liabilities', format: 'ratio', target: 1.5, enabled: true },
+  { id: 'cash_ratio', name: 'نسبة النقدية', en: 'Cash ratio', numerator: 'cash', denominator: 'current_liabilities', format: 'ratio', target: 0.5, enabled: true },
+  { id: 'net_margin', name: 'هامش صافي الربح', en: 'Net profit margin', numerator: 'net_profit', denominator: 'revenue', format: 'percent', target: 15, enabled: true },
+  { id: 'expense_ratio', name: 'نسبة المصروفات إلى الإيرادات', en: 'Expense to revenue', numerator: 'expenses', denominator: 'revenue', format: 'percent', target: 85, enabled: true },
+  { id: 'debt_to_equity', name: 'الالتزامات إلى حقوق الملكية', en: 'Debt to equity', numerator: 'liabilities', denominator: 'equity', format: 'ratio', target: 1, enabled: false },
+  { id: 'roa', name: 'العائد على الأصول', en: 'Return on assets', numerator: 'net_profit', denominator: 'assets', format: 'percent', target: 10, enabled: true },
 ]

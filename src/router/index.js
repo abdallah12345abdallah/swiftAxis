@@ -11,6 +11,7 @@ import RiderDetail from '@/pages/RiderDetail.vue'
 import Contracts from '@/pages/Contracts.vue'
 import Ledger from '@/pages/Ledger.vue'
 import JournalEntry from '@/pages/JournalEntry.vue'
+import Accounting from '@/pages/Accounting.vue'
 import Orders from '@/pages/Orders.vue'
 import Commissions from '@/pages/Commissions.vue'
 import Wallets from '@/pages/Wallets.vue'
@@ -28,7 +29,7 @@ import StyleGuide from '@/pages/StyleGuide.vue'
 // Pages that have a real implementation (skip the placeholder for these).
 const BUILT = new Set([
   'dashboard', 'riders', 'contracts', 'ledger', 'orders', 'commissions',
-  'wallets', 'vehicles', 'purchases', 'reports', 'users', 'settings', 'treasury', 'sales',
+  'wallets', 'vehicles', 'purchases', 'reports', 'users', 'settings', 'treasury', 'sales', 'accounting',
 ])
 
 const rolesOf = (key) => NAV_ITEMS.find((i) => i.key === key)?.roles
@@ -61,6 +62,7 @@ const routes = [
       { path: 'contracts', name: 'contracts', component: Contracts, meta: { roles: rolesOf('contracts'), titleKey: 'nav.contracts' } },
       { path: 'ledger', name: 'ledger', component: Ledger, meta: { roles: rolesOf('ledger'), titleKey: 'nav.ledger' } },
       { path: 'ledger/entry/:id?', name: 'journal-entry', component: JournalEntry, meta: { roles: rolesOf('ledger'), titleKey: 'journal.title' } },
+      { path: 'accounting/:screen?', name: 'accounting', component: Accounting, meta: { roles: rolesOf('accounting'), titleKey: 'nav.accounting' } },
       { path: 'orders', name: 'orders', component: Orders, meta: { roles: rolesOf('orders'), titleKey: 'nav.orders' } },
       { path: 'commissions', name: 'commissions', component: Commissions, meta: { roles: rolesOf('commissions'), titleKey: 'nav.commissions' } },
       { path: 'wallets', name: 'wallets', component: Wallets, meta: { roles: rolesOf('wallets'), titleKey: 'nav.wallets' } },

@@ -5,7 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
-  Landmark, Receipt,
+  Landmark, Receipt, Calculator,
   Bell, LogOut, User, ChevronDown, UserCircle,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
@@ -23,7 +23,7 @@ import { ToastHost } from '@/components/ui/toast'
 const ICONS = {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
-  Landmark, Receipt,
+  Landmark, Receipt, Calculator,
 }
 
 const { t, locale } = useI18n()

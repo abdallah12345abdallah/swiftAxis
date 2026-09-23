@@ -56,7 +56,6 @@ const accName = (id) => {
 }
 const ccName = (id) => centers.value.find((c) => c.id === id)?.name ?? '—'
 
-const accountOptions = computed(() => accounts.value.map((a) => ({ value: a.id, label: locale.value === 'ar' ? a.name : a.en })))
 const costCenterOptions = computed(() => centers.value.map((c) => ({ value: c.id, label: c.name })))
 const centerFilterOptions = computed(() => [{ value: '', label: t('ledger.allCenters') }, ...costCenterOptions.value])
 
@@ -129,6 +128,7 @@ function exportTrial() {
               {{ e.ref }} <ExternalLink class="size-3.5" />
             </RouterLink>
             <Badge variant="secondary">{{ e.source }}</Badge>
+            <Badge v-if="e.voided" variant="danger">{{ t('journal.voidedBadge') }}</Badge>
             <span v-if="e.serial" class="text-muted-foreground text-xs tabular-nums">#{{ e.serial }}</span>
           </div>
           <span class="text-muted-foreground text-sm tabular-nums">{{ formatDate(e.date) }}</span>

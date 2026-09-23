@@ -1,5 +1,5 @@
 import { mockDelay } from '@/services/http'
-import { CHART_OF_ACCOUNTS, COST_CENTERS, JOURNAL, DOCUMENT_TYPES, FISCAL_YEARS } from './fixtures'
+import { CHART_OF_ACCOUNTS, COST_CENTERS, JOURNAL, DOCUMENT_TYPES, FISCAL_YEARS, CLOSED_MONTHS } from './fixtures'
 import { logAudit } from './audit'
 
 /* Fully-simulated double-entry ledger (EP-07). Other epics post auto entries
@@ -11,6 +11,9 @@ export const accountById = (id) => CHART_OF_ACCOUNTS.find((a) => a.id === id)
 export const costCenterById = (id) => COST_CENTERS.find((c) => c.id === id)
 export const documentTypeById = (id) => DOCUMENT_TYPES.find((d) => d.id === id)
 export const fiscalYearById = (id) => FISCAL_YEARS.find((y) => y.id === id)
+/** Postable (leaf, active) accounts — groups only structure the tree. */
+export const postableAccounts = () => CHART_OF_ACCOUNTS.filter((a) => !a.isGroup && a.active !== false)
+export const isMonthClosed = (fiscalYear, date) => (CLOSED_MONTHS[fiscalYear] ?? []).includes(String(date).slice(0, 7))
 /** The fiscal year a date falls in (or the default one). */
 export const fiscalYearFor = (date) => FISCAL_YEARS.find((y) => date >= y.dateFrom && date <= y.dateTo) ?? FISCAL_YEARS.find((y) => y.isDefault) ?? FISCAL_YEARS[FISCAL_YEARS.length - 1]
 
@@ -80,12 +83,15 @@ export function fetchFiscalYears() {
 }
 
 function decorateEntry(e) {
+  const status = e.status ?? 'posted'
   return {
     ...e,
+    status,
     total: sum(e.lines, 'debit'),
+    voided: status === 'voided',
     docTypeName: documentTypeById(e.docType)?.name ?? e.docType,
     fiscalYearName: fiscalYearById(e.fiscalYear)?.name ?? e.fiscalYear,
-    editable: e.source === 'manual' && !fiscalYearById(e.fiscalYear)?.closed,
+    editable: e.source === 'manual' && status !== 'voided' && !fiscalYearById(e.fiscalYear)?.closed && !isMonthClosed(e.fiscalYear, e.date),
     lines: e.lines.map((l, i) => ({
       ...l,
       serial: l.serial ?? i + 1,
@@ -109,6 +115,7 @@ export function validateJournalEntry({ date, docType, fiscalYear, lines }) {
   const fy = fiscalYearById(fiscalYear)
   if (fy.closed) return 'YEAR_CLOSED'
   if (!date || date < fy.dateFrom || date > fy.dateTo) return 'DATE_OUT_OF_YEAR'
+  if (isMonthClosed(fiscalYear, date)) return 'MONTH_CLOSED'
   const clean = cleanLines(lines || [])
   if (!clean.length) return 'EMPTY'
   if (clean.some((l) => l.debit < 0 || l.credit < 0)) return 'NEGATIVE'
@@ -146,6 +153,18 @@ export async function saveJournalEntry(payload) {
   return decorateEntry(entry)
 }
 
+/** Void (cancel) a manual entry: it stays in the journal for the audit trail but
+    leaves every balance. */
+export function voidJournalEntry(id, { reason = '', by = '' } = {}) {
+  const e = JOURNAL.find((x) => x.id === id)
+  if (!e) return Promise.reject(new Error('NOT_FOUND'))
+  if (!decorateEntry(e).editable) return Promise.reject(new Error('NOT_EDITABLE'))
+  if (!reason.trim()) return Promise.reject(new Error('REASON_REQUIRED'))
+  Object.assign(e, { status: 'voided', voidReason: reason.trim(), voidedAt: new Date().toISOString().slice(0, 16), voidedBy: by })
+  logAudit({ action: 'delete', entity: 'ledger', detail: `إلغاء قيد ${e.ref} — ${reason}`, user: by || undefined })
+  return mockDelay(decorateEntry(e))
+}
+
 /** "إظهار": find an entry by serial and/or document number within a fiscal year. */
 export function findJournalEntry({ serial, docNo, fiscalYear }) {
   if (!fiscalYear) return Promise.reject(new Error('FISCAL_YEAR_REQUIRED'))
@@ -166,8 +185,9 @@ export async function duplicateJournalEntry(id, { createdBy = '' } = {}) {
 /* ── Queries ─────────────────────────────────────────────── */
 const inRange = (date, from, to) => (!from || date >= from) && (!to || date <= to)
 
-function filteredEntries({ from, to, costCenter, source } = {}) {
+function filteredEntries({ from, to, costCenter, source, includeVoided = false } = {}) {
   return JOURNAL.filter((e) => {
+    if (!includeVoided && e.status === 'voided') return false
     if (!inRange(e.date, from, to)) return false
     if (source && e.source !== source) return false
     if (costCenter && !e.lines.some((l) => l.costCenter === costCenter)) return false
@@ -177,7 +197,7 @@ function filteredEntries({ from, to, costCenter, source } = {}) {
 
 /** Journal entries (newest first) decorated with totals. */
 export function fetchJournal(filters = {}) {
-  const rows = filteredEntries(filters)
+  const rows = filteredEntries({ ...filters, includeVoided: true })
     .map(decorateEntry)
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.serial || 0) - (a.serial || 0)))
   return mockDelay(rows)
@@ -244,7 +264,7 @@ export function costCenterReport(filters = {}) {
         if (a?.type === 'expense') actual += l.debit - l.credit
       }),
     )
-    return { id: c.id, code: c.code, name: c.name, budget: c.budget, actual, variance: c.budget - actual, over: c.budget > 0 && actual > c.budget }
+    return { id: c.id, code: c.code, name: c.name, unitId: c.unitId ?? null, budget: c.budget, actual, variance: c.budget - actual, over: c.budget > 0 && actual > c.budget }
   })
   return mockDelay(rows)
 }
@@ -254,7 +274,7 @@ export function fetchCostCenters() {
 }
 export function createCostCenter(payload) {
   const n = COST_CENTERS.length + 1
-  const c = { id: `cc-${n}`, code: payload.code?.trim() || `CC-${String(n).padStart(3, '0')}`, name: payload.name, budget: Number(payload.budget) || 0, active: true }
+  const c = { id: `cc-${n}`, code: payload.code?.trim() || `CC-${String(n).padStart(3, '0')}`, name: payload.name, unitId: payload.unitId || null, budget: Number(payload.budget) || 0, active: true }
   COST_CENTERS.push(c)
   logAudit({ action: 'create', entity: 'costCenter', detail: c.name })
   return mockDelay(c)
@@ -262,7 +282,7 @@ export function createCostCenter(payload) {
 export function updateCostCenter(id, payload) {
   const c = costCenterById(id)
   if (!c) return Promise.reject(new Error('NOT_FOUND'))
-  Object.assign(c, { name: payload.name, code: payload.code?.trim() || c.code, budget: Number(payload.budget) || 0, active: payload.active ?? c.active })
+  Object.assign(c, { name: payload.name, code: payload.code?.trim() || c.code, unitId: payload.unitId === undefined ? c.unitId : payload.unitId || null, budget: Number(payload.budget) || 0, active: payload.active ?? c.active })
   logAudit({ action: 'update', entity: 'costCenter', detail: c.name })
   return mockDelay(c)
 }
