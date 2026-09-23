@@ -185,7 +185,7 @@ function exportBest() {
 
         <!-- riders -->
         <h3 class="mb-2 font-semibold">{{ t('reports.ridersTitle') }}</h3>
-        <table class="mb-6 w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="mb-6 w-full text-sm">
           <thead class="text-muted-foreground border-b">
             <tr>
               <th class="py-2 text-start font-medium">{{ t('dashboard.table.rider') }}</th>
@@ -202,11 +202,11 @@ function exportBest() {
               <td class="py-2 text-end font-semibold tabular-nums">{{ sar(r.commission) }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
 
         <!-- vehicles -->
         <h3 class="mb-2 font-semibold">{{ t('reports.vehiclesTitle') }}</h3>
-        <table class="mb-6 w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="mb-6 w-full text-sm">
           <thead class="text-muted-foreground border-b">
             <tr>
               <th class="py-2 text-start font-medium">{{ t('vehicles.prof.vehicle') }}</th>
@@ -223,7 +223,7 @@ function exportBest() {
               <td class="py-2 text-end font-semibold tabular-nums">{{ sar(v.net) }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
 
         <!-- P&L -->
         <h3 class="mb-2 font-semibold">{{ t('reports.pnlTitle') }}</h3>

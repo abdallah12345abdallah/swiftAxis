@@ -131,7 +131,7 @@ onUnmounted(() => {
               <div class="tilt rounded-2xl border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <span class="from-primary to-orange grid size-8 place-items-center rounded-lg bg-gradient-to-br">
+                    <span class="from-brand to-orange grid size-8 place-items-center rounded-lg bg-gradient-to-br">
                       <Wallet class="size-4 text-white" />
                     </span>
                     <span class="text-sm font-semibold text-white/80">{{ t('login.preview.title') }}</span>
@@ -171,7 +171,7 @@ onUnmounted(() => {
             <!-- satellite chip: top rider -->
             <div class="float-mid absolute -bottom-7 start-0">
               <div class="flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 shadow-xl backdrop-blur-xl">
-                <span class="from-primary to-orange grid size-9 place-items-center rounded-full bg-gradient-to-br text-sm font-bold text-white">م</span>
+                <span class="from-brand to-orange grid size-9 place-items-center rounded-full bg-gradient-to-br text-sm font-bold text-white">م</span>
                 <div>
                   <p class="flex items-center gap-1 text-xs font-semibold text-white">
                     <Star class="size-3 fill-orange text-orange" />

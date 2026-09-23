@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Download } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -157,9 +158,9 @@ function exportVat() {
         <template #cell-purchases="{ row }"><span class="tabular-nums">{{ num(row.purchases) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditSupplier(row)">
-            <Pencil class="size-4" />
-          </button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditSupplier(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>
@@ -183,9 +184,9 @@ function exportVat() {
         <template #cell-usage="{ row }"><span class="tabular-nums">{{ num(row.usage) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditItem(row)">
-            <Pencil class="size-4" />
-          </button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditItem(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

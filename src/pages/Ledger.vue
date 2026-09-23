@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Download, Pencil, ExternalLink } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -135,7 +136,7 @@ function exportTrial() {
           <span class="text-muted-foreground text-sm tabular-nums">{{ formatDate(e.date) }}</span>
         </div>
         <p v-if="e.description" class="text-muted-foreground mb-3 text-sm">{{ e.description }}</p>
-        <table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
           <tbody>
             <tr v-for="(l, i) in e.lines" :key="i" class="border-t first:border-0">
               <td class="py-2">{{ accName(l.account) }}<span v-if="l.description" class="text-muted-foreground ms-2 text-xs">{{ l.description }}</span></td>
@@ -144,7 +145,7 @@ function exportTrial() {
               <td class="py-2 text-end tabular-nums">{{ l.credit ? sar(l.credit) : '' }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </Card>
     </div>
 
@@ -227,9 +228,9 @@ function exportTrial() {
           <span class="font-semibold tabular-nums" :class="row.over ? 'text-danger' : 'text-success'">{{ sar(row.variance) }}</span>
         </template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditCenter(centers.find((c) => c.id === row.id))">
-            <Pencil class="size-4" />
-          </button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditCenter(centers.find((c) => c.id === row.id)) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

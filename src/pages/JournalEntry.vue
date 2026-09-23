@@ -422,7 +422,7 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
       <!-- ── lines table ─────────────────────────────────── -->
       <Card class="overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
             <thead>
               <tr class="text-muted-foreground border-b">
                 <th class="px-4 py-3 text-start font-medium">#</th>
@@ -476,7 +476,7 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
                 <td :colspan="readOnly ? 1 : 2" class="hidden lg:table-cell" />
               </tr>
             </tfoot>
-          </table>
+          </table></div>
         </div>
         <div v-if="warnings.length" class="space-y-1 border-t px-4 py-3">
           <p v-for="w in warnings" :key="w" class="bg-warning/12 text-warning-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-xs">
@@ -501,7 +501,7 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
         </div>
       </div>
       <p v-if="header.description" class="mb-4 text-sm">{{ t('journal.statement') }}: {{ header.description }}</p>
-      <table class="w-full text-sm">
+      <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
         <thead class="text-muted-foreground border-b">
           <tr>
             <th class="py-2 text-start font-medium">#</th>
@@ -529,7 +529,7 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
             <td class="py-2 text-end tabular-nums">{{ sar(totalCredit, { decimals: 2 }) }}</td>
           </tr>
         </tfoot>
-      </table>
+      </table></div>
       <div class="mt-10 flex justify-between text-xs">
         <span>{{ t('journal.createdBy') }}: {{ header.createdBy || '—' }}</span>
         <div class="text-center"><div class="bg-foreground/40 h-px w-48" /><p class="text-muted-foreground mt-1">{{ t('reports.signature') }}</p></div>

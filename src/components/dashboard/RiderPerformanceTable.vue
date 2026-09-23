@@ -45,9 +45,9 @@ function barClass(r) {
       <CardTitle>{{ t('dashboard.ridersTitle') }}</CardTitle>
       <p class="text-muted-foreground text-xs">{{ t('dashboard.riderPanelHint') }}</p>
     </CardHeader>
-    <CardContent class="px-0">
+    <CardContent>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-muted-foreground border-b text-start">
               <th class="px-5 py-2.5 text-start font-medium">{{ t('dashboard.table.rider') }}</th>
@@ -89,7 +89,7 @@ function barClass(r) {
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </CardContent>
   </Card>

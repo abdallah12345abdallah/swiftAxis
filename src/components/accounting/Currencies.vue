@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, Star } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
@@ -82,10 +83,10 @@ const columns = computed(() => [
         <template #cell-rate="{ row }"><span class="tabular-nums" dir="ltr">{{ num(row.rate, { decimals: 4 }) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <div class="flex items-center justify-end gap-1">
-            <Button v-if="!row.isBase && row.active" size="sm" variant="ghost" @click="makeBase(row)"><Star /> {{ t('accounting.currencies.setBase') }}</Button>
-            <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="open(row)"><Pencil class="size-4" /></button>
-          </div>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => open(row) },
+                    { label: t('accounting.currencies.setBase'), icon: Star, tone: 'orange', show: !row.isBase && row.active, onSelect: () => makeBase(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

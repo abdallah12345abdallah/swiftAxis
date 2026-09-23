@@ -18,7 +18,7 @@ const { t } = useI18n()
     :title="t('common.riderCode')"
     :class="
       cn(
-        'bg-muted text-muted-foreground inline-flex items-center rounded-md px-1.5 py-px font-mono text-[11px] font-semibold tracking-wide tabular-nums',
+        'bg-muted text-muted-foreground inline-flex shrink-0 items-center rounded-md whitespace-nowrap px-1.5 py-px font-mono text-[11px] font-semibold tracking-wide tabular-nums',
         props.class,
       )
     "

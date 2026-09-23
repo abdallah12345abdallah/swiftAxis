@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Lock, Unlock, CalendarCheck } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
@@ -93,9 +94,10 @@ const closedCount = computed(() => data.value?.rows.filter((r) => r.closed).leng
         <template #cell-debit="{ row }"><span class="tabular-nums">{{ sar(row.debit) }}</span></template>
         <template #cell-closed="{ row }"><Badge :variant="row.closed ? 'secondary' : 'success'"><component :is="row.closed ? Lock : Unlock" class="size-3" /> {{ row.closed ? t('accounting.months.closedBadge') : t('accounting.months.openBadge') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <Button v-if="row.canClose" size="sm" variant="outline" @click="ask(row, true)"><Lock /> {{ t('accounting.months.close') }}</Button>
-          <Button v-else-if="row.canReopen" size="sm" variant="ghost" @click="ask(row, false)"><Unlock /> {{ t('accounting.months.reopen') }}</Button>
-          <span v-else class="text-muted-foreground text-xs">—</span>
+          <ActionMenu :items="[
+                    { label: t('accounting.months.close'), icon: Lock, tone: 'blue', show: row.canClose, onSelect: () => ask(row, true) },
+                    { label: t('accounting.months.reopen'), icon: Unlock, danger: true, show: row.canReopen, onSelect: () => ask(row, false) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

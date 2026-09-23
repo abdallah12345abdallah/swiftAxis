@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, ChevronDown, ChevronLeft, Folder, FileText } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -100,7 +101,7 @@ const typeVariant = { asset: 'default', liability: 'warning', equity: 'accent', 
     <Card class="overflow-hidden">
       <div v-if="loading" class="space-y-3 p-5"><Skeleton v-for="i in 8" :key="i" class="h-10 rounded-lg" /></div>
       <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-muted-foreground border-b">
               <th class="px-5 py-3 text-start font-medium">{{ t('journal.account') }}</th>
@@ -128,14 +129,16 @@ const typeVariant = { asset: 'default', liability: 'warning', equity: 'accent', 
               <td class="text-muted-foreground hidden px-5 py-2.5 text-xs lg:table-cell">{{ a.isGroup ? '' : a.statementItemName ?? '—' }}</td>
               <td class="px-5 py-2.5 text-end tabular-nums" :class="a.isGroup ? 'font-semibold' : ''">{{ a.hasMovement || a.isGroup ? sar(a.balance, { decimals: 2 }) : '—' }}<span class="text-muted-foreground ms-1 text-[10px]">{{ a.nature === 'credit' ? t('accounting.common.creditNature') : t('accounting.common.debitNature') }}</span></td>
               <td class="px-5 py-2.5">
-                <div class="flex items-center justify-end gap-1">
-                  <button v-if="a.isGroup" type="button" class="hover:bg-accent text-muted-foreground hover:text-primary inline-flex size-8 items-center justify-center rounded-lg" :title="t('accounting.accounts.addChild')" @click="openAdd(a)"><Plus class="size-4" /></button>
-                  <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEdit(a)"><Pencil class="size-4" /></button>
+                <div class="flex justify-end">
+                  <ActionMenu :items="[
+                    { label: t('accounting.accounts.addChild'), icon: Plus, tone: 'green', show: a.isGroup, onSelect: () => openAdd(a) },
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEdit(a) },
+                  ]" />
                 </div>
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </Card>
 

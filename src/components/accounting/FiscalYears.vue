@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, Star, Lock, CalendarRange } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
@@ -92,10 +93,10 @@ const columns = computed(() => [
           <p v-if="row.closingRef" class="text-muted-foreground mt-0.5 text-xs tabular-nums" dir="ltr">{{ row.closingRef }}</p>
         </template>
         <template #cell-actions="{ row }">
-          <div class="flex items-center justify-end gap-1">
-            <Button v-if="!row.closed && !row.isDefault" size="sm" variant="ghost" @click="makeDefault(row)"><Star /> {{ t('accounting.years.setDefault') }}</Button>
-            <button v-if="!row.closed" type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="open(row)"><Pencil class="size-4" /></button>
-          </div>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', show: !row.closed, onSelect: () => open(row) },
+                    { label: t('accounting.years.setDefault'), icon: Star, tone: 'orange', show: !row.closed && !row.isDefault, onSelect: () => makeDefault(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

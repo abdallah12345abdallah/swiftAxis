@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Card } from '@/components/ui/card'
@@ -57,7 +58,7 @@ function openEditContract(c) {
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-muted-foreground border-b">
               <th class="px-5 py-3 text-start font-medium">{{ t('contracts.company') }}</th>
@@ -85,19 +86,12 @@ function openEditContract(c) {
               </td>
               <td class="px-5 py-3">
                 <div class="flex justify-end">
-                  <button
-                    type="button"
-                    class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg transition-colors"
-                    :title="t('riders.actions.edit')"
-                    @click="openEditContract(c)"
-                  >
-                    <Pencil class="size-4" />
-                  </button>
+                  <ActionMenu :items="[{ label: t('riders.actions.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditContract(c) }]" />
                 </div>
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </Card>
 

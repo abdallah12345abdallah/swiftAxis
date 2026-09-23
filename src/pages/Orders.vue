@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Upload, Pencil, Download, Plus, Package, Banknote, HandCoins, Route } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -176,9 +177,9 @@ function exportManual() {
             </div>
           </template>
           <template #cell-actions="{ row }">
-            <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEdit(row)">
-              <Pencil class="size-4" />
-            </button>
+            <ActionMenu :items="[
+                      { label: t('orders.editTitle'), icon: Pencil, tone: 'blue', onSelect: () => openEdit(row) },
+                    ]" />
           </template>
         </DataTable>
       </Card>

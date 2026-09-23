@@ -69,6 +69,30 @@ watch(() => route.fullPath, () => {
   mainEl.value?.scrollTo({ top: 0 })
 })
 
+/* staggered rise: for a moment after each navigation, whatever the page
+   inserts (blocks, cards, table rows as their data lands) rises into place */
+const rising = ref(false)
+let riseTimer
+watch(() => route.fullPath, () => {
+  rising.value = true
+  clearTimeout(riseTimer)
+  riseTimer = setTimeout(() => (rising.value = false), 1800)
+}, { immediate: true })
+onBeforeUnmount(() => clearTimeout(riseTimer))
+
+/* glass header: as soon as the page scrolls the pinned header frosts; on
+   pages long enough it also shrinks. Shrinking changes the page height, so it
+   only starts with room to spare, and the 8px/40px gap stops jitter. */
+const scrolled = ref(false)
+const compact = ref(false)
+function onMainScroll(e) {
+  const el = e.target
+  scrolled.value = el.scrollTop > 2
+  if (!compact.value && el.scrollTop > 40 && el.scrollHeight - el.clientHeight >= 160) compact.value = true
+  else if (compact.value && el.scrollTop < 8) compact.value = false
+}
+watch(() => route.fullPath, () => { scrolled.value = false; compact.value = false })
+
 /* a click anywhere outside the island folds the lists opened by hand */
 function onOutsideClick(e) {
   if (e.target.closest('aside.island')) return
@@ -177,7 +201,7 @@ function logout() {
 
           <!-- menu header -->
           <div class="from-primary/12 mb-1 flex items-center gap-3 rounded-lg bg-gradient-to-br to-transparent p-3">
-            <div class="from-primary to-orange grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br text-base font-bold text-white">{{ auth.initials }}</div>
+            <div class="from-brand to-orange grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br text-base font-bold text-white">{{ auth.initials }}</div>
             <div class="min-w-0">
               <p class="truncate text-sm font-semibold">{{ auth.user?.name }}</p>
               <p class="text-muted-foreground flex items-center gap-1 text-xs"><component :is="ROLE_ICONS[auth.role]" class="size-3" /> {{ t(`roles.${auth.role}`) }}</p>
@@ -208,10 +232,22 @@ function logout() {
       </aside>
 
       <!-- ── floating sheet: the page, scrolling inside ───── -->
-      <div class="sheet bg-background text-foreground flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl shadow-2xl">
-        <main ref="mainEl" class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <RouterView />
-        </main>
+      <div class="relative min-h-0 min-w-0">
+        <!-- a small stack of pages behind the sheet; it shifts when a new page is laid on top -->
+        <span :key="'g2-' + route.path" class="sheet-ghost g2 hidden lg:block" aria-hidden="true" />
+        <span :key="'g1-' + route.path" class="sheet-ghost g1 hidden lg:block" aria-hidden="true" />
+        <div class="sheet bg-background text-foreground relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl shadow-2xl">
+          <main
+            ref="mainEl"
+            class="sheet-main min-h-0 flex-1 overflow-y-auto"
+            :class="rising && 'page-rise'"
+            :data-scrolled="scrolled || undefined"
+            :data-compact="compact || undefined"
+            @scroll.passive="onMainScroll"
+          >
+            <RouterView />
+          </main>
+        </div>
       </div>
     </div>
 
@@ -220,17 +256,17 @@ function logout() {
 </template>
 
 <style scoped>
-/* the brand ground — navy into primary blue, every color a token */
+/* the brand ground — navy into brand blue, every color a token */
 .shell {
   background:
-    radial-gradient(1200px 600px at 100% -10%, color-mix(in oklch, var(--primary) 55%, transparent), transparent 60%),
+    radial-gradient(1200px 600px at 100% -10%, color-mix(in oklch, var(--brand) 55%, transparent), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, color-mix(in oklch, var(--orange) 28%, transparent), transparent 60%),
-    linear-gradient(160deg, var(--navy) 0%, color-mix(in oklch, var(--navy) 55%, var(--primary)) 100%);
+    linear-gradient(160deg, var(--navy) 0%, color-mix(in oklch, var(--navy) 55%, var(--brand)) 100%);
 }
 .island {
   background:
     radial-gradient(110% 30% at 50% 100%, color-mix(in oklch, var(--orange) 14%, transparent), transparent 70%),
-    linear-gradient(170deg, color-mix(in oklch, var(--navy) 70%, var(--primary)) 0%, var(--navy) 62%, color-mix(in oklch, var(--navy) 90%, var(--orange)) 100%);
+    linear-gradient(170deg, color-mix(in oklch, var(--navy) 70%, var(--brand)) 0%, var(--navy) 62%, color-mix(in oklch, var(--navy) 90%, var(--orange)) 100%);
   border-color: transparent;
   isolation: isolate; /* keeps the glow layer (z-index -1) inside the island */
 }
@@ -246,7 +282,7 @@ function logout() {
     color-mix(in oklch, var(--orange) 30%, transparent) 250deg,
     color-mix(in oklch, var(--orange) 55%, transparent) 290deg,
     color-mix(in oklch, white 55%, transparent) 318deg,
-    color-mix(in oklch, var(--primary) 45%, transparent) 335deg,
+    color-mix(in oklch, var(--brand) 45%, transparent) 335deg,
     color-mix(in oklch, white 14%, transparent) 360deg);
   animation: sweep 4s linear infinite;
 }
@@ -264,10 +300,19 @@ function logout() {
 @keyframes sweep { to { --sweep: 360deg; } }
 /* reduced motion: keep the light but let it drift slowly */
 @media (prefers-reduced-motion: reduce) { .island::before, .island::after { animation-duration: 16s; } }
+/* the stack behind the sheet: two paler pages peeking out toward the outer
+   edge and the bottom; they shuffle when a new page is laid on top */
+.sheet-ghost { position: absolute; border-radius: 1rem; pointer-events: none; --out: 1; animation: ghost-shuffle 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+[dir='rtl'] .sheet-ghost { --out: -1; }
+.sheet-ghost.g1 { inset-block: 7px -7px; inset-inline: 7px -7px; background: color-mix(in srgb, var(--background) 55%, transparent); }
+.sheet-ghost.g2 { inset-block: 14px -14px; inset-inline: 14px -14px; background: color-mix(in srgb, var(--background) 25%, transparent); animation-delay: 80ms; }
+@keyframes ghost-shuffle { 40% { transform: translate(calc(var(--out) * 8px), 5px); } }
+@media (prefers-reduced-motion: reduce) { .sheet-ghost { animation: none; } }
 /* printing needs the natural page flow back */
 @media print {
   .shell { height: auto; overflow: visible; }
   .sheet, .sheet main { overflow: visible; }
+  .sheet-ghost { display: none !important; }
 }
 /* domain color as a dot in the group label, from the group's tone token */
 [data-tone='primary'] { --tone: var(--primary); }

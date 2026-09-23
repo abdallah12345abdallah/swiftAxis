@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, TrendingUp, TrendingDown } from 'lucide-vue-next'
 import ReportShell from '@/components/accounting/shared/ReportShell.vue'
 import { DataTable } from '@/components/ui/table'
@@ -104,7 +105,9 @@ const exportRows = () => data.value && exportCsv(`financial-analysis-${todayStam
         </template>
         <template #cell-enabled="{ row }"><Switch :model-value="row.enabled" @update:model-value="toggle(row)" /></template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="open(row)"><Pencil class="size-4" /></button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => open(row) },
+                  ]" />
         </template>
       </DataTable>
     </ReportShell>

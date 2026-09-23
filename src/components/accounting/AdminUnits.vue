@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, Building2 } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
@@ -82,7 +83,9 @@ async function save() {
         <template #cell-costCenters="{ row }"><span class="tabular-nums">{{ num(row.costCenters) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="open(row)"><Pencil class="size-4" /></button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => open(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

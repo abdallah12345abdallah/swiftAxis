@@ -70,7 +70,12 @@
     "description": "البيان",
     "name": "الاسم",
     "showAll": "عرض الكل",
-    "hide": "إخفاء"
+    "hide": "إخفاء",
+    "showing": "عرض {from}–{to} من {total} إدخالات",
+    "firstPage": "الصفحة الأولى",
+    "prevPage": "السابق",
+    "nextPage": "التالي",
+    "lastPage": "الصفحة الأخيرة"
   },
   "roles": {
     "manager": "مدير النظام",

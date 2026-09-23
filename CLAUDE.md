@@ -19,7 +19,7 @@ Delivery Rider Commission Management System for SwiftAxis Logistics (Jeddah). Ar
 - `@` alias → `src`
 
 ## Design tokens
-Defined in `src/assets/main.css`. Brand: primary blue, `orange` accent, `navy` chrome.
+Defined in `src/assets/main.css`. Main color `primary` is orange (shared by sidebar and pages); `brand` is the blue, `navy` chrome.
 Light + dark via `.dark` on `<html>`. Radius `--radius: 0.9rem` (rounded-2xl cards).
 
 ## Data

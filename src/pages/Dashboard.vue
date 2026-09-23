@@ -65,15 +65,15 @@ watch(() => auth.role, load)
 <template>
   <div class="space-y-6">
     <!-- ── Header ─────────────────────────────────────────── -->
-    <div class="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p class="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+    <div class="page-head flex flex-wrap items-end justify-between gap-4">
+      <div class="min-w-0">
+        <p class="page-head-sub text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
           <CalendarDays class="size-3.5" /> {{ dateStr }}
         </p>
-        <h1 class="mt-1 text-2xl font-bold tracking-tight">
+        <h1 class="page-head-title mt-1 text-2xl font-bold tracking-tight">
           {{ t('dashboard.welcome', { name: auth.user?.name }) }}
         </h1>
-        <p class="text-muted-foreground mt-0.5 flex items-center gap-2 text-sm">
+        <p class="page-head-sub text-muted-foreground flex items-center gap-2 text-sm">
           {{ isRider ? t('dashboard.subtitleRider') : t('dashboard.subtitleManager') }}
           <RiderCode v-if="isRider" :code="auth.user?.riderId" />
         </p>

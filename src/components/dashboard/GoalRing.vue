@@ -12,7 +12,7 @@ const radius = computed(() => (props.size - props.stroke) / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
 const offset = computed(() => circumference.value * (1 - pct.value / 100))
 const color = computed(() =>
-  pct.value >= 100 ? 'var(--success)' : pct.value >= 70 ? 'var(--primary)' : 'var(--orange)',
+  pct.value >= 100 ? 'var(--success)' : pct.value >= 70 ? 'var(--brand)' : 'var(--orange)',
 )
 </script>
 

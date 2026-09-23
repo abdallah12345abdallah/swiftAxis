@@ -56,7 +56,7 @@ const exportRows = () => data.value && exportCsv(`journal-detailed-${todayStamp(
           <span class="text-muted-foreground ms-auto tabular-nums">{{ formatDate(e.date) }}</span>
         </div>
         <p v-if="e.description" class="text-muted-foreground mb-2 text-sm">{{ e.description }}</p>
-        <table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
           <thead class="text-muted-foreground text-xs"><tr class="border-b"><th class="py-1 text-start font-medium">#</th><th class="py-1 text-start font-medium">{{ t('journal.account') }}</th><th class="hidden py-1 text-start font-medium md:table-cell">{{ t('journal.costCenter') }}</th><th class="hidden py-1 text-start font-medium lg:table-cell">{{ t('journal.lineStatement') }}</th><th class="py-1 text-end font-medium">{{ t('ledger.debit') }}</th><th class="py-1 text-end font-medium">{{ t('ledger.credit') }}</th></tr></thead>
           <tbody>
             <tr v-for="l in e.lines" :key="l.lineNo" class="border-b last:border-0">
@@ -69,7 +69,7 @@ const exportRows = () => data.value && exportCsv(`journal-detailed-${todayStamp(
             </tr>
           </tbody>
           <tfoot><tr class="font-semibold tabular-nums"><td colspan="4" class="py-1.5 text-xs">{{ t('common.total') }}</td><td class="py-1.5 text-end">{{ money(e.total) }}</td><td class="py-1.5 text-end">{{ money(e.total) }}</td></tr></tfoot>
-        </table>
+        </table></div>
       </div>
     </div>
   </ReportShell>

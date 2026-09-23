@@ -44,7 +44,7 @@ const exportRows = () => data.value && exportCsv(`trial-balance-L${level.value}-
     </template>
     <div v-if="loading" class="space-y-3 p-5"><Skeleton v-for="i in 6" :key="i" class="h-10 rounded-lg" /></div>
     <div v-else class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
         <thead class="text-muted-foreground">
           <tr class="border-b">
             <th rowspan="2" class="px-4 py-2 text-start font-medium">{{ t('journal.account') }}</th>
@@ -75,7 +75,7 @@ const exportRows = () => data.value && exportCsv(`trial-balance-L${level.value}-
             <td class="border-s px-4 py-3 text-end">{{ money(data.totals.closingDebit) }}</td><td class="px-4 py-3 text-end">{{ money(data.totals.closingCredit) }}</td>
           </tr>
         </tfoot>
-      </table>
+      </table></div>
     </div>
   </ReportShell>
 </template>

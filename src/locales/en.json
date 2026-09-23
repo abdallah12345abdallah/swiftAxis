@@ -70,7 +70,12 @@
     "description": "Description",
     "name": "Name",
     "showAll": "Show all",
-    "hide": "Hide"
+    "hide": "Hide",
+    "showing": "Showing {from}–{to} of {total} entries",
+    "firstPage": "First page",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "lastPage": "Last page"
   },
   "roles": {
     "manager": "System Manager",

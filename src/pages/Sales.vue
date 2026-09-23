@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Download, CheckCircle2, FileSpreadsheet } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -144,8 +145,9 @@ function exportVat() {
           <p v-if="row.receiptRef" class="text-muted-foreground mt-0.5 text-xs tabular-nums" dir="ltr">{{ row.receiptRef }}</p>
         </template>
         <template #cell-actions="{ row }">
-          <Button v-if="row.status !== 'paid'" size="sm" variant="outline" @click="openPaid(row)"><CheckCircle2 /> {{ t('sales.markPaid') }}</Button>
-          <span v-else class="text-muted-foreground text-xs tabular-nums">{{ formatDate(row.paidAt) }}</span>
+          <ActionMenu :items="[
+                    { label: t('sales.markPaid'), icon: CheckCircle2, tone: 'green', show: row.status !== 'paid', onSelect: () => openPaid(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

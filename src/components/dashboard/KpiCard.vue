@@ -16,7 +16,7 @@ const props = defineProps({
 const { t } = useI18n()
 
 const GRAD = {
-  primary: 'from-primary to-primary/70',
+  primary: 'from-brand to-brand/70',
   orange: 'from-orange to-orange/75',
   success: 'from-success to-success/75',
   warning: 'from-warning to-warning/80',

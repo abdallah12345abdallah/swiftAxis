@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Bike, Car, Download, ArrowLeftRight, Building2, Fuel, Clock, Tags, Camera } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -227,9 +228,9 @@ function exportFuel() {
           <Badge :variant="statusVariant(row.status)">{{ loc(VEHICLE_STATUS, row.status) }}</Badge>
         </template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditVehicle(row)">
-            <Pencil class="size-4" />
-          </button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditVehicle(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>
@@ -293,7 +294,9 @@ function exportFuel() {
         <template #cell-handovers="{ row }"><span class="tabular-nums">{{ num(row.handovers) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditShift(row)"><Pencil class="size-4" /></button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditShift(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>
@@ -416,7 +419,9 @@ function exportFuel() {
         <template #cell-usage="{ row }"><span class="tabular-nums">{{ num(row.usage) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditItem(row)"><Pencil class="size-4" /></button>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditItem(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>

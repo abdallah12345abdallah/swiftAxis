@@ -16,7 +16,7 @@ const props = defineProps({
 const { t } = useI18n()
 
 const ACCENT_VAR = {
-  primary: 'var(--primary)',
+  primary: 'var(--brand)',
   orange: 'var(--orange)',
   success: 'var(--success)',
 }

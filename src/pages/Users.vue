@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Power, Check, Search, Warehouse } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -134,11 +135,11 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
         <template #cell-mobile="{ row }"><span dir="ltr" class="text-muted-foreground tabular-nums">{{ row.mobile }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
-          <div class="flex items-center justify-end gap-1">
-            <Button v-if="conversionTarget(row)" size="sm" variant="outline" @click="openConvert(row)"><Warehouse /> {{ t('users.convert.action') }}</Button>
-            <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEdit(row)"><Pencil class="size-4" /></button>
-            <button type="button" class="hover:bg-accent text-muted-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="toggle(row)"><Power class="size-4" /></button>
-          </div>
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEdit(row) },
+                    { label: t('users.convert.action'), icon: Warehouse, tone: 'orange', show: !!conversionTarget(row), onSelect: () => openConvert(row) },
+                    { label: row.active ? t('riders.actions.deactivate') : t('riders.actions.activate'), icon: Power, danger: row.active, tone: 'green', onSelect: () => toggle(row) },
+                  ]" />
         </template>
       </DataTable>
     </Card>
@@ -147,7 +148,7 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
     <Card v-else-if="tab === 'roles'" class="overflow-hidden">
       <div class="text-muted-foreground border-b p-5 text-sm">{{ t('users.matrix.hint') }}</div>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-muted-foreground border-b">
               <th class="px-5 py-3 text-start font-medium">{{ t('users.matrix.page') }}</th>
@@ -163,7 +164,7 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </Card>
 

@@ -25,7 +25,7 @@ const exportRows = () => exportCsv(`chart-of-accounts-${todayStamp()}`, [t('acco
 <template>
   <ReportShell :title="t('accounting.screens.accountsReport')" @export="exportRows">
     <div v-if="loading" class="space-y-3 p-5"><Skeleton v-for="i in 8" :key="i" class="h-9 rounded-lg" /></div>
-    <table v-else class="w-full text-sm">
+    <div v-else class="soft-table overflow-x-auto"><table class="w-full text-sm">
       <thead class="text-muted-foreground border-b"><tr>
         <th class="px-5 py-2.5 text-start font-medium">{{ t('journal.account') }}</th>
         <th class="hidden px-5 py-2.5 text-start font-medium md:table-cell">{{ t('accounting.common.type') }}</th>
@@ -45,6 +45,6 @@ const exportRows = () => exportCsv(`chart-of-accounts-${todayStamp()}`, [t('acco
           <td class="px-5 py-2 text-end tabular-nums" :class="a.isGroup ? 'font-semibold' : ''">{{ sar(a.balance, { decimals: 2 }) }}</td>
         </tr>
       </tbody>
-    </table>
+    </table></div>
   </ReportShell>
 </template>

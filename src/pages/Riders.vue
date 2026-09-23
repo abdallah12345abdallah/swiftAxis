@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import {
   Plus, Download, Search, Pencil, Power, AlertTriangle,
   Users, UserCheck, TrendingDown, Package, Bike, Car,
@@ -222,7 +223,7 @@ function exportCsv() {
         </div>
 
         <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
             <thead>
               <tr class="text-muted-foreground border-b">
                 <th class="px-5 py-3 text-start font-medium">{{ t('riders.table.rider') }}</th>
@@ -293,30 +294,15 @@ function exportCsv() {
                   </div>
                 </td>
                 <!-- actions -->
-                <td class="px-5 py-3">
-                  <div class="flex items-center justify-end gap-1">
-                    <button
-                      type="button"
-                      class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg transition-colors"
-                      :title="t('riders.actions.edit')"
-                      @click="openEditRider(r)"
-                    >
-                      <Pencil class="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      class="hover:bg-accent inline-flex size-8 items-center justify-center rounded-lg transition-colors"
-                      :class="r.active ? 'text-muted-foreground hover:text-danger' : 'text-muted-foreground hover:text-success'"
-                      :title="r.active ? t('riders.actions.deactivate') : t('riders.actions.activate')"
-                      @click="toggleActive(r)"
-                    >
-                      <Power class="size-4" />
-                    </button>
-                  </div>
+                <td class="px-5 py-3 text-end">
+                  <ActionMenu :items="[
+                    { label: t('riders.actions.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditRider(r) },
+                    { label: r.active ? t('riders.actions.deactivate') : t('riders.actions.activate'), icon: Power, tone: 'green', danger: r.active, onSelect: () => toggleActive(r) },
+                  ]" />
                 </td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
       </Card>
     </div>

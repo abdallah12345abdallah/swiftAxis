@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import {
   Search, HandCoins, FileText, AlertTriangle, Plus, ClipboardCheck, Landmark,
@@ -114,6 +115,9 @@ function openDebtAction(row, mode) {
   debtActionMode.value = mode
   debtActionDialog.value = true
 }
+function openReceipt(row) {
+  if (row.receipt?.url) window.open(row.receipt.url, '_blank', 'noopener')
+}
 function openDebts(row) {
   selectedDebtRider.value = row
   debtsDialog.value = true
@@ -180,15 +184,21 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
           </template>
           <template #cell-pending="{ row }"><span class="tabular-nums" :class="row.pending ? 'text-warning-foreground font-medium' : 'text-muted-foreground'">{{ row.pending ? sar(row.pending) : '—' }}</span></template>
           <template #cell-debt="{ row }"><span class="tabular-nums" :class="row.debt ? 'text-danger font-medium' : 'text-muted-foreground'">{{ row.debt ? sar(row.debt) : '—' }}</span></template>
-          <template #cell-actions="{ row }">
-            <div class="flex items-center justify-end gap-1">
-              <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" :title="t('wallets.statement')" @click="openStatement(row)">
-                <FileText class="size-4" />
-              </button>
-              <button type="button" class="hover:bg-accent text-muted-foreground hover:text-primary inline-flex size-8 items-center justify-center rounded-lg" :title="t('wallets.handover')" @click="openHandover(row)">
-                <HandCoins class="size-4" />
-              </button>
+          <template #expand="{ row }">
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="bg-muted rounded-lg px-3 py-1.5">{{ t('wallets.treasury') }}: <b>{{ row.treasuryName }}</b></span>
+              <span class="bg-muted rounded-lg px-3 py-1.5">{{ t('wallets.available') }}: <b class="tabular-nums">{{ sar(row.available) }}</b></span>
+              <span class="bg-muted rounded-lg px-3 py-1.5">{{ t('wallets.pending') }}: <b class="tabular-nums">{{ sar(row.pending) }}</b></span>
+              <span class="bg-muted rounded-lg px-3 py-1.5">{{ t('wallets.debt') }}: <b class="tabular-nums" :class="row.debt ? 'text-danger' : ''">{{ sar(row.debt) }}</b></span>
+              <Button size="sm" variant="outline" class="ms-auto" @click="openStatement(row)"><FileText /> {{ t('wallets.statement') }}</Button>
+              <Button size="sm" @click="openHandover(row)"><HandCoins /> {{ t('wallets.handover') }}</Button>
             </div>
+          </template>
+          <template #cell-actions="{ row }">
+            <ActionMenu :items="[
+                      { label: t('wallets.statement'), icon: FileText, tone: 'blue', onSelect: () => openStatement(row) },
+                      { label: t('wallets.handover'), icon: HandCoins, tone: 'orange', onSelect: () => openHandover(row) },
+                    ]" />
           </template>
         </DataTable>
       </Card>
@@ -232,8 +242,10 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
             <span v-else class="text-muted-foreground">—</span>
           </template>
           <template #cell-actions="{ row }">
-            <Button v-if="row.status === 'pending' && canAct" size="sm" variant="outline" @click="openDecision(row)"><ListChecks /> {{ t('common.review') }}</Button>
-            <span v-else-if="row.transferRef" class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ row.transferRef }}</span>
+            <ActionMenu :items="[
+                      { label: t('common.review'), icon: ListChecks, tone: 'green', show: row.status === 'pending' && canAct, onSelect: () => openDecision(row) },
+                      { label: t('wallets.deposits.viewReceipt'), icon: Eye, tone: 'blue', show: !!row.receipt, onSelect: () => openReceipt(row) },
+                    ]" />
           </template>
         </DataTable>
       </Card>
@@ -303,13 +315,11 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
             <span v-else class="text-muted-foreground">—</span>
           </template>
           <template #cell-actions="{ row }">
-            <div class="flex items-center justify-end gap-1">
-              <Button size="sm" variant="outline" @click="openDebts(row)"><ExternalLink /> {{ t('common.details') }}</Button>
-              <template v-if="canAct">
-                <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" :title="t('wallets.debts.notice')" @click="openDebtAction(row, 'notice')"><FileWarning class="size-4" /></button>
-                <button type="button" class="hover:bg-accent text-muted-foreground hover:text-danger inline-flex size-8 items-center justify-center rounded-lg disabled:opacity-40" :title="t('wallets.debts.convert')" :disabled="row.wallet - row.pending <= 0" @click="openDebtAction(row, 'convert')"><HandCoins class="size-4" /></button>
-              </template>
-            </div>
+            <ActionMenu :items="[
+                      { label: t('common.details'), icon: ExternalLink, tone: 'blue', onSelect: () => openDebts(row) },
+                      { label: t('wallets.debts.notice'), icon: FileWarning, tone: 'orange', show: canAct, onSelect: () => openDebtAction(row, 'notice') },
+                      { label: t('wallets.debts.convert'), icon: HandCoins, danger: true, show: canAct, disabled: row.wallet - row.pending <= 0, onSelect: () => openDebtAction(row, 'convert') },
+                    ]" />
           </template>
         </DataTable>
       </Card>

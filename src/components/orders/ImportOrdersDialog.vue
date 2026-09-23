@@ -60,7 +60,7 @@ async function confirm() {
 
       <div v-else-if="rows.length">
         <p class="text-muted-foreground mb-2 text-sm font-medium">{{ t('orders.review') }}</p>
-        <div class="overflow-hidden rounded-xl border">
+        <div class="soft-table overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="bg-muted/50 text-muted-foreground">
               <tr>

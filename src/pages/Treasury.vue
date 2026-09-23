@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import {
   Plus, Pencil, Download, Landmark, Banknote, Wallet, ArrowLeftRight, Star,
@@ -208,7 +209,9 @@ const voucherColumns = (isPayment) => [
           <template #cell-balance="{ row }"><span class="font-semibold tabular-nums" :class="row.balance < 0 ? 'text-danger' : ''">{{ sar(row.balance) }}</span></template>
           <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
           <template #cell-actions="{ row }">
-            <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditTreasury(row)"><Pencil class="size-4" /></button>
+            <ActionMenu :items="[
+                      { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditTreasury(row) },
+                    ]" />
           </template>
         </DataTable>
       </Card>
