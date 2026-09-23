@@ -59,8 +59,9 @@ for riders. Visit `/dev/ui` for the design-system style guide.
 | Vehicles | `/vehicles` | Chassis/colour/model/year/tank, handover between riders or the company per work shift, editable shifts, fuel sheet, expense-item catalog, per-vehicle cost centers & charts |
 | Purchases & VAT | `/purchases` | Suppliers, purchase-item catalog, vehicle → cost center, supplier tax no. on the invoice, input VAT |
 | Sales invoices | `/sales` | Register a partner sheet as an invoice; VAT added automatically; output VAT report |
-| Ledger | `/ledger` | Journal, trial balance, P&L, cost centers — every module above posts balanced entries here |
+| Ledger | `/ledger` | Journal (with voided entries), trial balance, P&L, cost centers — every module above posts balanced entries here |
 | Journal entry | `/ledger/entry` | Full general-journal screen (document type & number, fiscal year, serial, line entry with debit/credit exclusivity and Enter flow, inline-editable lines, save / print / show / new / duplicate / refresh) |
+| General accounts | `/accounting` | Sidebar tree mirroring the partner's accounting menu: settings (system settings, currencies, fiscal years, month close, annual closing, admin units, cost centers, chart-of-accounts tree, statement items + allocation) and reports (master data, detailed / changed journal, 7 account statements, trial balance by level, income statement & balance sheet by account or by item, financial ratios). All computed from the same journal every module posts into |
 
 ## Structure
 
