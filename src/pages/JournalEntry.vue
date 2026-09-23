@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, Save, Printer, Search, FilePlus2, Copy, RefreshCw, Plus, Trash2, Check, AlertTriangle, Lock, X, Ban,
 } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 import { Card } from '@/components/ui/card'
@@ -38,6 +39,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const confirm = useConfirm()
 const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 const toast = useToast()
@@ -218,16 +220,20 @@ function print() {
 }
 
 /* new / cancel: identical, but ask before discarding unsaved work */
-const confirmNew = ref(false)
-function startNew() {
+async function startNew() {
   if (dirty.value) {
-    confirmNew.value = true
-    return
+    const ok = await confirm({
+      tone: 'warning',
+      icon: X,
+      title: t('journal.discardTitle'),
+      message: t('journal.discardHint'),
+      confirmText: t('journal.discard'),
+    })
+    if (!ok) return
   }
   doNew()
 }
 function doNew() {
-  confirmNew.value = false
   resetEntry()
   if (route.params.id) router.replace('/ledger/entry')
 }
@@ -280,39 +286,45 @@ async function doSearch() {
 }
 
 /* void (cancel) a saved manual entry — needs a reason, keeps the audit trail */
-const voidOpen = ref(false)
-const voidReason = ref('')
-async function doVoid() {
-  if (saving.value) return
-  if (!voidReason.value.trim()) {
-    toast.error(t('journal.errReason'))
-    return
-  }
-  saving.value = true
-  try {
-    const e = await voidJournalEntry(header.id, { reason: voidReason.value, by: auth.user?.name })
-    loadEntry(e)
-    voidOpen.value = false
-    toast.success(t('journal.voided', { ref: e.ref }))
-  } catch (e) {
-    toast.error(t(ERR[e.message] ?? 'journal.errGeneric'))
-  } finally {
-    saving.value = false
-  }
+async function askVoid() {
+  await confirm({
+    tone: 'danger',
+    icon: Ban,
+    title: t('journal.voidTitle'),
+    message: t('journal.voidHint', { ref: header.ref }),
+    input: { label: t('journal.voidReason'), required: true },
+    confirmText: t('journal.void'),
+    onConfirm: async (reason) => {
+      try {
+        const e = await voidJournalEntry(header.id, { reason, by: auth.user?.name })
+        loadEntry(e)
+        toast.success(t('journal.voided', { ref: e.ref }))
+      } catch (e) {
+        toast.error(t(ERR[e.message] ?? 'journal.errGeneric'))
+        return false
+      }
+    },
+  })
 }
 
 /* refresh reference lists */
-const confirmRefresh = ref(false)
 const refreshing = ref(false)
-async function doRefresh() {
-  refreshing.value = true
-  try {
-    await loadReference()
-    toast.success(t('journal.refreshed'))
-  } finally {
-    refreshing.value = false
-    confirmRefresh.value = false
-  }
+async function askRefresh() {
+  await confirm({
+    tone: 'primary',
+    icon: RefreshCw,
+    title: t('journal.refresh'),
+    message: t('journal.refreshHint'),
+    onConfirm: async () => {
+      refreshing.value = true
+      try {
+        await loadReference()
+        toast.success(t('journal.refreshed'))
+      } finally {
+        refreshing.value = false
+      }
+    },
+  })
 }
 
 const docTypeName = computed(() => docTypeOptions.value.find((d) => d.value === header.docType)?.label ?? '')
@@ -329,12 +341,12 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
 
     <PageHeader :title="t('journal.title')" :subtitle="t('journal.subtitle')" class="no-print">
       <template #actions>
-        <Button variant="ghost" :title="t('journal.refresh')" @click="confirmRefresh = true"><RefreshCw :class="refreshing && 'animate-spin'" /></Button>
+        <Button variant="ghost" :title="t('journal.refresh')" @click="askRefresh"><RefreshCw :class="refreshing && 'animate-spin'" /></Button>
         <Button variant="outline" @click="startNew"><FilePlus2 /> {{ t('journal.new') }}</Button>
         <Button variant="outline" @click="openSearch"><Search /> {{ t('journal.show') }}</Button>
         <Button variant="outline" :disabled="!header.id" @click="duplicate"><Copy /> {{ t('journal.duplicate') }}</Button>
         <Button variant="outline" :disabled="!header.id" @click="print"><Printer /> {{ t('journal.print') }}</Button>
-        <Button v-if="header.id && !readOnly" variant="outline" class="text-danger" @click="voidOpen = true"><Ban /> {{ t('journal.void') }}</Button>
+        <Button v-if="header.id && !readOnly" variant="outline" class="text-danger" @click="askVoid"><Ban /> {{ t('journal.void') }}</Button>
         <Button :disabled="saving || readOnly" @click="save"><Save /> {{ t('journal.save') }}</Button>
       </template>
     </PageHeader>
@@ -557,37 +569,7 @@ const yearName = computed(() => yearOptions.value.find((y) => y.value === header
       </template>
     </Dialog>
 
-    <!-- discard confirmation -->
-    <Dialog v-model:open="confirmNew" :title="t('journal.discardTitle')" size="sm">
-      <p class="text-muted-foreground text-sm">{{ t('journal.discardHint') }}</p>
-      <template #footer>
-        <Button variant="ghost" @click="confirmNew = false">{{ t('common.cancel') }}</Button>
-        <Button variant="destructive" @click="doNew"><X /> {{ t('journal.discard') }}</Button>
-      </template>
-    </Dialog>
 
-    <!-- void confirmation -->
-    <Dialog v-model:open="voidOpen" :title="t('journal.voidTitle')" size="sm" :icon="Ban">
-      <div class="space-y-3">
-        <p class="text-muted-foreground text-sm">{{ t('journal.voidHint', { ref: header.ref }) }}</p>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('journal.voidReason') }}</label>
-          <Input v-model="voidReason" />
-        </div>
-      </div>
-      <template #footer>
-        <Button variant="ghost" @click="voidOpen = false">{{ t('common.cancel') }}</Button>
-        <Button variant="destructive" :disabled="saving" @click="doVoid"><Ban /> {{ t('journal.void') }}</Button>
-      </template>
-    </Dialog>
 
-    <!-- refresh confirmation -->
-    <Dialog v-model:open="confirmRefresh" :title="t('journal.refresh')" size="sm">
-      <p class="text-muted-foreground text-sm">{{ t('journal.refreshHint') }}</p>
-      <template #footer>
-        <Button variant="ghost" @click="confirmRefresh = false">{{ t('common.cancel') }}</Button>
-        <Button :disabled="refreshing" @click="doRefresh"><RefreshCw /> {{ t('common.confirm') }}</Button>
-      </template>
-    </Dialog>
   </div>
 </template>

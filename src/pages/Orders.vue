@@ -157,7 +157,7 @@ function exportManual() {
     <!-- Manager/Supervisor view -->
     <div v-else class="space-y-4">
       <div class="flex flex-wrap items-center gap-3">
-        <Tabs v-model="tab" :tabs="tabs" />
+        <Tabs v-model="tab" :tabs="tabs" class="lg:hidden" />
         <Dropdown v-model="filterRider" :options="riderOptions" class="ms-auto w-auto min-w-[200px]" />
       </div>
 

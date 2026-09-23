@@ -180,7 +180,8 @@ function exportFuel() {
       </template>
     </PageHeader>
 
-    <div class="mb-6"><Tabs v-model="tab" :tabs="tabs" /></div>
+    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
+    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- Vehicles -->
     <Card v-if="tab === 'vehicles'" class="overflow-hidden">

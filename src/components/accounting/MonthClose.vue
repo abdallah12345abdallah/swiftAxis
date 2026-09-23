@@ -3,11 +3,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Lock, Unlock, CalendarCheck } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { Dropdown } from '@/components/ui/dropdown'
 import { useCurrency } from '@/composables/useCurrency'
 import { useToast } from '@/composables/useToast'
@@ -16,6 +16,7 @@ import { useAccountingOptions } from '@/composables/useAccountingOptions'
 import { fetchMonths, closeMonth, reopenMonth } from '@/api/accounting'
 
 const { t } = useI18n()
+const ask2 = useConfirm()
 const { sar, num } = useCurrency()
 const toast = useToast()
 const auth = useAuthStore()
@@ -23,9 +24,6 @@ const opts = useAccountingOptions()
 const year = ref('')
 const loading = ref(true)
 const data = ref(null)
-const confirm = ref(false)
-const action = ref(null) // { row, close: boolean }
-const busy = ref(false)
 
 async function load() {
   if (!year.value) return
@@ -40,24 +38,25 @@ onMounted(async () => {
 })
 watch(year, load)
 
-function ask(row, close) {
-  action.value = { row, close }
-  confirm.value = true
-}
 const ERR = { SEQUENCE: 'accounting.months.errSequence', YEAR_CLOSED: 'journal.errYearClosed' }
-async function run() {
-  if (busy.value) return
-  busy.value = true
-  try {
-    action.value.close ? await closeMonth(year.value, action.value.row.ym, { by: auth.user?.name }) : await reopenMonth(year.value, action.value.row.ym, { by: auth.user?.name })
-    toast.success(action.value.close ? t('accounting.months.closed', { month: action.value.row.label }) : t('accounting.months.reopened', { month: action.value.row.label }))
-    confirm.value = false
-    await load()
-  } catch (e) {
-    toast.error(t(ERR[e.message] ?? 'journal.errGeneric'))
-  } finally {
-    busy.value = false
-  }
+async function ask(row, close) {
+  await ask2({
+    tone: close ? 'warning' : 'danger',
+    icon: close ? Lock : Unlock,
+    title: close ? t('accounting.months.close') : t('accounting.months.reopen'),
+    message: close ? t('accounting.months.closeHint', { month: row.label }) : t('accounting.months.reopenHint', { month: row.label }),
+    confirmText: close ? t('accounting.months.close') : t('accounting.months.reopen'),
+    onConfirm: async () => {
+      try {
+        close ? await closeMonth(year.value, row.ym, { by: auth.user?.name }) : await reopenMonth(year.value, row.ym, { by: auth.user?.name })
+      } catch (e) {
+        toast.error(t(ERR[e.message] ?? 'journal.errGeneric'))
+        return false
+      }
+      toast.success(close ? t('accounting.months.closed', { month: row.label }) : t('accounting.months.reopened', { month: row.label }))
+      await load()
+    },
+  })
 }
 const closedCount = computed(() => data.value?.rows.filter((r) => r.closed).length ?? 0)
 </script>
@@ -102,12 +101,5 @@ const closedCount = computed(() => data.value?.rows.filter((r) => r.closed).leng
       </DataTable>
     </Card>
 
-    <Dialog v-model:open="confirm" :title="action?.close ? t('accounting.months.close') : t('accounting.months.reopen')" size="sm">
-      <p class="text-muted-foreground text-sm">{{ action?.close ? t('accounting.months.closeHint', { month: action?.row.label }) : t('accounting.months.reopenHint', { month: action?.row.label }) }}</p>
-      <template #footer>
-        <Button variant="ghost" @click="confirm = false">{{ t('common.cancel') }}</Button>
-        <Button :disabled="busy" :variant="action?.close ? 'default' : 'destructive'" @click="run">{{ t('common.confirm') }}</Button>
-      </template>
-    </Dialog>
   </div>
 </template>

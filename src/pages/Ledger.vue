@@ -113,7 +113,7 @@ function exportTrial() {
     </PageHeader>
 
     <div class="mb-6 flex flex-wrap items-end gap-3">
-      <Tabs v-model="tab" :tabs="tabs" />
+      <Tabs v-model="tab" :tabs="tabs" class="lg:hidden" />
       <div class="ms-auto flex flex-wrap items-center gap-2">
         <DatePicker v-model="dateRange" range class="h-10 w-auto min-w-[240px]" />
         <Dropdown v-model="filterCenter" :options="centerFilterOptions" class="w-auto min-w-[160px]" />

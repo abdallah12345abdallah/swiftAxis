@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Bike, Car, Wallet, AlertTriangle } from 'lucide-vue-next'
+import { ArrowLeft, Bike, Car, Wallet, AlertTriangle, Package, Coins, Banknote } from 'lucide-vue-next'
 import Avatar from '@/components/common/Avatar.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
@@ -111,10 +111,12 @@ const vehicleStatusVariant = (s) => (s === 'active' ? 'success' : s === 'mainten
       </Card>
 
       <!-- stats -->
-      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard :label="t('riderDetail.orders')" :value="num(rider.orders)" :index="0" />
-        <StatCard :label="t('riderDetail.commission')" :value="sar(breakdown.total)" accent="orange" :index="1" />
-        <StatCard :label="t('riderDetail.baseSalary')" :value="sar(breakdown.base)" accent="success" :index="2" />
+      <div class="grid gap-4 xl:grid-cols-4">
+        <div class="stat-strip grid sm:grid-cols-3 xl:col-span-3">
+          <StatCard :icon="Package" :label="t('riderDetail.orders')" :value="num(rider.orders)" />
+          <StatCard :icon="Coins" :label="t('riderDetail.commission')" :value="sar(breakdown.total)" accent="orange" />
+          <StatCard :icon="Banknote" :label="t('riderDetail.baseSalary')" :value="sar(breakdown.base)" accent="success" />
+        </div>
         <Card class="p-5">
           <p class="text-muted-foreground text-sm font-medium">{{ t('riderDetail.target') }}</p>
           <p class="mt-2 text-3xl font-extrabold tracking-tight tabular-nums">

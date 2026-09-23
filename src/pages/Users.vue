@@ -3,7 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Plus, Pencil, Power, Check, Search, Warehouse } from 'lucide-vue-next'
+import { Plus, Pencil, Power, PowerOff, Check, Search, Warehouse } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -22,6 +23,7 @@ import { fetchUsers, toggleUser, convertRole } from '@/api/users'
 import { fetchAudit } from '@/api/audit'
 
 const { t } = useI18n()
+const confirm = useConfirm()
 const { formatDate } = useDate()
 const toast = useToast()
 
@@ -91,8 +93,19 @@ function openEdit(u) {
   userDialog.value = true
 }
 async function toggle(u) {
-  await toggleUser(u.id)
-  loadUsers()
+  const off = u.active
+  await confirm({
+    tone: off ? 'danger' : 'success',
+    icon: off ? PowerOff : Power,
+    title: t(off ? 'confirm.userDeactivate.title' : 'confirm.userActivate.title'),
+    message: t(off ? 'confirm.userDeactivate.message' : 'confirm.userActivate.message'),
+    subject: u.name,
+    confirmText: t(off ? 'riders.actions.deactivate' : 'riders.actions.activate'),
+    onConfirm: async () => {
+      await toggleUser(u.id)
+      await loadUsers()
+    },
+  })
 }
 
 // Access matrix from the single source of truth (NAV_ITEMS)
@@ -108,7 +121,8 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
       </template>
     </PageHeader>
 
-    <div class="mb-6"><Tabs v-model="tab" :tabs="tabs" /></div>
+    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
+    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- Users -->
     <Card v-if="tab === 'users'" class="overflow-hidden">

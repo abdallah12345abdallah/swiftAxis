@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Pencil, Download, Lock, CheckCircle2 } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Tabs } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
@@ -11,7 +12,6 @@ import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dropdown } from '@/components/ui/dropdown'
-import { Dialog } from '@/components/ui/dialog'
 import FormulaDialog from '@/components/commissions/FormulaDialog.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import { useCurrency } from '@/composables/useCurrency'
@@ -20,6 +20,7 @@ import { useToast } from '@/composables/useToast'
 import { fetchFormulas, fetchMonthlyReview, approveMonth, tiersOf } from '@/api/commissions'
 
 const { t } = useI18n()
+const confirm = useConfirm()
 const { sar, num } = useCurrency()
 const toast = useToast()
 
@@ -31,8 +32,6 @@ const month = ref('2026-07')
 
 const formulaDialog = ref(false)
 const editingFormula = ref(null)
-const approveDialog = ref(false)
-const approving = ref(false)
 
 const tabs = computed(() => [
   { value: 'formulas', label: t('commissions.tabs.formulas') },
@@ -66,18 +65,24 @@ function openFormula(row) {
 }
 
 async function doApprove() {
-  if (approving.value) return
-  approving.value = true
-  try {
-    await approveMonth(month.value)
-    toast.success(t('commissions.monthly.approved'))
-    approveDialog.value = false
-    await loadReview()
-  } catch (e) {
-    toast.error(t('commissions.monthly.locked'))
-  } finally {
-    approving.value = false
-  }
+  await confirm({
+    tone: 'success',
+    icon: CheckCircle2,
+    title: t('commissions.monthly.approveTitle'),
+    message: t('commissions.monthly.approveHint'),
+    details: [{ label: t('commissions.monthly.total'), value: sar(review.value.total) }],
+    confirmText: t('commissions.monthly.approve'),
+    onConfirm: async () => {
+      try {
+        await approveMonth(month.value)
+      } catch {
+        toast.error(t('commissions.monthly.locked'))
+        return false
+      }
+      toast.success(t('commissions.monthly.approved'))
+      await loadReview()
+    },
+  })
 }
 
 function exportReview() {
@@ -94,12 +99,12 @@ function exportReview() {
     <PageHeader :title="t('commissions.title')" :subtitle="t('commissions.subtitle')">
       <template #actions>
         <Button v-if="tab === 'monthly'" variant="outline" @click="exportReview"><Download /> {{ t('common.export') }}</Button>
-        <Button v-if="tab === 'monthly' && !review.locked" @click="approveDialog = true"><CheckCircle2 /> {{ t('commissions.monthly.approve') }}</Button>
+        <Button v-if="tab === 'monthly' && !review.locked" @click="doApprove"><CheckCircle2 /> {{ t('commissions.monthly.approve') }}</Button>
       </template>
     </PageHeader>
 
-    <div class="mb-6 flex flex-wrap items-center gap-3">
-      <Tabs v-model="tab" :tabs="tabs" />
+    <div class="mb-6 flex flex-wrap items-center gap-3" :class="tab !== 'monthly' && 'lg:hidden'">
+      <Tabs v-model="tab" :tabs="tabs" class="lg:hidden" />
       <Dropdown v-if="tab === 'monthly'" v-model="month" :options="monthOptions" class="ms-auto w-auto min-w-[140px]" />
     </div>
 
@@ -170,16 +175,5 @@ function exportReview() {
 
     <FormulaDialog v-model:open="formulaDialog" :row="editingFormula" @saved="loadFormulas" />
 
-    <Dialog v-model:open="approveDialog" :title="t('commissions.monthly.approveTitle')">
-      <p class="text-muted-foreground text-sm">{{ t('commissions.monthly.approveHint') }}</p>
-      <p class="mt-4 flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3 font-semibold">
-        <span>{{ t('commissions.monthly.total') }}</span>
-        <span class="tabular-nums">{{ sar(review.total) }}</span>
-      </p>
-      <template #footer>
-        <Button variant="ghost" @click="approveDialog = false">{{ t('common.cancel') }}</Button>
-        <Button :disabled="approving" @click="doApprove">{{ t('commissions.monthly.approve') }}</Button>
-      </template>
-    </Dialog>
   </div>
 </template>

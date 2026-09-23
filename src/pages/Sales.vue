@@ -104,7 +104,8 @@ function exportVat() {
       </template>
     </PageHeader>
 
-    <div class="mb-6"><Tabs v-model="tab" :tabs="tabs" /></div>
+    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
+    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('sales.kpi.count') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(kpi.count) }}</p></Card>

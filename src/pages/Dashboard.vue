@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Wallet, Target, PartyPopper, ArrowDownLeft, LineChart, CalendarDays,
+  Package, Coins, Users, Gauge,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ROLES } from '@/lib/constants'
@@ -106,11 +107,11 @@ watch(() => auth.role, load)
 
     <!-- ── Manager / Supervisor / Accountant ──────────────── -->
     <template v-else-if="!isRider">
-      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard :index="0" :label="t('dashboard.kpi.totalOrders')" :value="num(data.kpis.totalOrders.value)" :delta="data.kpis.totalOrders.delta" accent="primary" />
-        <StatCard :index="1" :label="t('dashboard.kpi.commissionsDue')" :value="sar(data.kpis.commissionsDue.value)" :delta="data.kpis.commissionsDue.delta" accent="orange" />
-        <StatCard :index="2" :label="t('dashboard.kpi.activeRiders')" :value="num(data.kpis.activeRiders.value)" :delta="data.kpis.activeRiders.delta" accent="success" />
-        <StatCard :index="3" :label="t('dashboard.kpi.avgOrders')" :value="num(data.kpis.avgOrders.value)" :delta="data.kpis.avgOrders.delta" accent="primary" />
+      <div class="stat-strip grid sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard :icon="Package" :label="t('dashboard.kpi.totalOrders')" :value="num(data.kpis.totalOrders.value)" :delta="data.kpis.totalOrders.delta" accent="primary" />
+        <StatCard :icon="Coins" :label="t('dashboard.kpi.commissionsDue')" :value="sar(data.kpis.commissionsDue.value)" :delta="data.kpis.commissionsDue.delta" accent="orange" />
+        <StatCard :icon="Users" :label="t('dashboard.kpi.activeRiders')" :value="num(data.kpis.activeRiders.value)" :delta="data.kpis.activeRiders.delta" accent="success" />
+        <StatCard :icon="Gauge" :label="t('dashboard.kpi.avgOrders')" :value="num(data.kpis.avgOrders.value)" :delta="data.kpis.avgOrders.delta" accent="warning" />
       </div>
 
       <!-- focal chart + side panel -->
@@ -148,10 +149,10 @@ watch(() => auth.role, load)
         {{ t('dashboard.goalReached') }}
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard :index="0" :label="t('dashboard.kpi.myOrders')" :value="num(data.kpis.myOrders.value)" :delta="data.kpis.myOrders.delta" accent="primary" />
-        <StatCard :index="1" :label="t('dashboard.kpi.myCommission')" :value="sar(data.kpis.myCommission.value)" :delta="data.kpis.myCommission.delta" accent="orange" />
-        <StatCard :index="2" :label="t('dashboard.kpi.walletBalance')" :value="sar(data.kpis.walletBalance.value)" accent="success" />
+      <div class="stat-strip grid sm:grid-cols-3">
+        <StatCard :icon="Package" :label="t('dashboard.kpi.myOrders')" :value="num(data.kpis.myOrders.value)" :delta="data.kpis.myOrders.delta" accent="primary" />
+        <StatCard :icon="Coins" :label="t('dashboard.kpi.myCommission')" :value="sar(data.kpis.myCommission.value)" :delta="data.kpis.myCommission.delta" accent="orange" />
+        <StatCard :icon="Wallet" :label="t('dashboard.kpi.walletBalance')" :value="sar(data.kpis.walletBalance.value)" accent="success" />
       </div>
 
       <div class="grid gap-6 lg:grid-cols-3">

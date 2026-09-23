@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { cn } from '@/lib/utils'
 const props = defineProps({ class: { type: null, default: '' } })
-const classes = computed(() => cn('font-semibold leading-none tracking-tight', props.class))
+const classes = computed(() => cn('text-base leading-snug font-bold tracking-tight', props.class))
 </script>
 
 <template>

@@ -3,9 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import {
-  Plus, Download, Search, Pencil, Power, AlertTriangle,
+  Plus, Download, Search, Pencil, Power, PowerOff, AlertTriangle,
   Users, UserCheck, TrendingDown, Package, Bike, Car,
 } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
@@ -24,6 +25,7 @@ import { fetchRiders, fetchContracts, toggleRiderActive } from '@/api/riders'
 import { fetchVehicles } from '@/api/vehicles'
 
 const { t, locale } = useI18n()
+const confirm = useConfirm()
 const { sar, num } = useCurrency()
 
 const loading = ref(true)
@@ -110,8 +112,19 @@ function openEditRider(r) {
   riderDialog.value = true
 }
 async function toggleActive(r) {
-  await toggleRiderActive(r.id)
-  await load()
+  const off = r.active
+  await confirm({
+    tone: off ? 'danger' : 'success',
+    icon: off ? PowerOff : Power,
+    title: t(off ? 'confirm.riderDeactivate.title' : 'confirm.riderActivate.title'),
+    message: t(off ? 'confirm.riderDeactivate.message' : 'confirm.riderActivate.message'),
+    subject: `${r.name} · ${r.id}`,
+    confirmText: t(off ? 'riders.actions.deactivate' : 'riders.actions.activate'),
+    onConfirm: async () => {
+      await toggleRiderActive(r.id)
+      await load()
+    },
+  })
 }
 
 function statusVariant(r) {

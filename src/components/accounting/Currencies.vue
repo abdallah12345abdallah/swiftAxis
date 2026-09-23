@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, Star } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,7 @@ import { useToast } from '@/composables/useToast'
 import { fetchCurrencies, createCurrency, updateCurrency, setBaseCurrency } from '@/api/accounting'
 
 const { t, locale } = useI18n()
+const confirm = useConfirm()
 const { num } = useCurrency()
 const toast = useToast()
 const loading = ref(true)
@@ -55,9 +57,19 @@ async function save() {
   }
 }
 async function makeBase(c) {
-  await setBaseCurrency(c.id)
-  toast.success(t('accounting.currencies.baseSet', { code: c.code }))
-  await load()
+  await confirm({
+    tone: 'warning',
+    icon: Star,
+    title: t('confirm.setBase.title'),
+    message: t('confirm.setBase.message', { code: c.code }),
+    subject: `${c.code} · ${locale.value === 'ar' ? c.name : c.en}`,
+    confirmText: t('accounting.currencies.setBase'),
+    onConfirm: async () => {
+      await setBaseCurrency(c.id)
+      toast.success(t('accounting.currencies.baseSet', { code: c.code }))
+      await load()
+    },
+  })
 }
 const label = (c) => (locale.value === 'ar' ? c.name : c.en)
 const columns = computed(() => [

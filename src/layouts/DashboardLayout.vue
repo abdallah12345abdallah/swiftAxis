@@ -44,6 +44,20 @@ const groups = computed(() =>
 )
 const isModuleActive = (item) => route.path === item.to || route.path.startsWith(item.to + '/')
 const subsOf = (key) => SUB_SCREENS[key]?.items ?? []
+
+/* the options lists (a module's screens) are a desktop feature; on phones the
+   module is a plain link and the page's own tabs switch its screens */
+const DESKTOP = '(min-width: 64rem)'
+const isDesktop = ref(typeof window !== 'undefined' && window.matchMedia(DESKTOP).matches)
+let mq = null
+const onMq = (e) => (isDesktop.value = e.matches)
+onMounted(() => {
+  mq = window.matchMedia(DESKTOP)
+  isDesktop.value = mq.matches
+  mq.addEventListener('change', onMq)
+})
+onBeforeUnmount(() => mq?.removeEventListener('change', onMq))
+const hasScreens = (key) => isDesktop.value && subsOf(key).length > 0
 const defaultTabOf = (key) => SUB_SCREENS[key]?.defaultTab
 
 /* a module with screens is a toggle: clicking it opens or closes its list
@@ -123,7 +137,7 @@ function logout() {
       <div v-if="drawer" class="fixed inset-0 z-40 bg-navy/60 backdrop-blur-sm lg:hidden" @click="drawer = false" />
       <aside
         class="island no-print fixed inset-y-3 z-50 flex w-[300px] flex-col rounded-2xl border border-white/15 p-3 text-white/90 shadow-2xl transition-transform duration-300 start-3 lg:sticky lg:inset-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh-2rem)] lg:w-auto lg:translate-x-0"
-        :class="drawer ? 'translate-x-0' : 'translate-x-[110%] rtl:translate-x-[-110%] lg:rtl:translate-x-0'"
+        :class="drawer ? 'translate-x-0' : '-translate-x-[110%] rtl:translate-x-[110%] lg:translate-x-0 lg:rtl:translate-x-0'"
       >
         <!-- brand + language -->
         <div class="mb-3 flex items-center justify-between px-1 pt-1">
@@ -143,7 +157,7 @@ function logout() {
             <template v-for="item in g.items" :key="item.key">
               <!-- toggle (has screens) -->
               <button
-                v-if="subsOf(item.key).length"
+                v-if="hasScreens(item.key)"
                 type="button"
                 class="island-link relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-start text-[14.5px] font-semibold text-white/85 transition-colors hover:bg-white/10 hover:text-white"
                 :class="[isModuleActive(item) && 'is-active', isOpen(item.key) && !isModuleActive(item) && 'is-open']"
@@ -166,7 +180,7 @@ function logout() {
               </RouterLink>
 
               <!-- the module's screens, as an options panel -->
-              <div v-if="subsOf(item.key).length && isOpen(item.key)" class="options mt-1 mb-2 rounded-xl p-1.5 ms-4">
+              <div v-if="hasScreens(item.key) && isOpen(item.key)" class="options mt-1 mb-2 rounded-xl p-1.5 ms-4">
                 <template v-for="(sub, i) in subsOf(item.key)" :key="sub.key">
                   <p v-if="sub.group && (i === 0 || subsOf(item.key)[i - 1].group !== sub.group)" class="mt-2 mb-0.5 px-3 text-[11px] font-bold tracking-wide text-white/40 uppercase first:mt-0">{{ t(sub.group) }}</p>
                   <RouterLink
@@ -186,8 +200,12 @@ function logout() {
         <!-- account card + menu -->
         <Menu align="start" side="top" class="mt-3 w-full [&>div:first-child]:w-full" content-class="w-full p-2">
           <template #trigger="{ open }">
-            <button type="button" class="account flex w-full cursor-pointer items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-start text-white transition-colors" :class="open ? 'bg-white/20 ring-2 ring-orange/60' : 'hover:bg-white/15'">
-              <Avatar :initials="auth.initials" class="bg-orange size-10 text-sm text-white" />
+            <button type="button" class="account relative flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-start text-white transition-colors" :class="open ? 'is-open bg-white/20 ring-2 ring-orange/60' : 'hover:bg-white/15'">
+              <span class="acct-sheen" aria-hidden="true" />
+              <span class="acct-av relative shrink-0">
+                <Avatar :initials="auth.initials" class="bg-orange relative size-10 text-sm text-white" />
+                <span class="acct-dot" aria-hidden="true" />
+              </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-[14px] font-bold">{{ auth.user?.name }}</span>
                 <span class="flex items-center gap-1.5 text-[11.5px] text-white/65">
@@ -195,7 +213,7 @@ function logout() {
                   <RiderCode v-if="auth.user?.riderId" :code="auth.user.riderId" />
                 </span>
               </span>
-              <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white/12 text-white/80"><ChevronDown class="size-4 transition-transform" :class="open ? 'rotate-180' : ''" /></span>
+              <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-white/12 text-white/80"><ChevronDown class="acct-chev size-4 transition-transform" :class="open ? 'rotate-180' : ''" /></span>
             </button>
           </template>
 
@@ -308,6 +326,38 @@ function logout() {
 .sheet-ghost.g2 { inset-block: 14px -14px; inset-inline: 14px -14px; background: color-mix(in srgb, var(--background) 25%, transparent); animation-delay: 80ms; }
 @keyframes ghost-shuffle { 40% { transform: translate(calc(var(--out) * 8px), 5px); } }
 @media (prefers-reduced-motion: reduce) { .sheet-ghost { animation: none; } }
+/* account card: a slow orange ring turns around the avatar, a green "online"
+   dot breathes, a soft light sweeps across the card every few seconds, and
+   on hover the card lifts a little while the arrow nudges */
+.account { transition: background-color 0.2s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s; }
+.account:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -16px color-mix(in oklch, var(--orange) 70%, black); }
+.acct-av::before {
+  content: ''; position: absolute; inset: -3px; border-radius: 9999px;
+  background: conic-gradient(from var(--acct-spin, 0deg), var(--orange), transparent 35%, color-mix(in oklch, var(--orange) 40%, white) 60%, transparent 80%, var(--orange));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  animation: acct-spin 5s linear infinite;
+}
+@property --acct-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes acct-spin { to { --acct-spin: 360deg; } }
+.acct-dot {
+  position: absolute; bottom: -1px; inset-inline-end: -1px; width: 11px; height: 11px; border-radius: 9999px;
+  background: var(--success); box-shadow: 0 0 0 2px var(--navy);
+}
+.acct-dot::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--success); animation: acct-pulse 2.2s ease-out infinite; }
+@keyframes acct-pulse { from { transform: scale(1); opacity: 0.7; } to { transform: scale(2.4); opacity: 0; } }
+.acct-sheen {
+  position: absolute; inset-block: 0; width: 45%; inset-inline-start: -60%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, color-mix(in oklch, white 16%, transparent), transparent);
+  animation: acct-sheen 6s ease-in-out infinite;
+}
+@keyframes acct-sheen { 0%, 70% { inset-inline-start: -60%; } 100% { inset-inline-start: 120%; } }
+.account:hover .acct-chev:not(.rotate-180) { animation: acct-nudge 0.9s ease-in-out infinite; }
+@keyframes acct-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0 2px; } }
+@media (prefers-reduced-motion: reduce) {
+  .acct-av::before, .acct-dot::after, .acct-sheen, .account:hover .acct-chev { animation: none; }
+  .account:hover { transform: none; }
+}
 /* printing needs the natural page flow back */
 @media print {
   .shell { height: auto; overflow: visible; }

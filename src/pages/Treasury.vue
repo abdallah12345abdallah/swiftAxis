@@ -7,6 +7,7 @@ import {
   Plus, Pencil, Download, Landmark, Banknote, Wallet, ArrowLeftRight, Star,
   ArrowDownLeft, ArrowUpRight, Link2,
 } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -32,6 +33,7 @@ import { fetchAccounts, fetchCostCenters } from '@/api/ledger'
 import { fetchExpenseItems } from '@/api/catalogs'
 
 const { t, locale } = useI18n()
+const confirm = useConfirm()
 const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 const toast = useToast()
@@ -129,9 +131,20 @@ function openVoucher(mode) {
 
 async function linkRider(row, treasuryId) {
   if (!treasuryId || treasuryId === row.treasuryId) return
-  await setRiderTreasury(row.riderId, treasuryId)
-  toast.success(t('treasury.settings.saved'))
-  await load()
+  const target = treasuries.value.find((x) => x.id === treasuryId)?.name ?? ''
+  await confirm({
+    tone: 'warning',
+    icon: Link2,
+    title: t('confirm.linkRider.title'),
+    message: t('confirm.linkRider.message', { treasury: target }),
+    subject: `${row.name} · ${row.riderId}`,
+    confirmText: t('confirm.linkRider.action'),
+    onConfirm: async () => {
+      await setRiderTreasury(row.riderId, treasuryId)
+      toast.success(t('treasury.settings.saved'))
+      await load()
+    },
+  })
 }
 
 function exportStatement() {
@@ -167,7 +180,8 @@ const voucherColumns = (isPayment) => [
       </template>
     </PageHeader>
 
-    <div class="mb-6"><Tabs v-model="tab" :tabs="tabs" /></div>
+    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
+    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- ── Treasuries & balances ───────────────────────────── -->
     <template v-if="tab === 'treasuries'">

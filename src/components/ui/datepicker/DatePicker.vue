@@ -405,13 +405,13 @@ watch(
 const triggerClasses = computed(() =>
   cn(
     'group relative flex h-11 w-full cursor-pointer items-center gap-2 rounded-lg border bg-muted/50 ps-3.5 pe-3 text-sm outline-none transition-all duration-200',
-    'hover:bg-muted focus-visible:border-primary focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-primary/15',
+    'hover:bg-muted focus-visible:border-primary focus-visible:bg-background',
     'disabled:pointer-events-none disabled:opacity-60',
-    open.value && 'border-primary bg-background ring-4 ring-primary/15',
+    open.value && 'border-primary bg-background',
     hasValue.value ? 'text-foreground' : 'text-muted-foreground',
     props.invalid
-      ? 'border-danger focus-visible:border-danger focus-visible:ring-danger/15'
-      : !open.value && 'border-transparent',
+      ? 'border-danger focus-visible:border-danger'
+      : !open.value && 'border-border hover:border-primary/40',
     props.class,
   ),
 )

@@ -1415,5 +1415,37 @@
     "language": "Language",
     "dark": "Dark",
     "light": "Light"
+  },
+  "confirm": {
+    "failed": "The action could not be completed. Please try again.",
+    "riderDeactivate": {
+      "title": "Deactivate this rider?",
+      "message": "The rider will be left out of order assignment and commission runs until reactivated."
+    },
+    "riderActivate": {
+      "title": "Activate this rider?",
+      "message": "The rider returns to the lists and to commission runs."
+    },
+    "userDeactivate": {
+      "title": "Deactivate this user?",
+      "message": "The user will not be able to sign in until reactivated."
+    },
+    "userActivate": {
+      "title": "Activate this user?",
+      "message": "The user will be able to sign in again with their previous permissions."
+    },
+    "setBase": {
+      "title": "Change the base currency?",
+      "message": "Balances and reports will be shown in {code} instead of the current currency."
+    },
+    "setDefaultYear": {
+      "title": "Change the default fiscal year?",
+      "message": "Journal and report screens will open on {name} by default."
+    },
+    "linkRider": {
+      "title": "Move the rider’s custody box?",
+      "message": "From now on the rider’s handovers go to {treasury}. Past movements stay as they are.",
+      "action": "Move custody"
+    }
   }
 }

@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, Star, Lock, CalendarRange } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,7 @@ import { useToast } from '@/composables/useToast'
 import { fetchFiscalYearsFull, createFiscalYear, updateFiscalYear, setDefaultFiscalYear } from '@/api/accounting'
 
 const { t, locale } = useI18n()
+const confirm = useConfirm()
 const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 const toast = useToast()
@@ -58,9 +60,19 @@ async function save() {
   }
 }
 async function makeDefault(y) {
-  await setDefaultFiscalYear(y.id)
-  toast.success(t('accounting.years.defaultSet', { name: locale.value === 'ar' ? y.name : y.en }))
-  await load()
+  const name = locale.value === 'ar' ? y.name : y.en
+  await confirm({
+    tone: 'primary',
+    icon: CalendarRange,
+    title: t('confirm.setDefaultYear.title'),
+    message: t('confirm.setDefaultYear.message', { name }),
+    confirmText: t('accounting.years.setDefault'),
+    onConfirm: async () => {
+      await setDefaultFiscalYear(y.id)
+      toast.success(t('accounting.years.defaultSet', { name }))
+      await load()
+    },
+  })
 }
 const columns = computed(() => [
   { key: 'name', label: t('common.name'), sortable: true },
