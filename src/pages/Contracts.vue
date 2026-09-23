@@ -1,9 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
+import FilterBar from '@/components/common/FilterBar.vue'
+import { DateRangePicker } from '@/components/ui/datepicker'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,6 +20,43 @@ const { sar, num } = useCurrency()
 
 const loading = ref(true)
 const contracts = ref([])
+
+/* search by company, a date range (contracts running at any point in it; an
+   open-ended contract runs on), and status / term / linked riders in the tray */
+const query = ref('')
+const dateRange = ref(['', ''])
+const filters = ref({ status: '', term: '', riders: '' })
+const filterDefs = computed(() => [
+  { key: 'status', label: t('contracts.status'), options: [
+    { value: 'active', label: t('dashboard.status.active') },
+    { value: 'inactive', label: t('dashboard.status.inactive') },
+  ] },
+  { key: 'term', label: t('contracts.filters.term'), options: [
+    { value: 'ongoing', label: t('contracts.filters.termOngoing') },
+    { value: 'fixed', label: t('contracts.filters.termFixed') },
+  ] },
+  { key: 'riders', label: t('contracts.ridersLinked'), options: [
+    { value: 'with', label: t('contracts.filters.withRiders') },
+    { value: 'without', label: t('contracts.filters.noRiders') },
+  ] },
+])
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  const [from, to] = dateRange.value
+  const f = filters.value
+  return contracts.value.filter((c) => {
+    if (q && !String(c.company).toLowerCase().includes(q)) return false
+    if (to && c.start && c.start > to) return false
+    if (from && c.end && c.end < from) return false
+    if (f.status === 'active' && !c.active) return false
+    if (f.status === 'inactive' && c.active) return false
+    if (f.term === 'ongoing' && c.end) return false
+    if (f.term === 'fixed' && !c.end) return false
+    if (f.riders === 'with' && !c.riderCount) return false
+    if (f.riders === 'without' && c.riderCount) return false
+    return true
+  })
+})
 
 const contractDialog = ref(false)
 const editingContract = ref(null)
@@ -48,14 +88,16 @@ function openEditContract(c) {
       </template>
     </PageHeader>
 
+    <FilterBar v-model:search="query" v-model="filters" :filters="filterDefs" :search-placeholder="t('contracts.searchPh')" class="mb-4">
+      <template #extra><DateRangePicker v-model="dateRange" /></template>
+    </FilterBar>
+
     <Card class="overflow-hidden">
       <div v-if="loading" class="space-y-3 p-5">
         <Skeleton v-for="i in 3" :key="i" class="h-12 rounded-lg" />
       </div>
 
-      <div v-else-if="!contracts.length" class="text-muted-foreground py-16 text-center text-sm">
-        {{ t('contracts.empty') }}
-      </div>
+      <EmptyState v-else-if="!filtered.length" :title="contracts.length ? t('common.noData') : t('contracts.empty')" />
 
       <div v-else class="overflow-x-auto">
         <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
@@ -71,7 +113,7 @@ function openEditContract(c) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in contracts" :key="c.id" class="hover:bg-muted/40 border-b transition-colors last:border-0">
+            <tr v-for="c in filtered" :key="c.id" class="hover:bg-muted/40 border-b transition-colors last:border-0">
               <td class="px-5 py-3 font-medium">{{ c.company }}</td>
               <td class="text-muted-foreground hidden px-5 py-3 tabular-nums sm:table-cell">{{ sar(c.amount) }}</td>
               <td class="text-muted-foreground hidden px-5 py-3 tabular-nums md:table-cell" dir="ltr">{{ c.start ?? '—' }}</td>

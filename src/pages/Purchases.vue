@@ -5,7 +5,8 @@ import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Download } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { Tabs } from '@/components/ui/tabs'
+import FilterBar from '@/components/common/FilterBar.vue'
+import { DateRangePicker } from '@/components/ui/datepicker'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -72,6 +73,66 @@ const tabs = computed(() => [
   { value: 'byCenter', label: t('purchases.tabs.byCenter') },
 ])
 
+/* purchases: search by ref / supplier invoice / supplier / item, a date range,
+   and supplier, vehicle, cost center and taxable in the tray */
+const purQuery = ref('')
+const purRange = ref(['', ''])
+const purFilters = ref({ supplier: '', vehicle: '', costCenter: '', taxable: '' })
+const purFilterDefs = computed(() => [
+  { key: 'supplier', label: t('purchases.fields.supplier'), options: suppliers.value.map((x) => ({ value: x.id, label: x.name })) },
+  { key: 'vehicle', label: t('purchases.fields.vehicle'), options: [{ value: 'none', label: t('purchases.fields.noVehicle') }, ...vehicles.value.map((v) => ({ value: v.id, label: v.plate }))] },
+  { key: 'costCenter', label: t('purchases.filters.costCenter'), options: costCenterOptions.value },
+  { key: 'taxable', label: t('purchases.filters.taxable'), options: [{ value: 'yes', label: t('purchases.filters.taxed') }, { value: 'no', label: t('purchases.filters.notTaxed') }] },
+])
+const shownPurchases = computed(() => {
+  const q = purQuery.value.trim().toLowerCase()
+  const [a, b] = purRange.value
+  const f = purFilters.value
+  return purchases.value.filter((p) =>
+    (!q || [p.ref, p.invoiceNo, p.supplierName, p.itemType].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!a || p.date >= a) && (!b || p.date <= b) &&
+    (!f.supplier || p.supplierId === f.supplier) &&
+    (!f.vehicle || (f.vehicle === 'none' ? !p.vehicleId : p.vehicleId === f.vehicle)) &&
+    (!f.costCenter || p.costCenter === f.costCenter) &&
+    (!f.taxable || (f.taxable === 'yes') === !!p.taxable),
+  )
+})
+
+/* suppliers: search by name / tax no.; category and status in the tray */
+const supQuery = ref('')
+const supFilters = ref({ category: '', status: '' })
+const statusFilterOptions = computed(() => [{ value: 'active', label: t('common.active') }, { value: 'inactive', label: t('common.inactive') }])
+const supFilterDefs = computed(() => [
+  { key: 'category', label: t('purchases.supplier.category'), options: categoryOptions.value },
+  { key: 'status', label: t('common.status'), options: statusFilterOptions.value },
+])
+const shownSuppliers = computed(() => {
+  const q = supQuery.value.trim().toLowerCase()
+  const f = supFilters.value
+  return suppliers.value.filter((x) =>
+    (!q || [x.name, x.taxNo].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!f.category || x.category === f.category) &&
+    (!f.status || (f.status === 'active') === (x.active !== false)),
+  )
+})
+
+/* purchase items: search by name; category and status in the tray */
+const itemQuery = ref('')
+const itemFilters = ref({ category: '', status: '' })
+const itemFilterDefs = computed(() => [
+  { key: 'category', label: t('purchases.items.category'), options: [...new Set(items.value.map((i) => i.category).filter(Boolean))].map((c) => ({ value: c, label: loc(SUPPLIER_CATEGORIES, c) })) },
+  { key: 'status', label: t('common.status'), options: statusFilterOptions.value },
+])
+const shownItems = computed(() => {
+  const q = itemQuery.value.trim().toLowerCase()
+  const f = itemFilters.value
+  return items.value.filter((i) =>
+    (!q || [i.name, i.en, i.unit].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!f.category || i.category === f.category) &&
+    (!f.status || (f.status === 'active') === (i.active !== false)),
+  )
+})
+
 async function load() {
   loading.value = true
   ;[purchases.value, suppliers.value, vat.value, byCenter.value, centers.value, vehicles.value, items.value] = await Promise.all([
@@ -109,13 +170,15 @@ function exportVat() {
       </template>
     </PageHeader>
 
-    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
-    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- Purchases -->
-    <Card v-if="tab === 'purchases'" class="overflow-hidden">
+    <template v-if="tab === 'purchases'">
+    <FilterBar v-model:search="purQuery" v-model="purFilters" :filters="purFilterDefs" :search-placeholder="t('purchases.searchPh')" class="mb-4">
+      <template #extra><DateRangePicker v-model="purRange" /></template>
+    </FilterBar>
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="purchases" :empty="t('purchases.empty')" :page-size="12"
+        :loading="loading" :rows="shownPurchases" :empty="t('purchases.empty')" :page-size="12"
         :columns="[
           { key: 'ref', label: t('ledger.ref'), sortable: true },
           { key: 'date', label: t('purchases.fields.date'), sortable: true },
@@ -140,11 +203,14 @@ function exportVat() {
         <template #cell-total="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.total) }}</span></template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- Suppliers -->
-    <Card v-else-if="tab === 'suppliers'" class="overflow-hidden">
+    <template v-else-if="tab === 'suppliers'">
+    <FilterBar v-model:search="supQuery" v-model="supFilters" :filters="supFilterDefs" :search-placeholder="t('purchases.searchSuppliers')" class="mb-4" />
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="suppliers" :empty="t('purchases.empty')"
+        :loading="loading" :rows="shownSuppliers" :empty="t('purchases.empty')"
         :columns="[
           { key: 'name', label: t('purchases.supplier.name'), sortable: true },
           { key: 'taxNo', label: t('purchases.supplier.taxNo'), hideBelow: 'md' },
@@ -165,11 +231,14 @@ function exportVat() {
         </template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- Purchase items (#6) -->
-    <Card v-else-if="tab === 'items'" class="overflow-hidden">
+    <template v-else-if="tab === 'items'">
+    <FilterBar v-model:search="itemQuery" v-model="itemFilters" :filters="itemFilterDefs" :search-placeholder="t('purchases.searchItems')" class="mb-4" />
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="items" :empty="t('purchases.empty')"
+        :loading="loading" :rows="shownItems" :empty="t('purchases.empty')"
         :columns="[
           { key: 'name', label: t('purchases.items.name'), sortable: true },
           { key: 'category', label: t('purchases.items.category') },
@@ -191,6 +260,7 @@ function exportVat() {
         </template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- VAT report -->
     <Card v-else-if="tab === 'vat'" class="overflow-hidden">

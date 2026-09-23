@@ -12,7 +12,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { NAV_ITEMS, NAV_GROUPS, ROLES, ALL_ROLES } from '@/lib/constants'
-import { SUB_SCREENS, isSubActive, subLocation } from '@/lib/subScreens'
+import { SUB_SCREENS, isSubActive, subLocation, currentScreen } from '@/lib/subScreens'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 import Menu from '@/components/common/Menu.vue'
 import Avatar from '@/components/common/Avatar.vue'
@@ -45,19 +45,8 @@ const groups = computed(() =>
 const isModuleActive = (item) => route.path === item.to || route.path.startsWith(item.to + '/')
 const subsOf = (key) => SUB_SCREENS[key]?.items ?? []
 
-/* the options lists (a module's screens) are a desktop feature; on phones the
-   module is a plain link and the page's own tabs switch its screens */
-const DESKTOP = '(min-width: 64rem)'
-const isDesktop = ref(typeof window !== 'undefined' && window.matchMedia(DESKTOP).matches)
-let mq = null
-const onMq = (e) => (isDesktop.value = e.matches)
-onMounted(() => {
-  mq = window.matchMedia(DESKTOP)
-  isDesktop.value = mq.matches
-  mq.addEventListener('change', onMq)
-})
-onBeforeUnmount(() => mq?.removeEventListener('change', onMq))
-const hasScreens = (key) => isDesktop.value && subsOf(key).length > 0
+/* a module's screens are separate pages, listed under it on every screen size */
+const hasScreens = (key) => subsOf(key).length > 0
 const defaultTabOf = (key) => SUB_SCREENS[key]?.defaultTab
 
 /* a module with screens is a toggle: clicking it opens or closes its list
@@ -73,7 +62,15 @@ function toggleModule(key) {
   expanded.value = s
 }
 
-const pageTitle = computed(() => (route.meta?.titleKey ? t(route.meta.titleKey) : t('nav.dashboard')))
+const pageTitle = computed(() => {
+  const screen = currentScreen(route)
+  if (screen) return t(screen.labelKey)
+  return route.meta?.titleKey ? t(route.meta.titleKey) : t('nav.dashboard')
+})
+
+/* one page instance per screen (/orders and /orders/manual never share state);
+   other routes keep their instance while only their params change */
+const screenKey = computed(() => `${String(route.name)}:${route.params.tab ?? ''}`)
 
 /* the sheet scrolls, not the window — reset it on navigation */
 const drawer = ref(false)
@@ -263,7 +260,11 @@ function logout() {
             :data-compact="compact || undefined"
             @scroll.passive="onMainScroll"
           >
-            <RouterView />
+            <!-- each screen of a module is its own page: switching screens mounts a
+                 fresh page, so filters and state never carry over between them -->
+            <RouterView v-slot="{ Component }">
+              <component :is="Component" :key="screenKey" />
+            </RouterView>
           </main>
         </div>
       </div>

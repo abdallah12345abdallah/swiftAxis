@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { NAV_ITEMS } from '@/lib/constants'
+import { screensRoute } from '@/lib/subScreens'
 
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
@@ -60,18 +61,18 @@ const routes = [
       { path: 'riders', name: 'riders', component: Riders, meta: { roles: ridersItem.roles, titleKey: 'nav.riders' } },
       { path: 'riders/:id', name: 'rider-detail', component: RiderDetail, meta: { roles: ridersItem.roles, titleKey: 'nav.riders' } },
       { path: 'contracts', name: 'contracts', component: Contracts, meta: { roles: rolesOf('contracts'), titleKey: 'nav.contracts' } },
-      { path: 'ledger', name: 'ledger', component: Ledger, meta: { roles: rolesOf('ledger'), titleKey: 'nav.ledger' } },
+      { path: screensRoute('ledger'), name: 'ledger', component: Ledger, meta: { roles: rolesOf('ledger'), titleKey: 'nav.ledger' } },
       { path: 'ledger/entry/:id?', name: 'journal-entry', component: JournalEntry, meta: { roles: rolesOf('ledger'), titleKey: 'journal.title' } },
       { path: 'accounting/:screen?', name: 'accounting', component: Accounting, meta: { roles: rolesOf('accounting'), titleKey: 'nav.accounting' } },
-      { path: 'orders', name: 'orders', component: Orders, meta: { roles: rolesOf('orders'), titleKey: 'nav.orders' } },
-      { path: 'commissions', name: 'commissions', component: Commissions, meta: { roles: rolesOf('commissions'), titleKey: 'nav.commissions' } },
-      { path: 'wallets', name: 'wallets', component: Wallets, meta: { roles: rolesOf('wallets'), titleKey: 'nav.wallets' } },
-      { path: 'vehicles', name: 'vehicles', component: Vehicles, meta: { roles: rolesOf('vehicles'), titleKey: 'nav.vehicles' } },
-      { path: 'purchases', name: 'purchases', component: Purchases, meta: { roles: rolesOf('purchases'), titleKey: 'nav.purchases' } },
-      { path: 'treasury', name: 'treasury', component: Treasury, meta: { roles: rolesOf('treasury'), titleKey: 'nav.treasury' } },
-      { path: 'sales', name: 'sales', component: Sales, meta: { roles: rolesOf('sales'), titleKey: 'nav.sales' } },
-      { path: 'reports', name: 'reports', component: Reports, meta: { roles: rolesOf('reports'), titleKey: 'nav.reports' } },
-      { path: 'users', name: 'users', component: Users, meta: { roles: rolesOf('users'), titleKey: 'nav.users' } },
+      { path: screensRoute('orders'), name: 'orders', component: Orders, meta: { roles: rolesOf('orders'), titleKey: 'nav.orders' } },
+      { path: screensRoute('commissions'), name: 'commissions', component: Commissions, meta: { roles: rolesOf('commissions'), titleKey: 'nav.commissions' } },
+      { path: screensRoute('wallets'), name: 'wallets', component: Wallets, meta: { roles: rolesOf('wallets'), titleKey: 'nav.wallets' } },
+      { path: screensRoute('vehicles'), name: 'vehicles', component: Vehicles, meta: { roles: rolesOf('vehicles'), titleKey: 'nav.vehicles' } },
+      { path: screensRoute('purchases'), name: 'purchases', component: Purchases, meta: { roles: rolesOf('purchases'), titleKey: 'nav.purchases' } },
+      { path: screensRoute('treasury'), name: 'treasury', component: Treasury, meta: { roles: rolesOf('treasury'), titleKey: 'nav.treasury' } },
+      { path: screensRoute('sales'), name: 'sales', component: Sales, meta: { roles: rolesOf('sales'), titleKey: 'nav.sales' } },
+      { path: screensRoute('reports'), name: 'reports', component: Reports, meta: { roles: rolesOf('reports'), titleKey: 'nav.reports' } },
+      { path: screensRoute('users'), name: 'users', component: Users, meta: { roles: rolesOf('users'), titleKey: 'nav.users' } },
       { path: 'settings', name: 'settings', component: Settings, meta: { roles: rolesOf('settings'), titleKey: 'nav.settings' } },
       ...placeholderRoutes,
       { path: 'profile', name: 'profile', component: Profile, meta: { titleKey: 'common.profile' } },

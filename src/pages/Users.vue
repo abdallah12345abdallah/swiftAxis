@@ -3,16 +3,14 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Plus, Pencil, Power, PowerOff, Check, Search, Warehouse } from 'lucide-vue-next'
+import { Plus, Pencil, Power, PowerOff, Check, Warehouse } from 'lucide-vue-next'
 import { useConfirm } from '@/composables/useConfirm'
+import FilterBar from '@/components/common/FilterBar.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
-import { Tabs } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Dropdown } from '@/components/ui/dropdown'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import UserDialog from '@/components/users/UserDialog.vue'
@@ -55,6 +53,10 @@ const users = ref([])
 const audit = ref([])
 const auditQuery = ref('')
 const auditAction = ref('')
+const auditFilters = computed({
+  get: () => ({ action: auditAction.value }),
+  set: (v) => (auditAction.value = v.action ?? ''),
+})
 
 const userDialog = ref(false)
 const editingUser = ref(null)
@@ -65,6 +67,23 @@ const tabs = computed(() => [
   { value: 'audit', label: t('users.tabs.audit') },
 ])
 const roleOptions = computed(() => ALL_ROLES.map((r) => ({ value: r, label: t(`roles.${r}`) })))
+
+/* users list: search by name / email / mobile; role and status in the tray */
+const userQuery = ref('')
+const userFilters = ref({ role: '', status: '' })
+const userFilterDefs = computed(() => [
+  { key: 'role', label: t('users.role'), options: roleOptions.value },
+  { key: 'status', label: t('common.status'), options: [{ value: 'active', label: t('common.active') }, { value: 'inactive', label: t('common.inactive') }] },
+])
+const shownUsers = computed(() => {
+  const q = userQuery.value.trim().toLowerCase()
+  const f = userFilters.value
+  return users.value.filter((u) =>
+    (!q || [u.name, u.email, u.mobile].some((x) => String(x ?? '').toLowerCase().includes(q))) &&
+    (!f.role || u.role === f.role) &&
+    (!f.status || (f.status === 'active') === (u.active !== false)),
+  )
+})
 const actionOptions = computed(() => [
   { value: '', label: t('users.audit.allActions') },
   ...['login', 'logout', 'create', 'update', 'delete'].map((a) => ({ value: a, label: t(`users.actions.${a}`) })),
@@ -121,13 +140,13 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
       </template>
     </PageHeader>
 
-    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
-    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- Users -->
-    <Card v-if="tab === 'users'" class="overflow-hidden">
+    <template v-if="tab === 'users'">
+    <FilterBar v-model:search="userQuery" v-model="userFilters" :filters="userFilterDefs" :search-placeholder="t('users.searchPh')" class="mb-4" />
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="users" :empty="t('users.empty')"
+        :loading="loading" :rows="shownUsers" :empty="t('users.empty')"
         :columns="[
           { key: 'name', label: t('users.name'), sortable: true },
           { key: 'role', label: t('users.role'), sortable: true },
@@ -157,6 +176,7 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
         </template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- Roles & access matrix -->
     <Card v-else-if="tab === 'roles'" class="overflow-hidden">
@@ -183,15 +203,14 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
     </Card>
 
     <!-- Audit log -->
-    <Card v-else class="overflow-hidden">
-      <div class="flex flex-wrap items-center gap-3 border-b p-4">
-        <div class="relative min-w-[200px] flex-1">
-          <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3.5" />
-          <Input v-model="auditQuery" :placeholder="t('users.audit.search')" class="ps-10" />
-        </div>
-        <Dropdown v-model="auditAction" :options="actionOptions" class="w-auto min-w-[150px]" />
-        <span class="text-muted-foreground text-xs">{{ t('users.audit.immutable') }}</span>
-      </div>
+    <template v-else>
+      <FilterBar
+        v-model:search="auditQuery"
+        v-model="auditFilters"
+        :search-placeholder="t('users.audit.search')"
+        :filters="[{ key: 'action', label: t('users.audit.action'), options: actionOptions }]"
+        class="mb-4"
+      />
       <DataTable
         :loading="loading" :rows="audit" :empty="t('users.empty')" :page-size="12"
         :columns="[
@@ -207,7 +226,7 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
         <template #cell-action="{ row }"><Badge :variant="actionVariant[row.action] || 'secondary'">{{ t(`users.actions.${row.action}`) }}</Badge></template>
         <template #cell-ip="{ row }"><span dir="ltr" class="text-muted-foreground tabular-nums">{{ row.ip }}</span></template>
       </DataTable>
-    </Card>
+    </template>
 
     <UserDialog v-model:open="userDialog" :user="editingUser" :role-options="roleOptions" @saved="loadUsers" />
 

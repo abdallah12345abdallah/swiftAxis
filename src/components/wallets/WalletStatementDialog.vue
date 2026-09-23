@@ -1,4 +1,5 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Download } from 'lucide-vue-next'
@@ -76,7 +77,7 @@ function exportStatement() {
             </td>
             <td class="px-4 py-2 text-end font-semibold tabular-nums">{{ counts(m) ? sar(m.balance) : '—' }}</td>
           </tr>
-          <tr v-if="!loading && !rows.length"><td colspan="4" class="text-muted-foreground py-8 text-center">{{ t('wallets.empty') }}</td></tr>
+          <tr v-if="!loading && !rows.length"><td colspan="4"><EmptyState compact :title="t('wallets.empty')" /></td></tr>
         </tbody>
       </table>
     </div>

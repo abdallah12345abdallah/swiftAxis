@@ -1,4 +1,5 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ReportShell from '@/components/accounting/shared/ReportShell.vue'
@@ -46,7 +47,7 @@ const exportRows = () => data.value && exportCsv(`journal-detailed-${todayStamp(
     </template>
     <div v-if="loading || !data" class="space-y-3 p-5"><Skeleton v-for="i in 4" :key="i" class="h-20 rounded-xl" /></div>
     <div v-else class="divide-y">
-      <p v-if="!data.rows.length" class="text-muted-foreground py-12 text-center text-sm">{{ t('ledger.empty') }}</p>
+      <EmptyState v-if="!data.rows.length" :title="t('ledger.empty')" />
       <div v-for="e in data.rows" :key="e.id" class="p-5">
         <div class="mb-2 flex flex-wrap items-center gap-2 text-sm">
           <RouterLink :to="`/ledger/entry/${e.id}`" class="text-primary font-bold tabular-nums hover:underline" dir="ltr">{{ e.ref }}</RouterLink>

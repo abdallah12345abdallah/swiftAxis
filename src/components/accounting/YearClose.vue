@@ -1,4 +1,7 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
+import MetricTile from '@/components/common/MetricTile.vue'
+import { TrendingUp as MtTrendingUp, TrendingDown as MtTrendingDown, Scale as MtScale } from 'lucide-vue-next'
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Lock, AlertTriangle, CheckCircle2 } from 'lucide-vue-next'
@@ -80,9 +83,9 @@ async function run() {
       </div>
 
       <div class="grid gap-4 sm:grid-cols-3">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('accounting.common.revenue') }}</p><p class="text-success mt-1 text-2xl font-bold tabular-nums">{{ sar(preview.revenue) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('accounting.common.expenses') }}</p><p class="text-danger mt-1 text-2xl font-bold tabular-nums">{{ sar(preview.expenses) }}</p></Card>
-        <Card class="bg-navy p-5 text-white"><p class="text-sm text-white/70">{{ t('accounting.common.netProfit') }}</p><p class="mt-1 text-2xl font-extrabold tabular-nums">{{ sar(preview.net) }}</p></Card>
+        <MetricTile :label="t('accounting.common.revenue')" :value="preview.revenue" :format="sar" :icon="MtTrendingUp" tone="success" />
+        <MetricTile :label="t('accounting.common.expenses')" :value="preview.expenses" :format="sar" :icon="MtTrendingDown" tone="danger" />
+        <MetricTile :label="t('accounting.common.netProfit')" :value="preview.net" :format="sar" :icon="MtScale" :tone="preview.net >= 0 ? 'success' : 'danger'" />
       </div>
 
       <Card>
@@ -105,7 +108,7 @@ async function run() {
                 <td class="px-5 py-2 text-end tabular-nums">{{ l.debit ? sar(l.debit, { decimals: 2 }) : '' }}</td>
                 <td class="px-5 py-2 text-end tabular-nums">{{ l.credit ? sar(l.credit, { decimals: 2 }) : '' }}</td>
               </tr>
-              <tr v-if="!preview.lines.length"><td colspan="4" class="text-muted-foreground py-8 text-center">{{ t('common.noData') }}</td></tr>
+              <tr v-if="!preview.lines.length"><td colspan="4"><EmptyState compact :title="t('common.noData')" /></td></tr>
             </tbody>
           </table></div>
         </CardContent>

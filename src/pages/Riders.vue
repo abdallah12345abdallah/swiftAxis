@@ -1,11 +1,14 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import {
-  Plus, Download, Search, Pencil, Power, PowerOff, AlertTriangle,
+  Plus, Download, Pencil, Power, PowerOff, AlertTriangle,
   Users, UserCheck, TrendingDown, Package, Bike, Car,
 } from 'lucide-vue-next'
+import FilterBar from '@/components/common/FilterBar.vue'
+import MetricTile from '@/components/common/MetricTile.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
@@ -14,8 +17,6 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Dropdown } from '@/components/ui/dropdown'
 import { Skeleton } from '@/components/ui/skeleton'
 import RiderFormDialog from '@/components/riders/RiderFormDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
@@ -38,6 +39,15 @@ const query = ref('')
 const filterContract = ref('')
 const filterStatus = ref('')
 const filterCity = ref('')
+// the three filters as one object for the filter bar's tray
+const filterValues = computed({
+  get: () => ({ contract: filterContract.value, city: filterCity.value, status: filterStatus.value }),
+  set: (v) => {
+    filterContract.value = v.contract ?? ''
+    filterCity.value = v.city ?? ''
+    filterStatus.value = v.status ?? ''
+  },
+})
 
 // dialogs
 const riderDialog = ref(false)
@@ -88,11 +98,16 @@ const stats = computed(() => {
   const list = riders.value
   const active = list.filter((r) => r.active)
   const totalOrders = active.reduce((s, r) => s + r.orders, 0)
+  const under = list.filter((r) => r.underperforming).length
   return {
     total: list.length,
     active: active.length,
-    under: list.filter((r) => r.underperforming).length,
+    inactive: list.length - active.length,
+    under,
     avg: active.length ? Math.round(totalOrders / active.length) : 0,
+    totalOrders,
+    activeShare: list.length ? Math.round((active.length / list.length) * 100) : 0,
+    underShare: active.length ? Math.round((under / active.length) * 100) : 0,
   }
 })
 
@@ -184,46 +199,27 @@ function exportCsv() {
     <div class="space-y-6">
       <!-- stats -->
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card class="flex items-center gap-3 p-4">
-          <span class="bg-primary/10 text-primary grid size-11 place-items-center rounded-lg"><Users class="size-5" /></span>
-          <div>
-            <p class="text-2xl font-bold tabular-nums">{{ num(stats.total) }}</p>
-            <p class="text-muted-foreground text-xs">{{ t('riders.stats.total') }}</p>
-          </div>
-        </Card>
-        <Card class="flex items-center gap-3 p-4">
-          <span class="bg-success/10 text-success grid size-11 place-items-center rounded-lg"><UserCheck class="size-5" /></span>
-          <div>
-            <p class="text-2xl font-bold tabular-nums">{{ num(stats.active) }}</p>
-            <p class="text-muted-foreground text-xs">{{ t('riders.stats.active') }}</p>
-          </div>
-        </Card>
-        <Card class="flex items-center gap-3 p-4">
-          <span class="bg-warning/15 text-warning-foreground grid size-11 place-items-center rounded-lg"><TrendingDown class="size-5" /></span>
-          <div>
-            <p class="text-2xl font-bold tabular-nums">{{ num(stats.under) }}</p>
-            <p class="text-muted-foreground text-xs">{{ t('riders.stats.underperforming') }}</p>
-          </div>
-        </Card>
-        <Card class="flex items-center gap-3 p-4">
-          <span class="bg-orange/10 text-orange grid size-11 place-items-center rounded-lg"><Package class="size-5" /></span>
-          <div>
-            <p class="text-2xl font-bold tabular-nums">{{ num(stats.avg) }}</p>
-            <p class="text-muted-foreground text-xs">{{ t('riders.stats.avgOrders') }}</p>
-          </div>
-        </Card>
+        <MetricTile :label="t('riders.stats.total')" :value="stats.total" :format="(v) => num(Math.round(v))" :icon="Users" tone="brand"
+          :hint="t('riders.stats.inactiveHint', { n: num(stats.inactive) })" />
+        <MetricTile :label="t('riders.stats.active')" :value="stats.active" :format="(v) => num(Math.round(v))" :icon="UserCheck" tone="success"
+          :progress="stats.activeShare" :hint="t('riders.stats.activeHint', { v: stats.activeShare })" />
+        <MetricTile :label="t('riders.stats.underperforming')" :value="stats.under" :format="(v) => num(Math.round(v))" :icon="TrendingDown" tone="danger"
+          :progress="stats.underShare" :hint="t('riders.stats.underHint', { v: stats.underShare })" />
+        <MetricTile :label="t('riders.stats.avgOrders')" :value="stats.avg" :format="(v) => num(Math.round(v))" :icon="Package" tone="orange"
+          :hint="t('riders.stats.avgHint', { n: num(stats.totalOrders) })" />
       </div>
 
-      <!-- filters -->
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="relative min-w-[240px] flex-1">
-          <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3.5" />
-          <Input v-model="query" :placeholder="t('riders.searchPlaceholder')" class="ps-10" />
-        </div>
-        <Dropdown v-model="filterContract" :options="contractOptions" :placeholder="t('riders.filters.contract')" class="w-auto min-w-[160px]" />
-        <Dropdown v-model="filterCity" :options="cityOptions" :placeholder="t('riders.filters.city')" class="w-auto min-w-[140px]" />
-        <Dropdown v-model="filterStatus" :options="statusOptions" :placeholder="t('riders.filters.status')" class="w-auto min-w-[140px]" />
-      </div>
+      <!-- filters: search stays in view, the rest open in a tray -->
+      <FilterBar
+        v-model:search="query"
+        v-model="filterValues"
+        :search-placeholder="t('riders.searchPlaceholder')"
+        :filters="[
+          { key: 'contract', label: t('riders.filters.contract'), options: contractOptions },
+          { key: 'city', label: t('riders.filters.city'), options: cityOptions },
+          { key: 'status', label: t('riders.filters.status'), options: statusOptions },
+        ]"
+      />
 
       <!-- table -->
       <Card class="overflow-hidden">
@@ -231,9 +227,7 @@ function exportCsv() {
           <Skeleton v-for="i in 6" :key="i" class="h-12 rounded-lg" />
         </div>
 
-        <div v-else-if="!filtered.length" class="text-muted-foreground py-16 text-center text-sm">
-          {{ t('riders.empty') }}
-        </div>
+        <EmptyState v-else-if="!filtered.length" :title="t('riders.empty')" />
 
         <div v-else class="overflow-x-auto">
           <div class="soft-table overflow-x-auto"><table class="w-full text-sm">

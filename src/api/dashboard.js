@@ -12,7 +12,20 @@ function progressOf(r) {
 }
 
 /** Manager dashboard (US-019 + US-022). */
-export function fetchManagerDashboard(period = 'month') {
+/* the mock only varies the trend's granularity: a range of a day or two reads
+   as "day", up to about two months as "month", anything longer (or "all
+   days") as "year". The real API will filter by the dates themselves. */
+function periodOf(range) {
+  if (!Array.isArray(range)) return range || 'month'
+  const [a, b] = range
+  if (!a || !b) return 'year'
+  const days = Math.round((new Date(b) - new Date(a)) / 86400000) + 1
+  return days <= 2 ? 'day' : days <= 62 ? 'month' : 'year'
+}
+
+/** Manager dashboard for a date range ['YYYY-MM-DD', 'YYYY-MM-DD'] (or a period key). */
+export function fetchManagerDashboard(rangeOrPeriod = 'month') {
+  const period = periodOf(rangeOrPeriod)
   const active = RIDERS.filter((r) => r.active)
   const totalOrders = active.reduce((s, r) => s + r.orders, 0)
   const commissionsDue = active.reduce((s, r) => s + r.commission, 0)

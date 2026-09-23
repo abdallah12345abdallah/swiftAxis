@@ -12,6 +12,7 @@ import { fetchManagerDashboard, fetchRiderDashboard } from '@/api/dashboard'
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DateRangePicker } from '@/components/ui/datepicker'
 import StatCard from '@/components/dashboard/StatCard.vue'
 import TopRiders from '@/components/dashboard/TopRiders.vue'
 import RiderPerformanceTable from '@/components/dashboard/RiderPerformanceTable.vue'
@@ -29,10 +30,13 @@ const { sar, num } = useCurrency()
 const isRider = computed(() => auth.role === ROLES.RIDER)
 
 const loading = ref(true)
-const period = ref('month')
+// default "this month", like the old period switch
+const pad2 = (n) => String(n).padStart(2, '0')
+const isoOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+const now = new Date()
+const range = ref([isoOf(new Date(now.getFullYear(), now.getMonth(), 1)), isoOf(now)])
 const data = ref(null)
 
-const PERIODS = ['day', 'month', 'year']
 
 // rider side panel (#9)
 const panelOpen = ref(false)
@@ -52,12 +56,12 @@ async function load() {
   loading.value = true
   data.value = isRider.value
     ? await fetchRiderDashboard(auth.user?.riderId)
-    : await fetchManagerDashboard(period.value)
+    : await fetchManagerDashboard(range.value)
   loading.value = false
 }
 
 onMounted(load)
-watch(period, () => {
+watch(range, () => {
   if (!isRider.value) load()
 })
 watch(() => auth.role, load)
@@ -80,18 +84,7 @@ watch(() => auth.role, load)
         </p>
       </div>
 
-      <div v-if="!isRider" class="bg-muted flex rounded-lg p-1">
-        <button
-          v-for="p in PERIODS"
-          :key="p"
-          type="button"
-          class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
-          :class="period === p ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-          @click="period = p"
-        >
-          {{ t(`common.${p}`) }}
-        </button>
-      </div>
+      <DateRangePicker v-if="!isRider" v-model="range" refresh :refreshing="loading" class="w-full sm:w-auto" @refresh="load" />
     </div>
 
     <!-- ── Loading ────────────────────────────────────────── -->

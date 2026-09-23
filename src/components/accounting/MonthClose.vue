@@ -1,4 +1,6 @@
 <script setup>
+import MetricTile from '@/components/common/MetricTile.vue'
+import { CalendarCheck as MtCalendarCheck, FileText as MtFileText } from 'lucide-vue-next'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
@@ -72,9 +74,16 @@ const closedCount = computed(() => data.value?.rows.filter((r) => r.closed).leng
     </div>
 
     <div v-if="data" class="grid gap-4 sm:grid-cols-3">
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('accounting.months.closedCount') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(closedCount) }} / {{ num(data.rows.length) }}</p></Card>
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('accounting.common.entries') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(data.year.entries) }}</p></Card>
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('common.status') }}</p><p class="mt-1"><Badge :variant="data.year.closed ? 'secondary' : 'success'">{{ data.year.closed ? t('accounting.years.closed') : t('accounting.years.open') }}</Badge></p></Card>
+      <MetricTile :label="t('accounting.months.closedCount')" :value="closedCount" :format="(v) => `${num(Math.round(v))} / ${num(data.rows.length)}`" :icon="MtCalendarCheck" tone="success" :progress="data.rows.length ? (closedCount / data.rows.length) * 100 : 0" />
+      <MetricTile :label="t('accounting.common.entries')" :value="data.year.entries" :format="(v) => num(Math.round(v))" :icon="MtFileText" tone="brand" />
+      <!-- same look as the metric tiles beside it; the value is a status badge -->
+      <div class="bg-card rounded-2xl border p-4">
+        <div class="flex items-center gap-2.5">
+          <span class="bg-primary/12 text-primary grid size-10 shrink-0 place-items-center rounded-xl"><component :is="data.year.closed ? Lock : Unlock" class="size-5" /></span>
+          <p class="text-muted-foreground text-[13px] font-semibold">{{ t('common.status') }}</p>
+        </div>
+        <p class="mt-3"><Badge :variant="data.year.closed ? 'secondary' : 'success'">{{ data.year.closed ? t('accounting.years.closed') : t('accounting.years.open') }}</Badge></p>
+      </div>
     </div>
 
     <Card class="overflow-hidden">

@@ -1,18 +1,20 @@
 <script setup>
+import MetricTile from '@/components/common/MetricTile.vue'
+import { Receipt as MtReceipt, Banknote as MtBanknote, Percent as MtPercent, Clock as MtClock } from 'lucide-vue-next'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Download, CheckCircle2, FileSpreadsheet } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { Tabs } from '@/components/ui/tabs'
+import FilterBar from '@/components/common/FilterBar.vue'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Dropdown } from '@/components/ui/dropdown'
-import { DatePicker } from '@/components/ui/datepicker'
+import { DatePicker, DateRangePicker } from '@/components/ui/datepicker'
 import SalesInvoiceDialog from '@/components/sales/SalesInvoiceDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
@@ -56,11 +58,32 @@ async function load() {
 }
 onMounted(load)
 
+/* invoices: search by ref / company / sheet, a date range on the invoice
+   date, and contract + status in the tray; the cards follow what is shown */
+const invQuery = ref('')
+const invRange = ref(['', ''])
+const invFilters = ref({ contract: '', status: '' })
+const invFilterDefs = computed(() => [
+  { key: 'contract', label: t('sales.contract'), options: contracts.value.map((c) => ({ value: c.id, label: c.company })) },
+  { key: 'status', label: t('sales.status'), options: ['issued', 'paid'].map((k) => ({ value: k, label: t(`sales.statuses.${k}`) })) },
+])
+const shownInvoices = computed(() => {
+  const q = invQuery.value.trim().toLowerCase()
+  const [a, b] = invRange.value
+  const f = invFilters.value
+  return invoices.value.filter((i) =>
+    (!q || [i.ref, i.company, i.sheet].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!a || i.date >= a) && (!b || i.date <= b) &&
+    (!f.contract || i.contract === f.contract) &&
+    (!f.status || i.status === f.status),
+  )
+})
+
 const kpi = computed(() => ({
-  count: invoices.value.length,
-  preTax: invoices.value.reduce((s, i) => s + i.preTax, 0),
-  vat: invoices.value.reduce((s, i) => s + i.vat, 0),
-  due: invoices.value.filter((i) => i.status !== 'paid').reduce((s, i) => s + i.total, 0),
+  count: shownInvoices.value.length,
+  preTax: shownInvoices.value.reduce((s, i) => s + i.preTax, 0),
+  vat: shownInvoices.value.reduce((s, i) => s + i.vat, 0),
+  due: shownInvoices.value.filter((i) => i.status !== 'paid').reduce((s, i) => s + i.total, 0),
 }))
 
 function openPaid(inv) {
@@ -104,20 +127,22 @@ function exportVat() {
       </template>
     </PageHeader>
 
-    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
-    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('sales.kpi.count') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(kpi.count) }}</p></Card>
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('sales.kpi.preTax') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(kpi.preTax) }}</p></Card>
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('sales.kpi.vat') }}</p><p class="text-orange mt-1 text-2xl font-bold tabular-nums">{{ sar(kpi.vat) }}</p></Card>
-      <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('sales.kpi.due') }}</p><p class="text-danger mt-1 text-2xl font-bold tabular-nums">{{ sar(kpi.due) }}</p></Card>
+      <MetricTile :label="t('sales.kpi.count')" :value="kpi.count" :format="(v) => num(Math.round(v))" :icon="MtReceipt" tone="brand" />
+      <MetricTile :label="t('sales.kpi.preTax')" :value="kpi.preTax" :format="sar" :icon="MtBanknote" tone="success" />
+      <MetricTile :label="t('sales.kpi.vat')" :value="kpi.vat" :format="sar" :icon="MtPercent" tone="orange" />
+      <MetricTile :label="t('sales.kpi.due')" :value="kpi.due" :format="sar" :icon="MtClock" tone="danger" />
     </div>
 
     <!-- invoices -->
-    <Card v-if="tab === 'invoices'" class="overflow-hidden">
+    <template v-if="tab === 'invoices'">
+    <FilterBar v-model:search="invQuery" v-model="invFilters" :filters="invFilterDefs" :search-placeholder="t('sales.searchPh')" class="mb-4">
+      <template #extra><DateRangePicker v-model="invRange" /></template>
+    </FilterBar>
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="invoices" :empty="t('sales.empty')" :page-size="12"
+        :loading="loading" :rows="shownInvoices" :empty="t('sales.empty')" :page-size="12"
         :columns="[
           { key: 'ref', label: t('common.ref'), sortable: true },
           { key: 'company', label: t('sales.contract'), sortable: true },
@@ -152,6 +177,7 @@ function exportVat() {
         </template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- output VAT -->
     <Card v-else class="overflow-hidden">

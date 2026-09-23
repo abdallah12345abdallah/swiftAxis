@@ -1,4 +1,5 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowDownLeft, ArrowUpRight, Landmark, Receipt, HandCoins, FileWarning } from 'lucide-vue-next'
@@ -121,7 +122,7 @@ const isIn = (type) => type === 'receipt' || type === 'transfer_in'
               <td class="px-4 py-2 text-end tabular-nums">{{ sar(d.amount) }}</td>
               <td class="px-4 py-2 text-end font-semibold tabular-nums" :class="d.remaining ? 'text-danger' : 'text-success'">{{ sar(d.remaining) }}</td>
             </tr>
-            <tr v-if="!data.debts.length"><td colspan="5" class="text-muted-foreground py-8 text-center">{{ t('wallets.debts.empty') }}</td></tr>
+            <tr v-if="!data.debts.length"><td colspan="5"><EmptyState compact :title="t('wallets.debts.empty')" /></td></tr>
           </tbody>
         </table>
 
@@ -142,7 +143,7 @@ const isIn = (type) => type === 'receipt' || type === 'transfer_in'
               <td class="px-4 py-2">{{ n.note || '—' }}</td>
               <td class="px-4 py-2 text-end font-semibold tabular-nums" :class="n.type === 'debit' ? 'text-danger' : 'text-success'">{{ n.type === 'debit' ? '−' : '+' }}{{ sar(n.amount) }}</td>
             </tr>
-            <tr v-if="!data.notices.length"><td colspan="5" class="text-muted-foreground py-8 text-center">{{ t('wallets.debts.noNotices') }}</td></tr>
+            <tr v-if="!data.notices.length"><td colspan="5"><EmptyState compact :title="t('wallets.debts.noNotices')" /></td></tr>
           </tbody>
         </table>
 
@@ -161,7 +162,7 @@ const isIn = (type) => type === 'receipt' || type === 'transfer_in'
               <td class="px-4 py-2 tabular-nums" dir="ltr">{{ w.voucherRef }}</td>
               <td class="px-4 py-2 text-end font-semibold tabular-nums">{{ sar(w.amount) }}</td>
             </tr>
-            <tr v-if="!data.withdrawals.length"><td colspan="4" class="text-muted-foreground py-8 text-center">{{ t('wallets.withdrawals.empty') }}</td></tr>
+            <tr v-if="!data.withdrawals.length"><td colspan="4"><EmptyState compact :title="t('wallets.withdrawals.empty')" /></td></tr>
           </tbody>
         </table>
 
@@ -183,7 +184,7 @@ const isIn = (type) => type === 'receipt' || type === 'transfer_in'
               </td>
               <td class="px-4 py-2 text-end font-semibold tabular-nums">{{ sar(m.amount) }}</td>
             </tr>
-            <tr v-if="!data.deposits.length"><td colspan="4" class="text-muted-foreground py-8 text-center">{{ t('wallets.deposits.empty') }}</td></tr>
+            <tr v-if="!data.deposits.length"><td colspan="4"><EmptyState compact :title="t('wallets.deposits.empty')" /></td></tr>
           </tbody>
         </table>
 
@@ -206,7 +207,7 @@ const isIn = (type) => type === 'receipt' || type === 'transfer_in'
                 <component :is="moveIcon(m.type)" class="inline size-3.5" /> {{ sar(m.amount) }}
               </td>
             </tr>
-            <tr v-if="!data.treasuryMovements.length"><td colspan="5" class="text-muted-foreground py-8 text-center">{{ t('wallets.debts.noMoves') }}</td></tr>
+            <tr v-if="!data.treasuryMovements.length"><td colspan="5"><EmptyState compact :title="t('wallets.debts.noMoves')" /></td></tr>
           </tbody>
         </table>
       </div>

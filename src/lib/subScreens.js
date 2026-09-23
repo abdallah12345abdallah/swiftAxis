@@ -1,15 +1,17 @@
 import { ACCOUNTING_MENU } from './accountingMenu'
 
-/* Sub-screens of each module, as the sidebar island shows them under the active
-   module and in search results. Tabbed pages expose their tabs via `?tab=`
-   (useRouteTab); the accounting area has real routes per screen.
-   entry: { key, labelKey, path, tab?, group? } — `group` is a labelKey used as a
-   small heading line. */
+/* Sub-screens of each module, as the sidebar island shows them under the
+   module. Every screen is its own page with its own address: the module's
+   first screen lives at the module path (/orders), the others under it
+   (/orders/manual). useRouteTab maps the address to the page's screen.
+   entry: { key, labelKey, path, tab?, group? } — `group` is a labelKey used as
+   a small heading line. */
 
+const screenPath = (path, key, defaultTab) => (key === defaultTab ? path : `${path}/${key}`)
 const tabs = (path, labelPrefix, keys, defaultTab) => ({
   path,
   defaultTab,
-  items: keys.map((k) => ({ key: k, labelKey: `${labelPrefix}.${k}`, path, tab: k })),
+  items: keys.map((k) => ({ key: k, labelKey: `${labelPrefix}.${k}`, path: screenPath(path, k, defaultTab), tab: k })),
 })
 
 export const SUB_SCREENS = {
@@ -23,7 +25,7 @@ export const SUB_SCREENS = {
     defaultTab: 'journal',
     items: [
       { key: 'entry', labelKey: 'journal.title', path: '/ledger/entry' },
-      ...['journal', 'trial', 'pnl', 'costCenters'].map((k) => ({ key: k, labelKey: `ledger.tabs.${k}`, path: '/ledger', tab: k })),
+      ...['journal', 'trial', 'pnl', 'costCenters'].map((k) => ({ key: k, labelKey: `ledger.tabs.${k}`, path: screenPath('/ledger', k, 'journal'), tab: k })),
     ],
   },
   purchases: tabs('/purchases', 'purchases.tabs', ['purchases', 'suppliers', 'items', 'vat', 'byCenter'], 'purchases'),
@@ -45,15 +47,30 @@ export const SUB_SCREENS = {
   },
 }
 
+const trim = (p) => (p.length > 1 ? p.replace(/\/+$/, '') : p)
+
 /** Is this sub-screen the one currently open? */
-export function isSubActive(sub, route, defaultTab) {
-  if (route.path !== sub.path) return false
-  if (!sub.tab) return true
-  return (route.query.tab ? String(route.query.tab) : defaultTab) === sub.tab
+export function isSubActive(sub, route) {
+  return trim(route.path) === sub.path
 }
 
-/** Router location for a sub-screen (clean URL for the default tab). */
-export function subLocation(sub, defaultTab) {
-  if (!sub.tab || sub.tab === defaultTab) return { path: sub.path }
-  return { path: sub.path, query: { tab: sub.tab } }
+/** Router location for a sub-screen. */
+export function subLocation(sub) {
+  return { path: sub.path }
+}
+
+/** Route pattern for a module whose screens are pages: 'orders/:tab(manual)?' */
+export function screensRoute(key) {
+  const m = SUB_SCREENS[key]
+  const others = m.items.filter((i) => i.tab && i.tab !== m.defaultTab).map((i) => i.tab)
+  return `${m.path.slice(1)}/:tab(${others.join('|')})?`
+}
+
+/** The screen (of a module with screen pages) the route is on, or null. */
+export function currentScreen(route) {
+  for (const m of Object.values(SUB_SCREENS)) {
+    const hit = m.items.find((i) => i.tab && isSubActive(i, route))
+    if (hit) return hit
+  }
+  return null
 }

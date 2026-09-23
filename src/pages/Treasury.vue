@@ -1,4 +1,6 @@
 <script setup>
+import MetricTile from '@/components/common/MetricTile.vue'
+import { Banknote as MtBanknote, Landmark as MtLandmark, Wallet as MtWallet, Hourglass as MtHourglass, BookOpen as MtBookOpen, ArrowDownLeft as MtArrowDownLeft, ArrowUpRight as MtArrowUpRight, Scale as MtScale, PiggyBank as MtPiggyBank } from 'lucide-vue-next'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
@@ -9,14 +11,14 @@ import {
 } from 'lucide-vue-next'
 import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
+import FilterBar from '@/components/common/FilterBar.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
-import { Tabs } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dropdown } from '@/components/ui/dropdown'
-import { DatePicker } from '@/components/ui/datepicker'
+import { DateRangePicker } from '@/components/ui/datepicker'
 import TreasuryDialog from '@/components/treasury/TreasuryDialog.vue'
 import VoucherDialog from '@/components/treasury/VoucherDialog.vue'
 import TransferDialog from '@/components/treasury/TransferDialog.vue'
@@ -157,6 +159,96 @@ function exportStatement() {
 }
 
 const statusVariant = { posted: 'success', pending: 'warning', rejected: 'danger' }
+/* boxes & banks list: search by name / IBAN; type and status in the tray */
+const boxQuery = ref('')
+const boxFilters = ref({ kind: '', status: '' })
+const boxFilterDefs = computed(() => [
+  { key: 'kind', label: t('treasury.kind'), options: Object.keys(TREASURY_KINDS).map((k) => ({ value: k, label: loc(TREASURY_KINDS, k) })) },
+  { key: 'status', label: t('common.status'), options: [{ value: 'active', label: t('common.active') }, { value: 'inactive', label: t('common.inactive') }] },
+])
+const shownBoxes = computed(() => {
+  const q = boxQuery.value.trim().toLowerCase()
+  const f = boxFilters.value
+  return treasuries.value.filter((x) =>
+    (!q || [x.name, x.iban].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!f.kind || x.kind === f.kind) &&
+    (!f.status || (f.status === 'active') === !!x.active),
+  )
+})
+
+/* statement: the box picker and the date range sit in the bar (a box is always
+   picked, so it is not a clearable filter); search and money in / out narrow
+   the lines, the running balance stays as computed */
+const stmtQuery = ref('')
+const stmtFilters = ref({ direction: '' })
+const stmtFilterDefs = computed(() => [
+  { key: 'direction', label: t('treasury.statement.type'), options: [{ value: 'in', label: t('treasury.statement.in') }, { value: 'out', label: t('treasury.statement.out') }] },
+])
+const shownStatement = computed(() => {
+  const q = stmtQuery.value.trim().toLowerCase()
+  const d = stmtFilters.value.direction
+  return (statement.value?.rows ?? []).filter((r) =>
+    (!q || [r.ref, r.description, r.party].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!d || (d === 'in' ? r.in > 0 : r.out > 0)),
+  )
+})
+
+/* receipts / payments / transfers: search, a date range and a filter tray.
+   Each screen is its own page, so this state starts fresh on each one. */
+const listQuery = ref('')
+const listRange = ref(['', ''])
+const listFilters = ref({ treasury: '', status: '', expenseItem: '', costCenter: '', from: '', to: '' })
+const listStatusOptions = computed(() => ['posted', 'pending', 'rejected'].map((k) => ({ value: k, label: t(`treasury.statuses.${k}`) })))
+const treasuryNameOptions = computed(() => treasuries.value.map((x) => ({ value: x.name, label: x.name })))
+const listFilterDefs = computed(() => {
+  if (tab.value === 'transfers') {
+    return [
+      { key: 'status', label: t('common.status'), options: listStatusOptions.value },
+      { key: 'from', label: t('treasury.transfer.from'), options: treasuryNameOptions.value },
+      { key: 'to', label: t('treasury.transfer.to'), options: treasuryNameOptions.value },
+    ]
+  }
+  return [
+    { key: 'treasury', label: t('treasury.voucher.treasury'), options: treasuryOptions.value },
+    { key: 'status', label: t('common.status'), options: listStatusOptions.value },
+    ...(tab.value === 'payments'
+      ? [
+          { key: 'expenseItem', label: t('treasury.voucher.expenseItem'), options: expenseItemOptions.value },
+          { key: 'costCenter', label: t('treasury.voucher.costCenter'), options: costCenterOptions.value },
+        ]
+      : []),
+  ]
+})
+const inListRange = (d) => {
+  const [a, b] = listRange.value
+  return (!a || d >= a) && (!b || d <= b)
+}
+const hasText = (q, ...vals) => !q || vals.some((v) => String(v ?? '').toLowerCase().includes(q))
+const shownVouchers = computed(() => {
+  const q = listQuery.value.trim().toLowerCase()
+  const f = listFilters.value
+  const rows = tab.value === 'payments' ? payments.value : receipts.value
+  return rows.filter((r) =>
+    inListRange(r.date) &&
+    hasText(q, r.ref, r.party, r.description, r.riderId) &&
+    (!f.treasury || r.treasuryId === f.treasury) &&
+    (!f.status || r.status === f.status) &&
+    (!f.expenseItem || r.expenseItem === f.expenseItem) &&
+    (!f.costCenter || r.costCenter === f.costCenter),
+  )
+})
+const shownTransfers = computed(() => {
+  const q = listQuery.value.trim().toLowerCase()
+  const f = listFilters.value
+  return transfers.value.filter((r) =>
+    inListRange(r.date) &&
+    hasText(q, r.ref, r.description, r.riderName, r.riderId) &&
+    (!f.status || r.status === f.status) &&
+    (!f.from || r.from === f.from) &&
+    (!f.to || r.to === f.to),
+  )
+})
+
 const voucherColumns = (isPayment) => [
   { key: 'ref', label: t('common.ref'), sortable: true },
   { key: 'date', label: t('common.date'), sortable: true },
@@ -180,23 +272,22 @@ const voucherColumns = (isPayment) => [
       </template>
     </PageHeader>
 
-    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
-    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- ── Treasuries & balances ───────────────────────────── -->
     <template v-if="tab === 'treasuries'">
       <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.kpi.cash') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(balances.cash) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.kpi.bank') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(balances.bank) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.kpi.custody') }}</p><p class="text-orange mt-1 text-2xl font-bold tabular-nums">{{ sar(balances.custody) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.kpi.pending') }}</p><p class="text-warning-foreground mt-1 text-2xl font-bold tabular-nums">{{ sar(balances.pendingIn) }}</p></Card>
-        <Card class="bg-navy p-5 text-white"><p class="text-sm text-white/70">{{ t('treasury.kpi.total') }}</p><p class="mt-1 text-2xl font-extrabold tabular-nums">{{ sar(balances.total) }}</p></Card>
+        <MetricTile :label="t('treasury.kpi.cash')" :value="balances.cash" :format="sar" :icon="MtBanknote" tone="success" />
+        <MetricTile :label="t('treasury.kpi.bank')" :value="balances.bank" :format="sar" :icon="MtLandmark" tone="brand" />
+        <MetricTile :label="t('treasury.kpi.custody')" :value="balances.custody" :format="sar" :icon="MtWallet" tone="orange" />
+        <MetricTile :label="t('treasury.kpi.pending')" :value="balances.pendingIn" :format="sar" :icon="MtHourglass" tone="warning" />
+        <MetricTile :label="t('treasury.kpi.total')" :value="balances.total" :format="sar" :icon="MtPiggyBank" tone="primary" />
       </div>
 
+      <FilterBar v-model:search="boxQuery" v-model="boxFilters" :filters="boxFilterDefs" :search-placeholder="t('treasury.searchBoxes')" class="mb-4" />
       <Card class="overflow-hidden">
         <DataTable
           :loading="loading"
-          :rows="treasuries"
+          :rows="shownBoxes"
           :empty="t('common.noData')"
           :columns="[
             { key: 'name', label: t('treasury.name'), sortable: true },
@@ -232,8 +323,12 @@ const voucherColumns = (isPayment) => [
     </template>
 
     <!-- ── Payment / receipt vouchers ──────────────────────── -->
-    <Card v-else-if="tab === 'payments' || tab === 'receipts'" class="overflow-hidden">
-      <DataTable :loading="loading" :rows="tab === 'payments' ? payments : receipts" :empty="t('treasury.voucher.empty')" :columns="voucherColumns(tab === 'payments')" :page-size="12">
+    <template v-else-if="tab === 'payments' || tab === 'receipts'">
+    <FilterBar v-model:search="listQuery" v-model="listFilters" :filters="listFilterDefs" :search-placeholder="t('treasury.searchVouchers')" class="mb-4">
+      <template #extra><DateRangePicker v-model="listRange" /></template>
+    </FilterBar>
+    <Card class="overflow-hidden">
+      <DataTable :loading="loading" :rows="shownVouchers" :empty="t('treasury.voucher.empty')" :columns="voucherColumns(tab === 'payments')" :page-size="12">
         <template #cell-ref="{ row }">
           <span dir="ltr" class="font-medium tabular-nums">{{ row.ref }}</span>
           <Badge v-if="row.status !== 'posted'" :variant="statusVariant[row.status]" class="ms-1">{{ t(`treasury.statuses.${row.status}`) }}</Badge>
@@ -256,11 +351,16 @@ const voucherColumns = (isPayment) => [
         </template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- ── Transfers ───────────────────────────────────────── -->
-    <Card v-else-if="tab === 'transfers'" class="overflow-hidden">
+    <template v-else-if="tab === 'transfers'">
+    <FilterBar v-model:search="listQuery" v-model="listFilters" :filters="listFilterDefs" :search-placeholder="t('treasury.searchTransfers')" class="mb-4">
+      <template #extra><DateRangePicker v-model="listRange" /></template>
+    </FilterBar>
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="transfers" row-key="transferId" :empty="t('treasury.transfer.empty')" :page-size="12"
+        :loading="loading" :rows="shownTransfers" row-key="transferId" :empty="t('treasury.transfer.empty')" :page-size="12"
         :columns="[
           { key: 'ref', label: t('common.ref'), sortable: true },
           { key: 'date', label: t('common.date'), sortable: true },
@@ -278,22 +378,25 @@ const voucherColumns = (isPayment) => [
         <template #cell-amount="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.amount) }}</span></template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- ── Statement ───────────────────────────────────────── -->
     <template v-else-if="tab === 'statement'">
-      <div class="mb-4 flex flex-wrap items-end gap-3">
-        <Dropdown v-model="statementId" :options="treasuryOptions" :placeholder="t('treasury.statement.pick')" class="w-auto min-w-[240px]" />
-        <DatePicker v-model="dateRange" range class="w-auto min-w-[240px]" />
-      </div>
+      <FilterBar v-model:search="stmtQuery" v-model="stmtFilters" :filters="stmtFilterDefs" :search-placeholder="t('treasury.searchStatement')" class="mb-4">
+        <template #extra>
+          <Dropdown v-model="statementId" :options="treasuryOptions" :placeholder="t('treasury.statement.pick')" class="h-11 w-auto min-w-[220px] rounded-xl" />
+          <DateRangePicker v-model="dateRange" />
+        </template>
+      </FilterBar>
       <div v-if="statement" class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.statement.opening') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(statement.openingBalance) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.statement.in') }}</p><p class="text-success mt-1 text-2xl font-bold tabular-nums">{{ sar(statement.totalIn) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.statement.out') }}</p><p class="text-danger mt-1 text-2xl font-bold tabular-nums">{{ sar(statement.totalOut) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('treasury.statement.closing') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(statement.closingBalance) }}</p></Card>
+        <MetricTile :label="t('treasury.statement.opening')" :value="statement.openingBalance" :format="sar" :icon="MtBookOpen" tone="brand" />
+        <MetricTile :label="t('treasury.statement.in')" :value="statement.totalIn" :format="sar" :icon="MtArrowDownLeft" tone="success" />
+        <MetricTile :label="t('treasury.statement.out')" :value="statement.totalOut" :format="sar" :icon="MtArrowUpRight" tone="danger" />
+        <MetricTile :label="t('treasury.statement.closing')" :value="statement.closingBalance" :format="sar" :icon="MtScale" tone="primary" />
       </div>
       <Card class="overflow-hidden">
         <DataTable
-          :loading="statementLoading" :rows="statement?.rows ?? []" :empty="t('treasury.statement.empty')" :page-size="15"
+          :loading="statementLoading" :rows="shownStatement" :empty="t('treasury.statement.empty')" :page-size="15"
           :columns="[
             { key: 'date', label: t('common.date'), sortable: true },
             { key: 'ref', label: t('common.ref') },

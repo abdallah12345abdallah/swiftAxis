@@ -1,17 +1,18 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
+import FilterBar from '@/components/common/FilterBar.vue'
+import MetricTile from '@/components/common/MetricTile.vue'
 import { Upload, Pencil, Download, Plus, Package, Banknote, HandCoins, Route } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import { Card } from '@/components/ui/card'
-import { Tabs } from '@/components/ui/tabs'
 import { DataTable } from '@/components/ui/table'
+import { DateRangePicker } from '@/components/ui/datepicker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dropdown } from '@/components/ui/dropdown'
 import OrderEntryForm from '@/components/orders/OrderEntryForm.vue'
 import OrderEditDialog from '@/components/orders/OrderEditDialog.vue'
 import ImportOrdersDialog from '@/components/orders/ImportOrdersDialog.vue'
@@ -43,6 +44,45 @@ const loading = ref(true)
 const logs = ref([])
 const manual = ref([])
 const filterRider = ref('')
+// date range (all days by default) + the tray's filters; rider and dates go to
+// the API, the rest narrow the loaded rows
+const dateRange = ref(['', ''])
+// volume / hours are typed minimums: 20 means 20 orders or more
+const extra = reactive({ volume: '', hours: '', createdBy: '' })
+const manualQuery = ref('')
+const orderFilters = computed({
+  get: () => ({ rider: filterRider.value, ...extra }),
+  set: (v) => {
+    filterRider.value = v.rider ?? ''
+    for (const k of Object.keys(extra)) extra[k] = v[k] ?? ''
+  },
+})
+const createdByOptions = computed(() => [...new Set(manual.value.map((m) => m.createdBy).filter(Boolean))].map((n) => ({ value: n, label: n })))
+const filterDefs = computed(() => [
+  { key: 'rider', label: t('orders.filterRider'), options: riderOptions.value },
+  ...(tab.value === 'logs'
+    ? [
+        { key: 'volume', label: t('orders.filters.volumeMin'), type: 'number', min: 0 },
+        { key: 'hours', label: t('orders.filters.hoursMin'), type: 'number', min: 0 },
+      ]
+    : [{ key: 'createdBy', label: t('orders.manual.createdBy'), options: createdByOptions.value }]),
+])
+const atLeast = (v, min) => min === '' || min === null || Number.isNaN(Number(min)) || v >= Number(min)
+const filteredLogs = computed(() =>
+  logs.value.filter((l) => {
+    if (!atLeast(l.orders, extra.volume)) return false
+    if (!atLeast(l.hours, extra.hours)) return false
+    return true
+  }),
+)
+const filteredManual = computed(() =>
+  manual.value.filter((m) => {
+    if (extra.createdBy && m.createdBy !== extra.createdBy) return false
+    const q = manualQuery.value.trim().toLowerCase()
+    if (!q) return true
+    return [m.orderNo, m.riderName, m.riderId, m.createdBy].some((v) => String(v ?? '').toLowerCase().includes(q))
+  }),
+)
 
 const editDialog = ref(false)
 const importDialog = ref(false)
@@ -58,11 +98,13 @@ const activeRiderOptions = computed(() => RIDERS.filter((r) => r.active).map((r)
 async function load() {
   loading.value = true
   const rid = isRider.value ? auth.user?.riderId : filterRider.value || undefined
-  ;[logs.value, manual.value] = await Promise.all([fetchOrders({ riderId: rid }), isRider.value ? [] : fetchManualOrders({ riderId: rid })])
+  const [from, to] = dateRange.value
+  const q = { riderId: rid, from: from || undefined, to: to || undefined }
+  ;[logs.value, manual.value] = await Promise.all([fetchOrders(q), isRider.value ? [] : fetchManualOrders(q)])
   loading.value = false
 }
 onMounted(load)
-watch(filterRider, load)
+watch([filterRider, dateRange], load)
 
 function openEdit(row) {
   editing.value = row
@@ -90,24 +132,27 @@ const manualColumns = computed(() => [
 ])
 
 const manualStats = computed(() => ({
-  count: manual.value.length,
-  price: manual.value.reduce((s, m) => s + m.price, 0),
-  collected: manual.value.reduce((s, m) => s + m.collected, 0),
-  km: Math.round(manual.value.reduce((s, m) => s + m.km, 0) * 10) / 10,
+  count: filteredManual.value.length,
+  price: filteredManual.value.reduce((s, m) => s + m.price, 0),
+  collected: filteredManual.value.reduce((s, m) => s + m.collected, 0),
+  km: Math.round(filteredManual.value.reduce((s, m) => s + m.km, 0) * 10) / 10,
+  get avgPrice() { return this.count ? this.price / this.count : 0 },
+  get avgKm() { return this.count ? this.km / this.count : 0 },
+  get rate() { return this.price ? Math.round((this.collected / this.price) * 100) : 0 },
 }))
 
 function exportLogs() {
   exportCsv(
     `orders-${todayStamp()}`,
     [t('orders.fields.date'), t('common.riderCode'), t('orders.filterRider'), t('orders.fields.orders'), t('orders.fields.cash'), t('orders.fields.hours')],
-    logs.value.map((l) => [l.date, l.riderId, l.riderName, l.orders, l.cash, l.hours]),
+    (isRider.value ? logs.value : filteredLogs.value).map((l) => [l.date, l.riderId, l.riderName, l.orders, l.cash, l.hours]),
   )
 }
 function exportManual() {
   exportCsv(
     `manual-orders-${todayStamp()}`,
     [t('orders.manual.orderNo'), t('orders.fields.date'), t('orders.manual.time'), t('common.riderCode'), t('orders.manual.rider'), t('orders.manual.km'), t('orders.manual.price'), t('orders.manual.collected'), t('orders.manual.createdBy')],
-    manual.value.map((m) => [m.orderNo, m.date, m.time, m.riderId, m.riderName, m.km, m.price, m.collected, m.createdBy]),
+    filteredManual.value.map((m) => [m.orderNo, m.date, m.time, m.riderId, m.riderName, m.km, m.price, m.collected, m.createdBy]),
   )
 }
 </script>
@@ -156,14 +201,19 @@ function exportManual() {
 
     <!-- Manager/Supervisor view -->
     <div v-else class="space-y-4">
-      <div class="flex flex-wrap items-center gap-3">
-        <Tabs v-model="tab" :tabs="tabs" class="lg:hidden" />
-        <Dropdown v-model="filterRider" :options="riderOptions" class="ms-auto w-auto min-w-[200px]" />
-      </div>
+      <FilterBar
+        v-model="orderFilters"
+        :filters="filterDefs"
+        :search="tab === 'manual' ? manualQuery : undefined"
+        :search-placeholder="t('orders.manual.searchPh')"
+        @update:search="manualQuery = $event"
+      >
+        <template #extra><DateRangePicker v-model="dateRange" /></template>
+      </FilterBar>
 
       <!-- daily logs -->
       <Card v-if="tab === 'logs'" class="overflow-hidden">
-        <DataTable :loading="loading" :rows="logs" :empty="t('orders.empty')" :columns="columns" :page-size="12">
+        <DataTable :loading="loading" :rows="filteredLogs" :empty="t('orders.empty')" :columns="columns" :page-size="12">
           <template #cell-date="{ row }">{{ formatDate(row.date) }}</template>
           <template #cell-orders="{ row }"><span class="tabular-nums">{{ num(row.orders) }}</span></template>
           <template #cell-cash="{ row }"><span class="tabular-nums">{{ sar(row.cash) }}</span></template>
@@ -187,26 +237,18 @@ function exportManual() {
       <!-- manual orders (#3) -->
       <template v-else>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card class="flex items-center gap-3 p-4">
-            <span class="bg-primary/10 text-primary grid size-11 place-items-center rounded-lg"><Package class="size-5" /></span>
-            <div><p class="text-2xl font-bold tabular-nums">{{ num(manualStats.count) }}</p><p class="text-muted-foreground text-xs">{{ t('orders.manual.stats.count') }}</p></div>
-          </Card>
-          <Card class="flex items-center gap-3 p-4">
-            <span class="bg-orange/10 text-orange grid size-11 place-items-center rounded-lg"><Banknote class="size-5" /></span>
-            <div><p class="text-2xl font-bold tabular-nums">{{ sar(manualStats.price) }}</p><p class="text-muted-foreground text-xs">{{ t('orders.manual.stats.price') }}</p></div>
-          </Card>
-          <Card class="flex items-center gap-3 p-4">
-            <span class="bg-success/10 text-success grid size-11 place-items-center rounded-lg"><HandCoins class="size-5" /></span>
-            <div><p class="text-2xl font-bold tabular-nums">{{ sar(manualStats.collected) }}</p><p class="text-muted-foreground text-xs">{{ t('orders.manual.stats.collected') }}</p></div>
-          </Card>
-          <Card class="flex items-center gap-3 p-4">
-            <span class="bg-muted text-muted-foreground grid size-11 place-items-center rounded-lg"><Route class="size-5" /></span>
-            <div><p class="text-2xl font-bold tabular-nums">{{ num(manualStats.km, { decimals: 1 }) }}</p><p class="text-muted-foreground text-xs">{{ t('orders.manual.stats.km') }}</p></div>
-          </Card>
+          <MetricTile :label="t('orders.manual.stats.count')" :value="manualStats.count" :format="(v) => num(Math.round(v))" :icon="Package" tone="brand"
+            :hint="t('orders.manual.stats.avgPrice', { v: sar(manualStats.avgPrice) })" />
+          <MetricTile :label="t('orders.manual.stats.price')" :value="manualStats.price" :format="(v) => sar(Math.round(v))" :icon="Banknote" tone="orange"
+            :hint="t('orders.manual.stats.perOrder')" />
+          <MetricTile :label="t('orders.manual.stats.collected')" :value="manualStats.collected" :format="(v) => sar(Math.round(v))" :icon="HandCoins" tone="success"
+            :progress="manualStats.rate" :hint="t('orders.manual.stats.rate', { v: manualStats.rate })" />
+          <MetricTile :label="t('orders.manual.stats.km')" :value="manualStats.km" :format="(v) => num(v, { decimals: 1 })" :icon="Route" tone="primary"
+            :hint="t('orders.manual.stats.avgKm', { v: num(manualStats.avgKm, { decimals: 1 }) })" />
         </div>
 
         <Card class="overflow-hidden">
-          <DataTable :loading="loading" :rows="manual" :empty="t('orders.manual.empty')" :columns="manualColumns" :page-size="12">
+          <DataTable :loading="loading" :rows="filteredManual" :empty="t('orders.manual.empty')" :columns="manualColumns" :page-size="12">
             <template #cell-orderNo="{ row }"><span dir="ltr" class="font-medium">{{ row.orderNo }}</span></template>
             <template #cell-date="{ row }">
               <span class="tabular-nums">{{ formatDate(row.date) }}</span>

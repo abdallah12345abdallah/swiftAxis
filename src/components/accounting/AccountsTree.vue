@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Plus, Pencil, ChevronDown, ChevronLeft, Folder, FileText } from 'lucide-vue-next'
 import { Card } from '@/components/ui/card'
+import FilterBar from '@/components/common/FilterBar.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -48,7 +49,24 @@ const isHidden = (a) => {
   }
   return false
 }
-const visible = computed(() => rows.value.filter((a) => !isHidden(a)))
+/* search by code or name: shows the matches with their parent groups (opened
+   regardless of folding); clearing it returns to the folded tree */
+const query = ref('')
+const visible = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return rows.value.filter((a) => !isHidden(a))
+  const keep = new Set()
+  for (const a of rows.value) {
+    if (![a.code, a.name, a.en].some((v) => String(v ?? '').toLowerCase().includes(q))) continue
+    keep.add(a.id)
+    let p = a.parent
+    while (p) {
+      keep.add(p)
+      p = rows.value.find((x) => x.id === p)?.parent ?? null
+    }
+  }
+  return rows.value.filter((a) => keep.has(a.id))
+})
 function toggle(id) {
   const s = new Set(collapsed.value)
   s.has(id) ? s.delete(id) : s.add(id)
@@ -97,6 +115,8 @@ const typeVariant = { asset: 'default', liability: 'warning', equity: 'accent', 
       <p class="text-muted-foreground text-sm">{{ t('accounting.accounts.hint') }}</p>
       <Button @click="openAdd(null)"><Plus /> {{ t('accounting.accounts.addRoot') }}</Button>
     </div>
+
+    <FilterBar v-model:search="query" :search-placeholder="t('accounting.accounts.searchPh')" />
 
     <Card class="overflow-hidden">
       <div v-if="loading" class="space-y-3 p-5"><Skeleton v-for="i in 8" :key="i" class="h-10 rounded-lg" /></div>

@@ -1,4 +1,5 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
 import { ref, computed, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronsLeft } from 'lucide-vue-next'
@@ -88,8 +89,8 @@ const alignClass = (c) => ({ end: 'text-end', center: 'text-center' })[c?.align]
       <Skeleton v-for="i in 6" :key="i" class="h-12 rounded-xl" />
     </div>
 
-    <div v-else-if="!rows.length" class="soft-table text-muted-foreground py-14 text-center text-sm">
-      {{ empty }}
+    <div v-else-if="!rows.length" class="soft-table">
+      <EmptyState :title="empty" />
     </div>
 
     <div v-else class="soft-table">

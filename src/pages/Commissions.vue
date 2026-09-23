@@ -3,10 +3,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Pencil, Download, Lock, CheckCircle2 } from 'lucide-vue-next'
+import { Pencil, Download, Lock, CheckCircle2, CalendarDays } from 'lucide-vue-next'
 import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { Tabs } from '@/components/ui/tabs'
+import FilterBar from '@/components/common/FilterBar.vue'
+import { CONTRACT_LIST } from '@/api/fixtures'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +20,7 @@ import { exportCsv, todayStamp } from '@/lib/export'
 import { useToast } from '@/composables/useToast'
 import { fetchFormulas, fetchMonthlyReview, approveMonth, tiersOf } from '@/api/commissions'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const confirm = useConfirm()
 const { sar, num } = useCurrency()
 const toast = useToast()
@@ -37,11 +38,39 @@ const tabs = computed(() => [
   { value: 'formulas', label: t('commissions.tabs.formulas') },
   { value: 'monthly', label: t('commissions.tabs.monthly') },
 ])
-const monthOptions = [
-  { value: '2026-07', label: '2026-07' },
-  { value: '2026-06', label: '2026-06' },
-  { value: '2026-05', label: '2026-05' },
-]
+// commissions are worked out and approved a whole month at a time, so the
+// period control is a month picker (shown with the month's name)
+const monthOptions = computed(() =>
+  ['2026-07', '2026-06', '2026-05'].map((m) => {
+    const [y, mo] = m.split('-').map(Number)
+    const label = new Intl.DateTimeFormat(locale.value === 'ar' ? 'ar-u-ca-gregory-nu-latn' : 'en-US', { month: 'long', year: 'numeric' }).format(new Date(y, mo - 1, 1))
+    return { value: m, label, icon: CalendarDays }
+  }),
+)
+
+/* search by rider, filter by contract and by extra orders */
+const reviewQuery = ref('')
+const reviewFilters = ref({ contract: '', extra: '' })
+const reviewFilterDefs = computed(() => [
+  { key: 'contract', label: t('riders.filters.contract'), options: CONTRACT_LIST.map((c) => ({ value: c.id, label: c.company })) },
+  { key: 'extra', label: t('commissions.monthly.extra'), options: [
+    { value: 'with', label: t('commissions.monthly.withExtra') },
+    { value: 'without', label: t('commissions.monthly.noExtra') },
+  ] },
+])
+const reviewRows = computed(() => {
+  const q = reviewQuery.value.trim().toLowerCase()
+  const f = reviewFilters.value
+  return review.value.rows.filter((r) => {
+    if (q && !`${r.name} ${r.id}`.toLowerCase().includes(q)) return false
+    if (f.contract && r.contract !== f.contract) return false
+    if (f.extra === 'with' && !(r.extra > 0)) return false
+    if (f.extra === 'without' && r.extra > 0) return false
+    return true
+  })
+})
+const isNarrowed = computed(() => reviewRows.value.length !== review.value.rows.length)
+const shownTotal = computed(() => reviewRows.value.reduce((s, r) => s + r.total, 0))
 
 async function loadFormulas() {
   formulas.value = await fetchFormulas()
@@ -89,7 +118,7 @@ function exportReview() {
   exportCsv(
     `commissions-${month.value}`,
     [t('commissions.monthly.rider'), t('commissions.monthly.orders'), t('commissions.monthly.base'), t('commissions.monthly.extraAmount'), t('commissions.monthly.total')],
-    review.value.rows.map((r) => [r.name, r.orders, r.base, r.extraAmount, r.total]),
+    reviewRows.value.map((r) => [r.name, r.orders, r.base, r.extraAmount, r.total]),
   )
 }
 </script>
@@ -103,10 +132,16 @@ function exportReview() {
       </template>
     </PageHeader>
 
-    <div class="mb-6 flex flex-wrap items-center gap-3" :class="tab !== 'monthly' && 'lg:hidden'">
-      <Tabs v-model="tab" :tabs="tabs" class="lg:hidden" />
-      <Dropdown v-if="tab === 'monthly'" v-model="month" :options="monthOptions" class="ms-auto w-auto min-w-[140px]" />
-    </div>
+    <FilterBar
+      v-if="tab === 'monthly'"
+      v-model:search="reviewQuery"
+      v-model="reviewFilters"
+      :filters="reviewFilterDefs"
+      :search-placeholder="t('commissions.monthly.searchPh')"
+      class="mb-4"
+    >
+      <template #extra><Dropdown v-model="month" :options="monthOptions" class="h-11 w-auto min-w-[170px] rounded-xl" /></template>
+    </FilterBar>
 
     <!-- Formulas -->
     <Card v-if="tab === 'formulas'" class="overflow-hidden">
@@ -149,7 +184,7 @@ function exportReview() {
       </div>
       <DataTable
         :loading="loading"
-        :rows="review.rows"
+        :rows="reviewRows"
         :empty="t('commissions.monthly.empty')"
         :columns="[
           { key: 'name', label: t('commissions.monthly.rider'), sortable: true },
@@ -167,9 +202,12 @@ function exportReview() {
         <template #cell-extraAmount="{ row }"><span class="tabular-nums">{{ sar(row.extraAmount) }}</span></template>
         <template #cell-total="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.total) }}</span></template>
       </DataTable>
-      <div class="bg-muted/40 flex items-center justify-between border-t px-5 py-3 text-sm font-semibold">
+      <div class="bg-muted/40 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t px-5 py-3 text-sm font-semibold">
         <span>{{ t('commissions.monthly.total') }}</span>
-        <span class="tabular-nums">{{ sar(review.total) }}</span>
+        <span class="flex items-center gap-3">
+          <span v-if="isNarrowed" class="text-muted-foreground text-xs font-medium">{{ t('commissions.monthly.shown', { v: sar(shownTotal) }) }}</span>
+          <span class="tabular-nums">{{ sar(review.total) }}</span>
+        </span>
       </div>
     </Card>
 

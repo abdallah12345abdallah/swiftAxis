@@ -1,4 +1,6 @@
 <script setup>
+import MetricTile from '@/components/common/MetricTile.vue'
+import { TrendingUp as MtTrendingUp, TrendingDown as MtTrendingDown, Scale as MtScale } from 'lucide-vue-next'
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ReportShell from '@/components/accounting/shared/ReportShell.vue'
@@ -46,9 +48,9 @@ const exportRows = () => data.value && exportCsv(`income-${todayStamp()}`, [t('a
         <p v-if="!g.items.length" class="text-muted-foreground py-1.5 text-xs">{{ t('common.none') }}</p>
       </div>
       <div class="grid gap-3 sm:grid-cols-3">
-        <div class="bg-success/10 rounded-xl p-4"><p class="text-muted-foreground text-xs">{{ t('accounting.common.revenue') }}</p><p class="text-success mt-1 text-xl font-bold tabular-nums">{{ money(data.revenue) }}</p></div>
-        <div class="bg-danger/10 rounded-xl p-4"><p class="text-muted-foreground text-xs">{{ t('accounting.common.expenses') }}</p><p class="text-danger mt-1 text-xl font-bold tabular-nums">{{ money(data.expenses) }}</p></div>
-        <div class="bg-navy rounded-xl p-4 text-white"><p class="text-xs text-white/70">{{ t('accounting.common.netProfit') }}</p><p class="mt-1 text-xl font-extrabold tabular-nums">{{ money(data.net) }}</p></div>
+        <MetricTile :label="t('accounting.common.revenue')" :value="data.revenue" :format="money" :icon="MtTrendingUp" tone="success" />
+        <MetricTile :label="t('accounting.common.expenses')" :value="data.expenses" :format="money" :icon="MtTrendingDown" tone="danger" />
+        <MetricTile :label="t('accounting.common.netProfit')" :value="data.net" :format="money" :icon="MtScale" :tone="data.net >= 0 ? 'success' : 'danger'" />
       </div>
     </div>
   </ReportShell>

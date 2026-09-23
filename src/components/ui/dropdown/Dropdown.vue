@@ -21,6 +21,8 @@ const props = defineProps({
   // true/false forces the in-menu search on/off; null = auto (shown for long lists)
   searchable: { type: Boolean, default: null },
   clearable: { type: Boolean, default: false },
+  // filter style: shows the filter's name when empty and 'name : value' when set
+  prefix: { type: String, default: '' },
   class: { type: null, default: '' },
   contentClass: { type: null, default: '' },
 })
@@ -48,6 +50,7 @@ const same = (a, b) => (isBlank(a) && isBlank(b) ? true : a === b)
 
 const selected = computed(() => props.options.find((o) => same(o.value, props.modelValue)))
 const selectedLabel = computed(() => selected.value?.label ?? '')
+const isActive = computed(() => !isBlank(props.modelValue) && !!selected.value)
 const canClear = computed(() => props.clearable && !props.disabled && !isBlank(props.modelValue))
 
 const showSearch = computed(() => props.searchable ?? props.options.length > 7)
@@ -252,6 +255,7 @@ const triggerClasses = computed(() =>
       ? 'border-danger focus-visible:border-danger'
       : !open.value && 'border-border hover:border-primary/40',
     props.class,
+    props.prefix && isActive.value && !open.value && 'border-primary/50 bg-primary/5',
   ),
 )
 </script>
@@ -272,7 +276,9 @@ const triggerClasses = computed(() =>
     @focusout="onTriggerFocusOut"
   >
     <component :is="selected.icon" v-if="selected?.icon" class="size-4 shrink-0" />
-    <span class="truncate text-start">{{ selectedLabel || placeholder }}</span>
+    <span v-if="prefix && isActive" class="truncate text-start"><span class="text-muted-foreground">{{ prefix }} :</span> <b class="text-foreground font-bold">{{ selectedLabel }}</b></span>
+    <span v-else-if="prefix" class="text-foreground/80 truncate text-start">{{ prefix }}</span>
+    <span v-else class="truncate text-start">{{ selectedLabel || placeholder }}</span>
 
     <span class="ms-auto flex shrink-0 items-center gap-0.5">
       <span
@@ -324,7 +330,7 @@ const triggerClasses = computed(() =>
               v-model="term"
               type="text"
               :placeholder="t('common.search')"
-              class="bg-muted/50 focus:bg-background placeholder:text-muted-foreground/60 h-8 w-full rounded-md ps-8 pe-2 text-sm outline-none transition-colors"
+              class="bg-muted/50 focus:bg-background placeholder:text-muted-foreground/60 border-border focus:border-primary h-8 w-full rounded-md border ps-8 pe-2 text-sm outline-none transition-colors"
               @keydown="onKeydown"
             />
           </div>

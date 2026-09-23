@@ -75,7 +75,8 @@
     "firstPage": "First page",
     "prevPage": "Previous",
     "nextPage": "Next",
-    "lastPage": "Last page"
+    "lastPage": "Last page",
+    "emptyHint": "Records will show up here once they are added — or try changing the search, filters or period."
   },
   "roles": {
     "manager": "System Manager",
@@ -212,7 +213,11 @@
       "total": "Total riders",
       "active": "Active",
       "underperforming": "Below target",
-      "avgOrders": "Avg orders"
+      "avgOrders": "Avg orders",
+      "inactiveHint": "{n} of them inactive",
+      "activeHint": "{v}% of all riders",
+      "underHint": "{v}% of active riders",
+      "avgHint": "Out of {n} orders in total"
     },
     "actions": {
       "add": "Add rider",
@@ -283,7 +288,15 @@
     "actions": "Actions",
     "save": "Save contract",
     "cancel": "Cancel",
-    "errCompany": "Please enter the company name"
+    "errCompany": "Please enter the company name",
+    "searchPh": "Search by company…",
+    "filters": {
+      "term": "Contract term",
+      "termOngoing": "Open-ended",
+      "termFixed": "Fixed term",
+      "withRiders": "Has riders",
+      "noRiders": "No riders"
+    }
   },
   "riderDetail": {
     "back": "Back to riders",
@@ -342,7 +355,8 @@
       "confirm": "Confirm conversion",
       "done": "Role converted to {role}",
       "converted": "Converted from {role}"
-    }
+    },
+    "searchPh": "Search by name, email or mobile…"
   },
   "reports": {
     "title": "Reports",
@@ -384,13 +398,33 @@
       "sharedNote": "Vehicle expenses are the full vehicle total; a * marks a vehicle shared by two riders",
       "orderNos": "Order numbers",
       "showOrders": "Show {n}",
-      "noOrderNos": "No order numbers recorded"
+      "noOrderNos": "No order numbers recorded",
+      "searchPh": "Search by rider, plate or order number…",
+      "activity": "Activity",
+      "withOrders": "Had orders in the period",
+      "withoutOrders": "No orders in the period",
+      "activeRiders": "Riders who worked",
+      "workDays": "{n} working days in total"
     },
     "best": {
       "title": "Best riders of the month",
       "rank": "Rank",
       "extraAmount": "Commission (above target)",
       "achievedSalary": "Achieved salary"
+    },
+    "monthly": {
+      "issued": "Issued",
+      "preparedBy": "Prepared by",
+      "approvedBy": "Approved by",
+      "highlights": "Month highlights",
+      "topRider": "Top rider",
+      "bestVehicle": "Most profitable vehicle",
+      "belowTarget": "Riders below target",
+      "ordersN": "{n} orders",
+      "netN": "Net {v}",
+      "onTargetN": "{n} on or above target",
+      "goal": "Target",
+      "marginN": "Profit margin {v}%"
     }
   },
   "purchases": {
@@ -466,7 +500,16 @@
       "usage": "Times purchased",
       "saved": "Saved",
       "errName": "Name is required"
-    }
+    },
+    "searchPh": "Search by ref, supplier invoice, supplier or item…",
+    "filters": {
+      "costCenter": "Cost center",
+      "taxable": "VAT",
+      "taxed": "Taxable",
+      "notTaxed": "Not taxable"
+    },
+    "searchSuppliers": "Search by supplier name or tax no.…",
+    "searchItems": "Search by item name…"
   },
   "vehicles": {
     "title": "Vehicles & Expenses",
@@ -591,7 +634,8 @@
       "empty": "No fill-ups",
       "allRiders": "All riders",
       "errVehicle": "Pick a vehicle",
-      "errAmount": "Enter the amount"
+      "errAmount": "Enter the amount",
+      "searchPh": "Search by station, plate or rider…"
     },
     "expenseItems": {
       "title": "Expense items",
@@ -605,6 +649,15 @@
       "saved": "Saved",
       "errName": "Name is required",
       "hint": "Items are used by vehicle expenses and treasury payment vouchers."
+    },
+    "searchExpenses": "Search by plate, invoice no. or note…",
+    "searchPh": "Search by plate, model, chassis or rider…",
+    "filters": {
+      "direction": "Direction",
+      "dir_riders": "Between riders",
+      "dir_toCompany": "Back to the company",
+      "dir_fromCompany": "From the company",
+      "searchHandovers": "Search by plate, rider or notes…"
     }
   },
   "wallets": {
@@ -720,6 +773,17 @@
         "riders": "Riders with debts",
         "pending": "Pending deposits"
       }
+    },
+    "filters": {
+      "overLimit": "Over the limit",
+      "withinLimit": "Within the limit",
+      "hasPending": "Has amounts awaiting approval",
+      "noPending": "Nothing pending",
+      "hasDebt": "Has debt",
+      "noDebt": "No debt",
+      "hasReceipt": "Receipt attached",
+      "noReceipt": "No receipt",
+      "searchWithdrawals": "Search by rider, reason or voucher no.…"
     }
   },
   "commissions": {
@@ -760,7 +824,11 @@
       "approveTitle": "Approve month",
       "approveHint": "This posts a balanced journal entry (Dr Commissions expense / Cr Riders payable) and locks the month.",
       "approved": "Month approved and posted",
-      "empty": "No data"
+      "empty": "No data",
+      "searchPh": "Search by rider name or code…",
+      "withExtra": "Has extra orders",
+      "noExtra": "No extra orders",
+      "shown": "Shown rows {v}"
     },
     "history": {
       "title": "Formula change history",
@@ -833,9 +901,19 @@
         "count": "Orders",
         "price": "Total price",
         "collected": "Total collected",
-        "km": "Total km"
+        "km": "Total km",
+        "avgPrice": "Average order price {v}",
+        "perOrder": "Sum of the recorded order prices",
+        "rate": "Collection rate {v}%",
+        "avgKm": "Average {v} km per order"
       },
-      "source": "Manual"
+      "source": "Manual",
+      "searchPh": "Search by order no., rider name or code…"
+    },
+    "filters": {
+      "volume": "Order volume",
+      "volumeMin": "Orders (at least)",
+      "hoursMin": "Work hours (at least)"
     }
   },
   "ledger": {
@@ -1026,7 +1104,11 @@
       "unlinked": "Not linked (default)"
     },
     "errName": "Name is required",
-    "saved": "Saved"
+    "saved": "Saved",
+    "searchVouchers": "Search by reference, party or description…",
+    "searchTransfers": "Search by reference, description or rider…",
+    "searchBoxes": "Search by box name or IBAN…",
+    "searchStatement": "Search by reference, description or party…"
   },
   "sales": {
     "title": "Sales Invoices",
@@ -1074,7 +1156,8 @@
       "preTax": "Sales pre-tax",
       "vat": "Output VAT",
       "due": "Outstanding"
-    }
+    },
+    "searchPh": "Search by invoice no., client or sheet file…"
   },
   "journal": {
     "title": "General Journal Entry",
@@ -1330,7 +1413,8 @@
       "isGroup": "Group account (has sub-accounts)",
       "errDuplicate": "Account code already in use",
       "errParent": "The parent must be a group account",
-      "errMovement": "An account with movement can't be deactivated"
+      "errMovement": "An account with movement can't be deactivated",
+      "searchPh": "Search by account code or name…"
     },
     "items": {
       "income": "Income statement",
@@ -1447,5 +1531,28 @@
       "message": "From now on the rider’s handovers go to {treasury}. Past movements stay as they are.",
       "action": "Move custody"
     }
+  },
+  "drp": {
+    "title": "Choose a period",
+    "all": "All days",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "last7": "Last 7 days",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "last30": "Last 30 days",
+    "thisYear": "This year",
+    "custom": "Custom range",
+    "allHint": "All periods",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "pickEnd": "Pick the end date",
+    "days": "{n} days selected",
+    "refresh": "Refresh data"
+  },
+  "filters": {
+    "title": "Filters",
+    "clearAll": "Clear all filters"
   }
 }

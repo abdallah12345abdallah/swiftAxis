@@ -1,22 +1,24 @@
 <script setup>
+import MetricTile from '@/components/common/MetricTile.vue'
+import { Wallet as MtWallet, Hourglass as MtHourglass, AlertTriangle as MtAlertTriangle, Target as MtTarget, ArrowUpRight as MtArrowUpRight, ListChecks as MtListChecks, FileWarning as MtFileWarning, Users as MtUsers } from 'lucide-vue-next'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import {
-  Search, HandCoins, FileText, AlertTriangle, Plus, ClipboardCheck, Landmark,
+  HandCoins, FileText, AlertTriangle, Plus, ClipboardCheck, Landmark,
   Eye, ListChecks, FileWarning, ExternalLink,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
+import FilterBar from '@/components/common/FilterBar.vue'
+import { DateRangePicker } from '@/components/ui/datepicker'
+import { CONTRACT_LIST } from '@/api/fixtures'
 import Avatar from '@/components/common/Avatar.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import { Card } from '@/components/ui/card'
-import { Tabs } from '@/components/ui/tabs'
 import { DataTable } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dropdown } from '@/components/ui/dropdown'
 import HandoverDialog from '@/components/wallets/HandoverDialog.vue'
 import WalletStatementDialog from '@/components/wallets/WalletStatementDialog.vue'
 import DepositDecisionDialog from '@/components/wallets/DepositDecisionDialog.vue'
@@ -54,11 +56,6 @@ const debts = ref([])
 const treasuries = ref([])
 
 const query = ref('')
-const depositStatus = ref('pending')
-const depositStatusOptions = computed(() => [
-  { value: 'pending', label: t('wallets.deposits.pendingOnly') },
-  { value: '', label: t('wallets.deposits.all') },
-])
 
 const handoverDialog = ref(false)
 const statementDialog = ref(false)
@@ -74,25 +71,103 @@ const selectedDebtRider = ref(null)
 async function load() {
   loading.value = true
   ;[wallets.value, deposits.value, withdrawals.value, debts.value, treasuries.value] = await Promise.all([
-    fetchWallets(), fetchDeposits({ status: depositStatus.value }), fetchWithdrawals(), fetchDebtsOverview(), fetchTreasuries(),
+    fetchWallets(), fetchDeposits(), fetchWithdrawals(), fetchDebtsOverview(), fetchTreasuries(),
   ])
   loading.value = false
 }
 onMounted(load)
 async function reloadDeposits() {
-  deposits.value = await fetchDeposits({ status: depositStatus.value })
+  deposits.value = await fetchDeposits()
 }
 
-const filtered = computed(() =>
-  wallets.value.filter((w) => !query.value || `${w.name} ${w.id}`.toLowerCase().includes(query.value.trim().toLowerCase())),
-)
+/* deposits: search, date range; status (pending by default, so the page opens
+   on the approval queue) and receipt in the tray */
+const depQuery = ref('')
+const depRange = ref(['', ''])
+const depFilters = ref({ status: 'pending', receipt: '' })
+const depFilterDefs = computed(() => [
+  { key: 'status', label: t('common.status'), options: ['pending', 'approved', 'rejected'].map((k) => ({ value: k, label: t(`wallets.deposits.statuses.${k}`) })) },
+  { key: 'receipt', label: t('wallets.receipt'), options: [{ value: 'yes', label: t('wallets.filters.hasReceipt') }, { value: 'no', label: t('wallets.filters.noReceipt') }] },
+])
+const inRange2 = (d, [a, b]) => (!a || d >= a) && (!b || d <= b)
+const textHit = (q, ...vals) => !q || vals.some((v) => String(v ?? '').toLowerCase().includes(q))
+const shownDeposits = computed(() => {
+  const q = depQuery.value.trim().toLowerCase()
+  const f = depFilters.value
+  return deposits.value.filter((d) =>
+    inRange2(d.date, depRange.value) && textHit(q, d.riderName, d.riderId, d.label) &&
+    (!f.status || d.status === f.status) &&
+    (!f.receipt || (f.receipt === 'yes') === !!d.receipt),
+  )
+})
+
+/* withdrawals: search, date range, custody box; the cards count what is shown */
+const wdQuery = ref('')
+const wdRange = ref(['', ''])
+const wdFilters = ref({ treasury: '' })
+const wdFilterDefs = computed(() => [
+  { key: 'treasury', label: t('wallets.withdrawals.treasury'), options: [...new Set(withdrawals.value.map((w) => w.treasuryName).filter((n) => n && n !== '—'))].map((n) => ({ value: n, label: n })) },
+])
+const shownWithdrawals = computed(() => {
+  const q = wdQuery.value.trim().toLowerCase()
+  return withdrawals.value.filter((w) =>
+    inRange2(w.date, wdRange.value) && textHit(q, w.riderName, w.riderId, w.reason, w.voucherRef) &&
+    (!wdFilters.value.treasury || w.treasuryName === wdFilters.value.treasury),
+  )
+})
+
+/* debts: search by rider, debt / pending in the tray (a balance "as of now",
+   so no date range) */
+const debtQuery = ref('')
+const debtFilters = ref({ debt: '', pending: '' })
+const debtFilterDefs = computed(() => [
+  { key: 'debt', label: t('wallets.debt'), options: [{ value: 'yes', label: t('wallets.filters.hasDebt') }, { value: 'no', label: t('wallets.filters.noDebt') }] },
+  { key: 'pending', label: t('wallets.pending'), options: [{ value: 'yes', label: t('wallets.filters.hasPending') }, { value: 'no', label: t('wallets.filters.noPending') }] },
+])
+const shownDebts = computed(() => {
+  const q = debtQuery.value.trim().toLowerCase()
+  const f = debtFilters.value
+  return debts.value.filter((d) =>
+    textHit(q, d.name, d.id) &&
+    (!f.debt || (f.debt === 'yes') === d.debt > 0) &&
+    (!f.pending || (f.pending === 'yes') === d.pending > 0),
+  )
+})
+
+/* wallets: search by rider, tray filters on custody box, balance vs the limit,
+   pending approval, debt and contract (balances are "as of now", so there is
+   no date range here) */
+const walletFilters = ref({ treasury: '', limit: '', pending: '', debt: '', contract: '' })
+const yesNo = (key, yes, no) => [{ value: 'yes', label: t(`wallets.filters.${yes}`) }, { value: 'no', label: t(`wallets.filters.${no}`) }]
+const walletFilterDefs = computed(() => [
+  { key: 'treasury', label: t('wallets.treasury'), options: [...new Set(wallets.value.map((w) => w.treasuryName).filter((n) => n && n !== '—'))].map((n) => ({ value: n, label: n })) },
+  { key: 'limit', label: t('wallets.balance'), options: [{ value: 'over', label: t('wallets.filters.overLimit') }, { value: 'within', label: t('wallets.filters.withinLimit') }] },
+  { key: 'pending', label: t('wallets.pending'), options: yesNo('pending', 'hasPending', 'noPending') },
+  { key: 'debt', label: t('wallets.debt'), options: yesNo('debt', 'hasDebt', 'noDebt') },
+  { key: 'contract', label: t('riders.filters.contract'), options: CONTRACT_LIST.map((c) => ({ value: c.id, label: c.company })) },
+])
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  const f = walletFilters.value
+  return wallets.value.filter((w) => {
+    if (q && !`${w.name} ${w.id}`.toLowerCase().includes(q)) return false
+    if (f.treasury && w.treasuryName !== f.treasury) return false
+    if (f.limit === 'over' && !w.over) return false
+    if (f.limit === 'within' && w.over) return false
+    if (f.pending === 'yes' && !(w.pending > 0)) return false
+    if (f.pending === 'no' && w.pending > 0) return false
+    if (f.debt === 'yes' && !(w.debt > 0)) return false
+    if (f.debt === 'no' && w.debt > 0) return false
+    if (f.contract && w.contract !== f.contract) return false
+    return true
+  })
+})
 const overCount = computed(() => wallets.value.filter((w) => w.over).length)
 const totalCash = computed(() => wallets.value.reduce((s, w) => s + w.balance, 0))
 const totalPending = computed(() => wallets.value.reduce((s, w) => s + w.pending, 0))
 const pendingCount = computed(() => deposits.value.filter((d) => d.status === 'pending').length)
 const totalDebt = computed(() => debts.value.reduce((s, d) => s + d.debt, 0))
 const ridersWithDebt = computed(() => debts.value.filter((d) => d.debt > 0).length)
-const totalWithdrawals = computed(() => withdrawals.value.reduce((s, w) => s + w.amount, 0))
 
 const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active && x.kind !== 'rider').map((x) => ({ value: x.id, label: x.name })))
 const mainTreasuryId = computed(() => treasuries.value.find((x) => x.isMain)?.id ?? '')
@@ -134,24 +209,17 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
       </template>
     </PageHeader>
 
-    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
-    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- ── Wallets ─────────────────────────────────────────── -->
     <template v-if="tab === 'wallets'">
       <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.balance') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(totalCash) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.pending') }}</p><p class="text-warning-foreground mt-1 text-2xl font-bold tabular-nums">{{ sar(totalPending) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.over') }}</p><p class="text-danger mt-1 text-2xl font-bold tabular-nums">{{ overCount }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('common.target') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(WALLET_WARNING_THRESHOLD) }}</p></Card>
+        <MetricTile :label="t('wallets.balance')" :value="totalCash" :format="sar" :icon="MtWallet" tone="brand" />
+        <MetricTile :label="t('wallets.pending')" :value="totalPending" :format="sar" :icon="MtHourglass" tone="warning" />
+        <MetricTile :label="t('wallets.over')" :value="overCount" :format="(v) => num(Math.round(v))" :icon="MtAlertTriangle" tone="danger" />
+        <MetricTile :label="t('common.target')" :value="WALLET_WARNING_THRESHOLD" :format="sar" :icon="MtTarget" tone="orange" />
       </div>
 
-      <div class="mb-4 max-w-xs">
-        <div class="relative">
-          <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3.5" />
-          <Input v-model="query" :placeholder="t('wallets.searchPlaceholder')" class="ps-10" />
-        </div>
-      </div>
+      <FilterBar v-model:search="query" v-model="walletFilters" :filters="walletFilterDefs" :search-placeholder="t('wallets.searchPlaceholder')" class="mb-4" />
 
       <Card class="overflow-hidden">
         <DataTable
@@ -207,14 +275,16 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
 
     <!-- ── Deposit approvals (#4b) ─────────────────────────── -->
     <template v-else-if="tab === 'deposits'">
-      <div class="mb-4 flex flex-wrap items-center gap-3">
-        <Badge v-if="pendingCount" variant="warning"><ClipboardCheck class="size-3.5" /> {{ pendingCount }} {{ t('wallets.pending') }}</Badge>
-        <Dropdown v-model="depositStatus" :options="depositStatusOptions" class="ms-auto w-auto min-w-[170px]" @change="reloadDeposits" />
-      </div>
+      <FilterBar v-model:search="depQuery" v-model="depFilters" :filters="depFilterDefs" :search-placeholder="t('wallets.searchPlaceholder')" class="mb-4">
+        <template #extra><DateRangePicker v-model="depRange" /></template>
+        <template #actions>
+          <Badge v-if="pendingCount" variant="warning" class="ms-auto"><ClipboardCheck class="size-3.5" /> {{ pendingCount }} {{ t('wallets.pending') }}</Badge>
+        </template>
+      </FilterBar>
       <Card class="overflow-hidden">
         <DataTable
           :loading="loading"
-          :rows="deposits"
+          :rows="shownDeposits"
           :empty="t('wallets.deposits.empty')"
           :page-size="12"
           :columns="[
@@ -255,13 +325,16 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
     <!-- ── Withdrawals (#4b) ───────────────────────────────── -->
     <template v-else-if="tab === 'withdrawals'">
       <div class="mb-6 grid gap-4 sm:grid-cols-2">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.withdrawals.total') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ sar(totalWithdrawals) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.withdrawals.count') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(withdrawals.length) }}</p></Card>
+        <MetricTile :label="t('wallets.withdrawals.total')" :value="shownWithdrawals.reduce((s, w) => s + w.amount, 0)" :format="sar" :icon="MtArrowUpRight" tone="orange" />
+        <MetricTile :label="t('wallets.withdrawals.count')" :value="shownWithdrawals.length" :format="(v) => num(Math.round(v))" :icon="MtListChecks" tone="brand" />
       </div>
+      <FilterBar v-model:search="wdQuery" v-model="wdFilters" :filters="wdFilterDefs" :search-placeholder="t('wallets.filters.searchWithdrawals')" class="mb-4">
+        <template #extra><DateRangePicker v-model="wdRange" /></template>
+      </FilterBar>
       <Card class="overflow-hidden">
         <DataTable
           :loading="loading"
-          :rows="withdrawals"
+          :rows="shownWithdrawals"
           :empty="t('wallets.withdrawals.empty')"
           :columns="[
             { key: 'date', label: t('common.date'), sortable: true },
@@ -284,14 +357,15 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
     <!-- ── Debts (#4b) ─────────────────────────────────────── -->
     <template v-else>
       <div class="mb-6 grid gap-4 sm:grid-cols-3">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.debts.kpi.total') }}</p><p class="text-danger mt-1 text-2xl font-bold tabular-nums">{{ sar(totalDebt) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.debts.kpi.riders') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(ridersWithDebt) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('wallets.debts.kpi.pending') }}</p><p class="text-warning-foreground mt-1 text-2xl font-bold tabular-nums">{{ sar(totalPending) }}</p></Card>
+        <MetricTile :label="t('wallets.debts.kpi.total')" :value="totalDebt" :format="sar" :icon="MtFileWarning" tone="danger" />
+        <MetricTile :label="t('wallets.debts.kpi.riders')" :value="ridersWithDebt" :format="(v) => num(Math.round(v))" :icon="MtUsers" tone="brand" />
+        <MetricTile :label="t('wallets.debts.kpi.pending')" :value="totalPending" :format="sar" :icon="MtHourglass" tone="warning" />
       </div>
+      <FilterBar v-model:search="debtQuery" v-model="debtFilters" :filters="debtFilterDefs" :search-placeholder="t('wallets.searchPlaceholder')" class="mb-4" />
       <Card class="overflow-hidden">
         <DataTable
           :loading="loading"
-          :rows="debts"
+          :rows="shownDebts"
           :empty="t('common.noData')"
           :columns="[
             { key: 'name', label: t('dashboard.table.rider'), sortable: true },

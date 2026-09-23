@@ -1,18 +1,20 @@
 <script setup>
+import EmptyState from '@/components/common/EmptyState.vue'
+import MetricTile from '@/components/common/MetricTile.vue'
+import { TrendingUp as MtTrendingUp, TrendingDown as MtTrendingDown } from 'lucide-vue-next'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Download, Pencil, ExternalLink } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { Tabs } from '@/components/ui/tabs'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Dropdown } from '@/components/ui/dropdown'
-import { DatePicker } from '@/components/ui/datepicker'
+import { DateRangePicker } from '@/components/ui/datepicker'
+import FilterBar from '@/components/common/FilterBar.vue'
 import CostCenterDialog from '@/components/ledger/CostCenterDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
@@ -48,6 +50,10 @@ const dateRange = computed({
   },
 })
 const filterCenter = ref('')
+const ledgerFilters = computed({
+  get: () => ({ center: filterCenter.value }),
+  set: (v) => (filterCenter.value = v.center ?? ''),
+})
 
 const ccDialog = ref(false)
 const editingCenter = ref(null)
@@ -112,17 +118,15 @@ function exportTrial() {
       </template>
     </PageHeader>
 
-    <div class="mb-6 flex flex-wrap items-end gap-3">
-      <Tabs v-model="tab" :tabs="tabs" class="lg:hidden" />
-      <div class="ms-auto flex flex-wrap items-center gap-2">
-        <DatePicker v-model="dateRange" range class="h-10 w-auto min-w-[240px]" />
-        <Dropdown v-model="filterCenter" :options="centerFilterOptions" class="w-auto min-w-[160px]" />
-      </div>
+    <div class="mb-6 space-y-3">
+      <FilterBar v-model="ledgerFilters" :filters="[{ key: 'center', label: t('ledger.cc.name'), options: centerFilterOptions }]">
+        <template #extra><DateRangePicker v-model="dateRange" /></template>
+      </FilterBar>
     </div>
 
     <!-- Journal -->
     <div v-if="tab === 'journal'" class="space-y-4">
-      <p v-if="!loading && !journal.length" class="text-muted-foreground py-16 text-center text-sm">{{ t('ledger.empty') }}</p>
+      <Card v-if="!loading && !journal.length"><EmptyState :title="t('ledger.empty')" /></Card>
       <Card v-for="e in journal" :key="e.id" class="p-5">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
@@ -197,8 +201,8 @@ function exportTrial() {
         </CardContent>
       </Card>
       <div class="space-y-4">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('ledger.pnl.totalRevenue') }}</p><p class="text-success mt-1 text-2xl font-bold tabular-nums">{{ sar(pnl.totalRevenue) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('ledger.pnl.totalExpense') }}</p><p class="text-danger mt-1 text-2xl font-bold tabular-nums">{{ sar(pnl.totalExpense) }}</p></Card>
+        <MetricTile :label="t('ledger.pnl.totalRevenue')" :value="pnl.totalRevenue" :format="sar" :icon="MtTrendingUp" tone="success" />
+        <MetricTile :label="t('ledger.pnl.totalExpense')" :value="pnl.totalExpense" :format="sar" :icon="MtTrendingDown" tone="danger" />
         <Card class="bg-navy p-5 text-white"><p class="text-sm text-white/70">{{ t('ledger.pnl.net') }}</p><p class="mt-1 text-3xl font-extrabold tabular-nums">{{ sar(pnl.net) }}</p></Card>
       </div>
     </div>

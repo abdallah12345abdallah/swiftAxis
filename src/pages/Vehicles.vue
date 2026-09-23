@@ -1,4 +1,6 @@
 <script setup>
+import MetricTile from '@/components/common/MetricTile.vue'
+import { Fuel as MtFuel, Droplets as MtDroplets, Banknote as MtBanknote } from 'lucide-vue-next'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
@@ -6,7 +8,6 @@ import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Bike, Car, Download, ArrowLeftRight, Building2, Fuel, Clock, Tags, Camera } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
-import { Tabs } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +21,8 @@ import ShiftDialog from '@/components/vehicles/ShiftDialog.vue'
 import FuelLogDialog from '@/components/vehicles/FuelLogDialog.vue'
 import ExpenseItemDialog from '@/components/vehicles/ExpenseItemDialog.vue'
 import { Dropdown } from '@/components/ui/dropdown'
+import FilterBar from '@/components/common/FilterBar.vue'
+import { DateRangePicker } from '@/components/ui/datepicker'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { exportCsv, todayStamp } from '@/lib/export'
@@ -98,10 +101,98 @@ const chartVehicleOptions = computed(() => [
   ...vehicles.value.map((v) => ({ value: v.id, label: v.plate })),
 ])
 
-/* fuel filters */
+/* vehicles list: search by plate / model / chassis / riders; type, status and
+   the assigned rider (either shift) in the tray */
+const vehQuery = ref('')
+const vehFilters = ref({ type: '', status: '', rider: '' })
+const vehFilterDefs = computed(() => [
+  { key: 'type', label: t('vehicles.type'), options: typeOptions.value },
+  { key: 'status', label: t('vehicles.statusLabel'), options: Object.keys(VEHICLE_STATUS).map((k) => ({ value: k, label: loc(VEHICLE_STATUS, k) })) },
+  { key: 'rider', label: t('vehicles.rider'), options: riderOptions.value },
+])
+const shownVehicles = computed(() => {
+  const q = vehQuery.value.trim().toLowerCase()
+  const f = vehFilters.value
+  return vehicles.value.filter((v) =>
+    (!q || [v.plate, v.model, v.chassis, v.ridersLabel].some((x) => String(x ?? '').toLowerCase().includes(q))) &&
+    (!f.type || v.type === f.type) &&
+    (!f.status || v.status === f.status) &&
+    (!f.rider || v.morningRiderId === f.rider || v.eveningRiderId === f.rider),
+  )
+})
+
+/* handovers: search by plate / riders / notes, date range; vehicle, shift,
+   direction and condition in the tray */
+const hoQuery = ref('')
+const hoRange = ref(['', ''])
+const hoFilters = ref({ vehicle: '', shift: '', direction: '', condition: '' })
+const hoFilterDefs = computed(() => [
+  { key: 'vehicle', label: t('vehicles.handover.vehicle'), options: vehicles.value.map((v) => ({ value: v.id, label: v.plate })) },
+  { key: 'shift', label: t('vehicles.handover.shift'), options: shifts.value.map((x) => ({ value: x.id, label: locale.value === 'ar' ? x.name : x.en })) },
+  { key: 'direction', label: t('vehicles.filters.direction'), options: ['riders', 'toCompany', 'fromCompany'].map((k) => ({ value: k, label: t(`vehicles.filters.dir_${k}`) })) },
+  { key: 'condition', label: t('vehicles.handover.condition'), options: ['good', 'damaged'].map((k) => ({ value: k, label: t(`vehicles.handover.conditions.${k}`) })) },
+])
+const shownHandovers = computed(() => {
+  const q = hoQuery.value.trim().toLowerCase()
+  const [a, b] = hoRange.value
+  const f = hoFilters.value
+  const dirOf = (h) => (h.toType === 'company' ? 'toCompany' : h.fromType === 'company' ? 'fromCompany' : 'riders')
+  return handovers.value.filter((h) =>
+    (!q || [h.plate, h.fromName, h.toName, h.fromRiderId, h.toRiderId, h.notes].some((x) => String(x ?? '').toLowerCase().includes(q))) &&
+    (!a || h.date >= a) && (!b || h.date <= b) &&
+    (!f.vehicle || h.vehicleId === f.vehicle) &&
+    (!f.shift || h.shiftId === f.shift) &&
+    (!f.direction || dirOf(h) === f.direction) &&
+    (!f.condition || h.condition === f.condition),
+  )
+})
+
+/* expenses list: search, date range, vehicle + type in the tray */
+const expQuery = ref('')
+const expRange = ref(['', ''])
+const expFilters = ref({ vehicle: '', type: '' })
+const expFilterDefs = computed(() => [
+  { key: 'vehicle', label: t('vehicles.fields.vehicle'), options: vehicles.value.map((v) => ({ value: v.id, label: v.plate })) },
+  { key: 'type', label: t('vehicles.fields.type'), options: Object.keys(EXPENSE_TYPES).map((k) => ({ value: k, label: loc(EXPENSE_TYPES, k) })) },
+])
+const shownExpenses = computed(() => {
+  const q = expQuery.value.trim().toLowerCase()
+  const [a, b] = expRange.value
+  const f = expFilters.value
+  return expenses.value.filter((e) =>
+    (!q || [e.plate, e.invoiceNo, e.note].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!a || e.date >= a) && (!b || e.date <= b) &&
+    (!f.vehicle || e.vehicleId === f.vehicle) &&
+    (!f.type || e.type === f.type),
+  )
+})
+
+/* fuel sheet: vehicle / rider / dates go to the API (the per-vehicle summary
+   follows them); the search narrows the rows, and the cards count what is shown */
 const fuelVehicle = ref('')
 const fuelRider = ref('')
-const fuelRiderOptions = computed(() => [{ value: '', label: t('vehicles.fuel.allRiders') }, ...riderOptions.value])
+const fuelQuery = ref('')
+const fuelRange = ref(['', ''])
+const fuelFilters = computed({
+  get: () => ({ vehicle: fuelVehicle.value, rider: fuelRider.value }),
+  set: (v) => {
+    fuelVehicle.value = v.vehicle ?? ''
+    fuelRider.value = v.rider ?? ''
+  },
+})
+const fuelFilterDefs = computed(() => [
+  { key: 'vehicle', label: t('vehicles.fields.vehicle'), options: vehicles.value.map((v) => ({ value: v.id, label: v.plate })) },
+  { key: 'rider', label: t('vehicles.fuel.rider'), options: riderOptions.value },
+])
+const shownFuel = computed(() => {
+  const q = fuelQuery.value.trim().toLowerCase()
+  return fuel.value.rows.filter((r) => !q || [r.station, r.plate, r.riderName, r.riderId].some((v) => String(v ?? '').toLowerCase().includes(q)))
+})
+const fuelTotals = computed(() => ({
+  fills: shownFuel.value.length,
+  liters: shownFuel.value.reduce((s, r) => s + r.liters, 0),
+  amount: shownFuel.value.reduce((s, r) => s + r.amount, 0),
+}))
 
 async function loadBreakdown() {
   breakdown.value = await expenseBreakdown({ granularity: granularity.value, vehicleId: chartVehicle.value || undefined })
@@ -109,9 +200,10 @@ async function loadBreakdown() {
 watch([granularity, chartVehicle], loadBreakdown)
 
 async function loadFuel() {
-  fuel.value = await fetchFuelSheet({ vehicleId: fuelVehicle.value || undefined, riderId: fuelRider.value || undefined })
+  const [from, to] = fuelRange.value
+  fuel.value = await fetchFuelSheet({ vehicleId: fuelVehicle.value || undefined, riderId: fuelRider.value || undefined, from: from || undefined, to: to || undefined })
 }
-watch([fuelVehicle, fuelRider], loadFuel)
+watch([fuelVehicle, fuelRider, fuelRange], loadFuel)
 
 async function load() {
   loading.value = true
@@ -158,7 +250,7 @@ function exportFuel() {
   exportCsv(
     `fuel-sheet-${todayStamp()}`,
     [t('common.date'), t('vehicles.fields.vehicle'), t('common.riderCode'), t('vehicles.fuel.rider'), t('vehicles.fuel.liters'), t('vehicles.fuel.amount'), t('vehicles.fuel.pricePerLiter'), t('vehicles.fuel.odometer'), t('vehicles.fuel.station')],
-    fuel.value.rows.map((r) => [r.date, r.plate, r.riderId ?? '', r.riderName, r.liters, r.amount, r.pricePerLiter, r.odometer, r.station]),
+    shownFuel.value.map((r) => [r.date, r.plate, r.riderId ?? '', r.riderName, r.liters, r.amount, r.pricePerLiter, r.odometer, r.station]),
   )
 }
 </script>
@@ -180,14 +272,14 @@ function exportFuel() {
       </template>
     </PageHeader>
 
-    <!-- on desktop the sidebar lists these screens; the tabs are for phones -->
-    <div class="mb-6 lg:hidden"><Tabs v-model="tab" :tabs="tabs" /></div>
 
     <!-- Vehicles -->
-    <Card v-if="tab === 'vehicles'" class="overflow-hidden">
+    <template v-if="tab === 'vehicles'">
+    <FilterBar v-model:search="vehQuery" v-model="vehFilters" :filters="vehFilterDefs" :search-placeholder="t('vehicles.searchPh')" class="mb-4" />
+    <Card class="overflow-hidden">
       <DataTable
         :loading="loading"
-        :rows="vehicles"
+        :rows="shownVehicles"
         :empty="t('vehicles.empty')"
         :columns="[
           { key: 'plate', label: t('vehicles.plate'), sortable: true },
@@ -235,11 +327,16 @@ function exportFuel() {
         </template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- Handover (#5) -->
-    <Card v-else-if="tab === 'handover'" class="overflow-hidden">
+    <template v-else-if="tab === 'handover'">
+    <FilterBar v-model:search="hoQuery" v-model="hoFilters" :filters="hoFilterDefs" :search-placeholder="t('vehicles.filters.searchHandovers')" class="mb-4">
+      <template #extra><DateRangePicker v-model="hoRange" /></template>
+    </FilterBar>
+    <Card class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="handovers" :empty="t('vehicles.handover.empty')" :page-size="12"
+        :loading="loading" :rows="shownHandovers" :empty="t('vehicles.handover.empty')" :page-size="12"
         :columns="[
           { key: 'date', label: t('common.date'), sortable: true },
           { key: 'plate', label: t('vehicles.handover.vehicle'), sortable: true },
@@ -274,6 +371,7 @@ function exportFuel() {
         <template #cell-by="{ row }"><span class="text-muted-foreground inline-flex items-center gap-1 text-xs">{{ row.by || '—' }} <Camera v-if="row.photo" class="size-3.5" /></span></template>
       </DataTable>
     </Card>
+    </template>
 
     <!-- Shifts (#5) -->
     <Card v-else-if="tab === 'shifts'" class="overflow-hidden">
@@ -327,10 +425,14 @@ function exportFuel() {
         </div>
       </Card>
 
+      <div>
+      <FilterBar v-model:search="expQuery" v-model="expFilters" :filters="expFilterDefs" :search-placeholder="t('vehicles.searchExpenses')" class="mb-4">
+        <template #extra><DateRangePicker v-model="expRange" /></template>
+      </FilterBar>
       <Card class="overflow-hidden">
         <DataTable
           :loading="loading"
-          :rows="expenses"
+          :rows="shownExpenses"
           :empty="t('vehicles.empty')"
           :columns="[
             { key: 'date', label: t('vehicles.fields.date'), sortable: true },
@@ -347,24 +449,26 @@ function exportFuel() {
           <template #cell-amount="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.amount) }}</span></template>
         </DataTable>
       </Card>
+      </div>
     </div>
 
     <!-- Fuel sheet (#5/#6) -->
     <div v-else-if="tab === 'fuel'" class="space-y-6">
-      <div class="flex flex-wrap items-center gap-3">
-        <Dropdown v-model="fuelVehicle" :options="chartVehicleOptions" class="w-auto min-w-[160px]" />
-        <Dropdown v-model="fuelRider" :options="fuelRiderOptions" class="w-auto min-w-[180px]" />
-        <p class="text-muted-foreground ms-auto text-xs">{{ t('vehicles.fuel.hint') }}</p>
+      <div class="space-y-2">
+        <FilterBar v-model:search="fuelQuery" v-model="fuelFilters" :filters="fuelFilterDefs" :search-placeholder="t('vehicles.fuel.searchPh')">
+          <template #extra><DateRangePicker v-model="fuelRange" /></template>
+        </FilterBar>
+        <p class="text-muted-foreground text-xs">{{ t('vehicles.fuel.hint') }}</p>
       </div>
       <div class="grid gap-4 sm:grid-cols-3">
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('vehicles.fuel.fills') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(fuel.totals.fills) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('vehicles.fuel.liters') }}</p><p class="mt-1 text-2xl font-bold tabular-nums">{{ num(fuel.totals.liters, { decimals: 1 }) }}</p></Card>
-        <Card class="p-5"><p class="text-muted-foreground text-sm">{{ t('vehicles.fuel.amount') }}</p><p class="text-orange mt-1 text-2xl font-bold tabular-nums">{{ sar(fuel.totals.amount) }}</p></Card>
+        <MetricTile :label="t('vehicles.fuel.fills')" :value="fuelTotals.fills" :format="(v) => num(Math.round(v))" :icon="MtFuel" tone="brand" />
+        <MetricTile :label="t('vehicles.fuel.liters')" :value="fuelTotals.liters" :format="(v) => num(v, { decimals: 1 })" :icon="MtDroplets" tone="primary" />
+        <MetricTile :label="t('vehicles.fuel.amount')" :value="fuelTotals.amount" :format="sar" :icon="MtBanknote" tone="orange" />
       </div>
       <div class="grid gap-6 xl:grid-cols-3">
         <Card class="overflow-hidden xl:col-span-2">
           <DataTable
-            :loading="loading" :rows="fuel.rows" :empty="t('vehicles.fuel.empty')" :page-size="10"
+            :loading="loading" :rows="shownFuel" :empty="t('vehicles.fuel.empty')" :page-size="10"
             :columns="[
               { key: 'date', label: t('common.date'), sortable: true },
               { key: 'plate', label: t('vehicles.fields.vehicle'), sortable: true },
