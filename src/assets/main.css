@@ -315,20 +315,23 @@
 @media (min-width: 40rem) { .sheet-main { --sheet-pad: 1.5rem; } }
 @media (min-width: 64rem) { .sheet-main { --sheet-pad: 2rem; } }
 
-/* Glass header: the page header is pinned to the top of the sheet. Once the
-   page scrolls (main[data-scrolled], set by the layout) it frosts with a thin
-   orange line on its edge; on long pages (main[data-compact]) the title also
-   shrinks and the subtitle folds away. */
+/* Glass header. At rest the page header sits in the page and scrolls with it.
+   Once a long page moves (main[data-compact], set by the layout) it pins to the
+   top of the sheet in one step: frosted, a thin orange line on its edge, the
+   title smaller and the subtitle folded away. There is no "frosted but full
+   size" state, so nothing tall covers the content near the top. */
+.sheet-main { overflow-anchor: none; } /* the header's size change must not make the browser re-scroll */
 .page-head {
-  position: sticky; top: calc(var(--sheet-pad, 0px) * -1); z-index: 20; /* the negative margin counts toward the pinned edge, so offset it */
+  position: relative; z-index: 20;
   margin-inline: calc(var(--sheet-pad, 0px) * -1); padding-inline: var(--sheet-pad, 0px);
   margin-top: calc(var(--sheet-pad, 0px) * -1); padding-top: var(--sheet-pad, 0px); padding-bottom: 0.25rem;
   transition: padding 0.3s ease, background-color 0.3s, box-shadow 0.3s, -webkit-backdrop-filter 0.3s, backdrop-filter 0.3s;
 }
 .page-head-title { transition: font-size 0.3s ease; }
 .page-head-sub { max-height: 3rem; overflow: hidden; margin-top: 0.25rem; transition: max-height 0.3s ease, opacity 0.2s, margin 0.3s; }
-[data-compact] .page-head { padding-block: 0.7rem; align-items: center; }
-[data-scrolled] .page-head {
+[data-compact] .page-head {
+  position: sticky; top: calc(var(--sheet-pad, 0px) * -1); /* the negative margin counts toward the pinned edge, so offset it */
+  padding-block: 0.7rem; align-items: center;
   background: color-mix(in srgb, var(--background) 74%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 45%, transparent), 0 12px 24px -20px color-mix(in srgb, var(--navy) 70%, transparent);

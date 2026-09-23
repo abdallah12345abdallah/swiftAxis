@@ -91,18 +91,17 @@ watch(() => route.fullPath, () => {
 }, { immediate: true })
 onBeforeUnmount(() => clearTimeout(riseTimer))
 
-/* glass header: as soon as the page scrolls the pinned header frosts; on
-   pages long enough it also shrinks. Shrinking changes the page height, so it
-   only starts with room to spare, and the 8px/40px gap stops jitter. */
-const scrolled = ref(false)
+/* glass header: pins (frosted + compact, one state) as soon as a long page
+   moves, and lets go only back at the very top. The header shrinking takes
+   ~45px off the page, so it only pins with room to spare; with the browser's
+   scroll anchoring off (see .sheet-main) the scroll position stays put. */
 const compact = ref(false)
 function onMainScroll(e) {
   const el = e.target
-  scrolled.value = el.scrollTop > 2
-  if (!compact.value && el.scrollTop > 40 && el.scrollHeight - el.clientHeight >= 160) compact.value = true
-  else if (compact.value && el.scrollTop < 8) compact.value = false
+  if (!compact.value && el.scrollTop > 4 && el.scrollHeight - el.clientHeight >= 120) compact.value = true
+  else if (compact.value && el.scrollTop <= 1) compact.value = false
 }
-watch(() => route.fullPath, () => { scrolled.value = false; compact.value = false })
+watch(() => route.fullPath, () => { compact.value = false })
 
 /* a click anywhere outside the island folds the lists opened by hand */
 function onOutsideClick(e) {
@@ -256,7 +255,6 @@ function logout() {
             ref="mainEl"
             class="sheet-main min-h-0 flex-1 overflow-y-auto"
             :class="rising && 'page-rise'"
-            :data-scrolled="scrolled || undefined"
             :data-compact="compact || undefined"
             @scroll.passive="onMainScroll"
           >
