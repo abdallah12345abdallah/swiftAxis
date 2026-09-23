@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { FileText, Printer, BarChart3, Download, Trophy } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import BrandLogo from '@/components/common/BrandLogo.vue'
@@ -24,7 +25,7 @@ const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
 const { formatDate, formatMonth } = useDate()
 
-const tab = ref('monthly')
+const tab = useRouteTab('monthly')
 const tabs = computed(() => [
   { value: 'monthly', label: t('reports.tabs.monthly') },
   { value: 'period', label: t('reports.tabs.period') },

@@ -105,7 +105,13 @@
     "treasury": "Treasury & Banks",
     "sales": "Sales Invoices",
     "journalEntry": "Journal entry",
-    "accounting": "General Accounts"
+    "accounting": "General Accounts",
+    "groups": {
+      "ops": "Operations",
+      "money": "Money",
+      "fleet": "Fleet",
+      "admin": "Admin"
+    }
   },
   "login": {
     "title": "Welcome back",
@@ -1383,5 +1389,26 @@
         "net_profit": "Net profit"
       }
     }
+  },
+  "layout": {
+    "live": "Live",
+    "ordersToday": "{n} orders today",
+    "mainTreasury": "Main treasury",
+    "pending": "{n} deposits waiting",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "search": "Search screens…",
+    "searchHint": "Press / to search",
+    "noResults": "No screen matches",
+    "pins": "Pinned",
+    "pin": "Pin to favorites",
+    "unpin": "Unpin",
+    "results": "Results",
+    "account": "Account",
+    "switchRole": "Switch role (demo mode)",
+    "theme": "Theme",
+    "language": "Language",
+    "dark": "Dark",
+    "light": "Light"
   }
 }

@@ -125,6 +125,15 @@ export const NAV_ITEMS = [
   },
 ]
 
+/** Sidebar island groups: every nav item sits in one colored domain group.
+    `tone` is a design token name used for the group's color bar. */
+export const NAV_GROUPS = [
+  { key: 'ops', tone: 'primary', items: ['dashboard', 'orders', 'riders', 'contracts', 'commissions'] },
+  { key: 'money', tone: 'orange', items: ['wallets', 'treasury', 'sales', 'accounting', 'ledger', 'purchases'] },
+  { key: 'fleet', tone: 'success', items: ['vehicles', 'reports'] },
+  { key: 'admin', tone: 'muted', items: ['users', 'settings'] },
+]
+
 /** Wallet balance warning threshold in SAR (US-014). */
 export const WALLET_WARNING_THRESHOLD = 700
 

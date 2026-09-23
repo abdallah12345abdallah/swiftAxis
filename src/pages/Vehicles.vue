@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Bike, Car, Download, ArrowLeftRight, Building2, Fuel, Clock, Tags, Camera } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
@@ -33,7 +34,7 @@ const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 
-const tab = ref('vehicles')
+const tab = useRouteTab('vehicles')
 const loading = ref(true)
 const vehicles = ref([])
 const expenses = ref([])

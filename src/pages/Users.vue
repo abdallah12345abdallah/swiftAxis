@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Power, Check, Search, Warehouse } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
@@ -45,7 +46,7 @@ async function doConvert() {
   }
 }
 
-const tab = ref('users')
+const tab = useRouteTab('users')
 const loading = ref(true)
 const users = ref([])
 const audit = ref([])

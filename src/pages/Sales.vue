@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Download, CheckCircle2, FileSpreadsheet } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -25,7 +26,7 @@ const { sar, num } = useCurrency()
 const { formatDate, formatMonth } = useDate()
 const toast = useToast()
 
-const tab = ref('invoices')
+const tab = useRouteTab('invoices')
 const tabs = computed(() => [
   { value: 'invoices', label: t('sales.tabs.invoices') },
   { value: 'vat', label: t('sales.tabs.vat') },

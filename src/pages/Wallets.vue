@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import {
   Search, HandCoins, FileText, AlertTriangle, Plus, ClipboardCheck, Landmark,
   Eye, ListChecks, FileWarning, ExternalLink,
@@ -36,7 +37,7 @@ const auth = useAuthStore()
 /* the accountant (and the manager) decide deposits, withdraw and convert debts */
 const canAct = computed(() => [ROLES.ACCOUNTANT, ROLES.MANAGER].includes(auth.role))
 
-const tab = ref('wallets')
+const tab = useRouteTab('wallets')
 const tabs = computed(() => [
   { value: 'wallets', label: t('wallets.tabs.wallets') },
   { value: 'deposits', label: t('wallets.tabs.deposits') },

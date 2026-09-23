@@ -33,8 +33,10 @@ npm run build    # production build
 
 ### Demo login
 
+The app shell is a "glass island": a brand-gradient ground, a floating glass sidebar that keeps every link visible (grouped by domain, drawer on phones), and the page as a floating sheet (`src/layouts/DashboardLayout.vue`, groups in `NAV_GROUPS`, counts from `src/api/nav.js`). The active module's sub-screens unfold inside the island (`src/lib/subScreens.js`; tabbed pages sync their tab to `?tab=` via `useRouteTab`).
+
 There is no backend yet — the login screen lets you sign in as any of the five roles
-(**Manager / Supervisor / Accountant / Warehouse keeper / Rider**). A dev **role switcher** in the topbar changes
+(**Manager / Supervisor / Accountant / Warehouse keeper / Rider**). A dev **role switcher** inside the account menu at the foot of the sidebar changes
 the active role live. The dashboard renders a team overview for staff roles and a personal view
 for riders. Visit `/dev/ui` for the design-system style guide.
 

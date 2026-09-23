@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import {
   Plus, Pencil, Download, Landmark, Banknote, Wallet, ArrowLeftRight, Star,
   ArrowDownLeft, ArrowUpRight, Link2,
@@ -34,7 +35,7 @@ const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 const toast = useToast()
 
-const tab = ref('treasuries')
+const tab = useRouteTab('treasuries')
 const tabs = computed(() => [
   { value: 'treasuries', label: t('treasury.tabs.treasuries') },
   { value: 'payments', label: t('treasury.tabs.payments') },

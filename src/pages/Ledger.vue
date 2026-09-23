@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Download, Pencil, ExternalLink } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -24,7 +25,7 @@ const { t, locale } = useI18n()
 const { sar } = useCurrency()
 const { formatDate } = useDate()
 
-const tab = ref('journal')
+const tab = useRouteTab('journal')
 const loading = ref(true)
 
 const journal = ref([])

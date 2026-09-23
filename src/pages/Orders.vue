@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Upload, Pencil, Download, Plus, Package, Banknote, HandCoins, Route } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
@@ -31,7 +32,7 @@ const isRider = computed(() => auth.role === ROLES.RIDER)
 const isSupervisor = computed(() => auth.role === ROLES.SUPERVISOR)
 const isManager = computed(() => auth.role === ROLES.MANAGER)
 
-const tab = ref('logs')
+const tab = useRouteTab('logs')
 const tabs = computed(() => [
   { value: 'logs', label: t('orders.tabs.logs') },
   { value: 'manual', label: t('orders.tabs.manual') },

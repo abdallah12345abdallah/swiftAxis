@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Pencil, Download, Lock, CheckCircle2 } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -21,7 +22,7 @@ const { t } = useI18n()
 const { sar, num } = useCurrency()
 const toast = useToast()
 
-const tab = ref('formulas')
+const tab = useRouteTab('formulas')
 const loading = ref(true)
 const formulas = ref([])
 const review = ref({ rows: [], total: 0, locked: false })

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouteTab } from '@/composables/useRouteTab'
 import { Plus, Pencil, Download } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -27,7 +28,7 @@ const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 
-const tab = ref('purchases')
+const tab = useRouteTab('purchases')
 const loading = ref(true)
 const purchases = ref([])
 const suppliers = ref([])

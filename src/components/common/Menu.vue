@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 const props = defineProps({
   // 'start' | 'end' — logical alignment (RTL-aware via inset-inline)
   align: { type: String, default: 'end' },
+  // 'bottom' | 'top' — open below (default) or above the trigger
+  side: { type: String, default: 'bottom' },
   contentClass: { type: null, default: '' },
 })
 
@@ -52,7 +54,8 @@ onBeforeUnmount(() => {
         v-if="open"
         :class="
           cn(
-            'bg-popover text-popover-foreground absolute top-full z-50 mt-2 min-w-52 overflow-hidden rounded-xl border p-1.5 shadow-lg',
+            'bg-popover text-popover-foreground absolute z-50 min-w-52 overflow-hidden rounded-xl border p-1.5 shadow-lg',
+            props.side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
             props.align === 'end' ? 'end-0' : 'start-0',
             props.contentClass,
           )
