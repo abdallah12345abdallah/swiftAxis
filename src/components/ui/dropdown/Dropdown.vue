@@ -148,6 +148,9 @@ function unbind() {
 }
 onBeforeUnmount(unbind)
 
+/* parent forms move focus along a field sequence (journal entry screen) */
+defineExpose({ focus: () => triggerEl.value?.focus(), open: openMenu, close: closeMenu })
+
 /* ── keyboard ────────────────────────────────────────────────────── */
 function firstEnabled(from, step) {
   const list = filtered.value

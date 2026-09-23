@@ -33,8 +33,8 @@ npm run build    # production build
 
 ### Demo login
 
-There is no backend yet — the login screen lets you sign in as any of the four roles
-(**Manager / Supervisor / Accountant / Rider**). A dev **role switcher** in the topbar changes
+There is no backend yet — the login screen lets you sign in as any of the five roles
+(**Manager / Supervisor / Accountant / Warehouse keeper / Rider**). A dev **role switcher** in the topbar changes
 the active role live. The dashboard renders a team overview for staff roles and a personal view
 for riders. Visit `/dev/ui` for the design-system style guide.
 
@@ -43,9 +43,24 @@ for riders. Visit `/dev/ui` for the design-system style guide.
 | Role | Access |
 |------|--------|
 | Manager | Everything, incl. users, settings, commissions setup |
-| Supervisor | Riders, orders, wallets, reports |
-| Accountant | Commissions, wallets, vehicles, ledger, purchases/VAT, reports |
+| Supervisor | Riders, orders (incl. manual orders), wallets, reports |
+| Accountant | Commissions, wallets (deposit approval, withdrawals, debts), treasury & banks, sales invoices, vehicles, ledger, purchases/VAT, reports |
+| Warehouse keeper | Vehicles (handover, fuel sheet, expense items), treasury payment vouchers, purchases. A supervisor account can be converted to this role from the Users screen |
 | Rider | Own daily orders + personal dashboard only |
+
+## Modules
+
+| Module | Route | Highlights |
+|--------|-------|------------|
+| Riders | `/riders` | Profile photo, rider code (R-001) shown on every screen, side panel from the dashboard / reports |
+| Daily orders | `/orders` | Daily logs, Hunger Station import, **manual single-order entry** (order no, time, km, price, collected) |
+| Cash wallets | `/wallets` | Handover with mandatory receipt → **accountant approval** with dated note; withdrawals (auto payment voucher); debts & debit/credit notices |
+| Treasury & banks | `/treasury` | Cash boxes / bank accounts, receipt & payment vouchers, transfers, statements, rider ↔ custody-box links |
+| Vehicles | `/vehicles` | Chassis/colour/model/year/tank, handover between riders or the company per work shift, editable shifts, fuel sheet, expense-item catalog, per-vehicle cost centers & charts |
+| Purchases & VAT | `/purchases` | Suppliers, purchase-item catalog, vehicle → cost center, supplier tax no. on the invoice, input VAT |
+| Sales invoices | `/sales` | Register a partner sheet as an invoice; VAT added automatically; output VAT report |
+| Ledger | `/ledger` | Journal, trial balance, P&L, cost centers — every module above posts balanced entries here |
+| Journal entry | `/ledger/entry` | Full general-journal screen (document type & number, fiscal year, serial, line entry with debit/credit exclusivity and Enter flow, inline-editable lines, save / print / show / new / duplicate / refresh) |
 
 ## Structure
 
@@ -53,17 +68,20 @@ for riders. Visit `/dev/ui` for the design-system style guide.
 src/
   api/          mock service layer + fixtures
   assets/       main.css — Tailwind v4 theme tokens
-  components/   ui/ (primitives) · charts/ · dashboard/ · common/
+  components/   ui/ (primitives) · charts/ · dashboard/ · common/ · riders/ · orders/ · wallets/
+                treasury/ · vehicles/ · purchases/ · sales/ · ledger/ · users/
   composables/  useCurrency (SAR) …
   layouts/      DashboardLayout · AuthLayout
   lib/          utils (cn) · constants (roles, nav, thresholds)
   locales/      ar.json · en.json
-  pages/        Login · Dashboard · Placeholder (per-epic) · StyleGuide
+  pages/        Dashboard · Riders · Orders · Wallets · Treasury · Vehicles · Purchases · Sales
+                Commissions · Ledger · Reports · Users · Settings · StyleGuide
   router/       routes + role guard
   stores/       auth · ui (theme/locale/sidebar)
 ```
 
 ## Roadmap
 
-Foundation + main Dashboard (EP-06) are done. Next phases build out the remaining epics
-(EP-01…EP-05, EP-07…EP-09) and integrate the real backend.
+All epics (EP-01…EP-11) are built on the mock layer, including the partner change requests
+(treasury, deposit approval, manual orders, vehicle handover, sales invoices, warehouse-keeper role).
+Contracts changes are on hold until a real contract is reviewed. Next: integrate the Spring backend.

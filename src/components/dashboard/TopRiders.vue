@@ -4,11 +4,13 @@ import { useI18n } from 'vue-i18n'
 import { Trophy } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { useCurrency } from '@/composables/useCurrency'
 
 const props = defineProps({
   riders: { type: Array, default: () => [] },
 })
+const emit = defineEmits(['select'])
 
 const { t } = useI18n()
 const { sar, num } = useCurrency()
@@ -43,7 +45,10 @@ const RANK = {
         </span>
         <div class="min-w-0 flex-1">
           <div class="flex items-center justify-between gap-2">
-            <RouterLink :to="`/riders/${r.id}`" class="hover:text-primary truncate text-sm font-semibold hover:underline">{{ r.name }}</RouterLink>
+            <button type="button" class="hover:text-primary flex min-w-0 items-center gap-1.5 text-start text-sm font-semibold hover:underline" @click="emit('select', r)">
+              <span class="truncate">{{ r.name }}</span>
+              <RiderCode :code="r.id" />
+            </button>
             <p class="text-xs font-semibold tabular-nums">{{ sar(r.commission) }}</p>
           </div>
           <div class="mt-1.5 flex items-center gap-2">

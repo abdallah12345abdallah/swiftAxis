@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, Download, Pencil } from 'lucide-vue-next'
+import { Plus, Download, Pencil, ExternalLink } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { Tabs } from '@/components/ui/tabs'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -11,7 +11,6 @@ import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Dropdown } from '@/components/ui/dropdown'
 import { DatePicker } from '@/components/ui/datepicker'
-import JournalEntryDialog from '@/components/ledger/JournalEntryDialog.vue'
 import CostCenterDialog from '@/components/ledger/CostCenterDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
@@ -48,7 +47,6 @@ const dateRange = computed({
 })
 const filterCenter = ref('')
 
-const entryDialog = ref(false)
 const ccDialog = ref(false)
 const editingCenter = ref(null)
 
@@ -107,7 +105,7 @@ function exportTrial() {
   <div>
     <PageHeader :title="t('ledger.title')" :subtitle="t('ledger.subtitle')">
       <template #actions>
-        <Button v-if="tab === 'journal'" @click="entryDialog = true"><Plus /> {{ t('ledger.newEntry') }}</Button>
+        <Button v-if="tab === 'journal'" as="RouterLink" to="/ledger/entry"><Plus /> {{ t('ledger.newEntry') }}</Button>
         <Button v-else-if="tab === 'trial'" variant="outline" @click="exportTrial"><Download /> {{ t('common.export') }}</Button>
         <Button v-else-if="tab === 'costCenters'" @click="openAddCenter"><Plus /> {{ t('ledger.cc.add') }}</Button>
       </template>
@@ -127,8 +125,11 @@ function exportTrial() {
       <Card v-for="e in journal" :key="e.id" class="p-5">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <span class="font-bold tabular-nums" dir="ltr">{{ e.ref }}</span>
+            <RouterLink :to="`/ledger/entry/${e.id}`" class="hover:text-primary inline-flex items-center gap-1 font-bold tabular-nums hover:underline" dir="ltr">
+              {{ e.ref }} <ExternalLink class="size-3.5" />
+            </RouterLink>
             <Badge variant="secondary">{{ e.source }}</Badge>
+            <span v-if="e.serial" class="text-muted-foreground text-xs tabular-nums">#{{ e.serial }}</span>
           </div>
           <span class="text-muted-foreground text-sm tabular-nums">{{ formatDate(e.date) }}</span>
         </div>
@@ -136,7 +137,7 @@ function exportTrial() {
         <table class="w-full text-sm">
           <tbody>
             <tr v-for="(l, i) in e.lines" :key="i" class="border-t first:border-0">
-              <td class="py-2">{{ accName(l.account) }}</td>
+              <td class="py-2">{{ accName(l.account) }}<span v-if="l.description" class="text-muted-foreground ms-2 text-xs">{{ l.description }}</span></td>
               <td class="text-muted-foreground py-2 text-xs">{{ ccName(l.costCenter) }}</td>
               <td class="py-2 text-end tabular-nums">{{ l.debit ? sar(l.debit) : '' }}</td>
               <td class="py-2 text-end tabular-nums">{{ l.credit ? sar(l.credit) : '' }}</td>
@@ -232,7 +233,6 @@ function exportTrial() {
       </DataTable>
     </Card>
 
-    <JournalEntryDialog v-model:open="entryDialog" :account-options="accountOptions" :cost-center-options="costCenterOptions" @saved="load" />
     <CostCenterDialog v-model:open="ccDialog" :center="editingCenter" @saved="load" />
   </div>
 </template>

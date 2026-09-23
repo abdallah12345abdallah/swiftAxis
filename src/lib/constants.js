@@ -5,7 +5,14 @@ export const ROLES = {
   MANAGER: 'manager',
   SUPERVISOR: 'supervisor',
   ACCOUNTANT: 'accountant',
+  STOREKEEPER: 'storekeeper',
   RIDER: 'rider',
+}
+
+/** Roles that can be converted into another role from the users screen (#8).
+    A supervisor account can be upgraded to a warehouse keeper. */
+export const ROLE_CONVERSIONS = {
+  [ROLES.SUPERVISOR]: ROLES.STOREKEEPER,
 }
 
 export const ALL_ROLES = Object.values(ROLES)
@@ -58,8 +65,22 @@ export const NAV_ITEMS = [
     key: 'vehicles',
     to: '/vehicles',
     icon: 'Car',
-    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT],
+    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.STOREKEEPER],
     epic: 'EP-05',
+  },
+  {
+    key: 'treasury',
+    to: '/treasury',
+    icon: 'Landmark',
+    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.STOREKEEPER],
+    epic: 'EP-10',
+  },
+  {
+    key: 'sales',
+    to: '/sales',
+    icon: 'Receipt',
+    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT],
+    epic: 'EP-11',
   },
   {
     key: 'reports',
@@ -79,7 +100,7 @@ export const NAV_ITEMS = [
     key: 'purchases',
     to: '/purchases',
     icon: 'ShoppingCart',
-    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT],
+    roles: [ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.STOREKEEPER],
     epic: 'EP-09',
   },
   {

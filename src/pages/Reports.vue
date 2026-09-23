@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/table'
 import RiderBarChart from '@/components/charts/RiderBarChart.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
+import RiderSidePanel from '@/components/riders/RiderSidePanel.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { printReport, exportCsv, todayStamp } from '@/lib/export'
@@ -73,12 +75,27 @@ watch([tab, from, to], () => {
 
 const shiftLabel = (k) => (k ? SHIFTS[k]?.[locale.value] ?? SHIFTS[k]?.ar ?? k : '—')
 
+/* rider side panel (#9) — opened from any rider name in the reports */
+const panelOpen = ref(false)
+const panelRider = ref('')
+function openPanel(id) {
+  panelRider.value = id
+  panelOpen.value = true
+}
+/* order numbers per rider are collapsed until asked for */
+const expandedOrders = ref(new Set())
+function toggleOrders(id) {
+  const s = new Set(expandedOrders.value)
+  s.has(id) ? s.delete(id) : s.add(id)
+  expandedOrders.value = s
+}
+
 function exportPeriod() {
   if (!period.value) return
   exportCsv(
     `riders-period-${todayStamp()}`,
-    [t('reports.period.rider'), t('reports.period.vehicle'), t('reports.period.shift'), t('reports.period.days'), t('reports.period.orders'), t('reports.period.commission'), t('reports.period.vehicleExpenses')],
-    period.value.rows.map((r) => [r.name, r.plate ?? '—', shiftLabel(r.shift), r.days, r.orders, r.commission, r.vehicleExpenses]),
+    [t('common.riderCode'), t('reports.period.rider'), t('reports.period.vehicle'), t('reports.period.shift'), t('reports.period.days'), t('reports.period.orders'), t('reports.period.orderNos'), t('reports.period.commission'), t('reports.period.vehicleExpenses')],
+    period.value.rows.map((r) => [r.id, r.name, r.plate ?? '—', shiftLabel(r.shift), r.days, r.orders, (r.orderNos ?? []).join(' | '), r.commission, r.vehicleExpenses]),
   )
 }
 
@@ -178,7 +195,7 @@ function exportBest() {
           </thead>
           <tbody>
             <tr v-for="r in report.riders" :key="r.id" class="border-b last:border-0">
-              <td class="py-2">{{ r.name }}</td>
+              <td class="py-2"><button type="button" class="hover:text-primary flex items-center gap-2 text-start hover:underline" @click="openPanel(r.id)">{{ r.name }} <RiderCode :code="r.id" /></button></td>
               <td class="py-2 text-end tabular-nums">{{ num(r.orders) }}</td>
               <td class="py-2 text-end tabular-nums">{{ r.progress }}%</td>
               <td class="py-2 text-end font-semibold tabular-nums">{{ sar(r.commission) }}</td>
@@ -250,10 +267,24 @@ function exportBest() {
               { key: 'shift', label: t('reports.period.shift') },
               { key: 'days', label: t('reports.period.days'), align: 'end', hideBelow: 'md' },
               { key: 'orders', label: t('reports.period.orders'), align: 'end', sortable: true },
+              { key: 'orderNos', label: t('reports.period.orderNos'), hideBelow: 'lg' },
               { key: 'commission', label: t('reports.period.commission'), align: 'end', sortable: true },
               { key: 'vehicleExpenses', label: t('reports.period.vehicleExpenses'), align: 'end', sortable: true },
             ]"
           >
+            <template #cell-name="{ row }">
+              <button type="button" class="hover:text-primary flex items-center gap-2 text-start font-medium hover:underline" @click="openPanel(row.id)">{{ row.name }} <RiderCode :code="row.id" /></button>
+            </template>
+            <template #cell-orderNos="{ row }">
+              <template v-if="row.orderNos?.length">
+                <div v-if="expandedOrders.has(row.id)" class="flex max-w-[22rem] flex-wrap gap-1">
+                  <Badge v-for="n in row.orderNos" :key="n" variant="secondary" class="font-mono text-[11px]"><span dir="ltr">{{ n }}</span></Badge>
+                  <button type="button" class="text-primary text-xs hover:underline" @click="toggleOrders(row.id)">{{ t('common.hide') }}</button>
+                </div>
+                <button v-else type="button" class="text-primary text-xs hover:underline" @click="toggleOrders(row.id)">{{ t('reports.period.showOrders', { n: row.orderNos.length }) }}</button>
+              </template>
+              <span v-else class="text-muted-foreground text-xs">{{ t('reports.period.noOrderNos') }}</span>
+            </template>
             <template #cell-plate="{ row }"><span dir="ltr">{{ row.plate ?? '—' }}</span></template>
             <template #cell-shift="{ row }">
               <Badge v-if="row.shift" variant="secondary">{{ shiftLabel(row.shift) }}</Badge>
@@ -307,11 +338,16 @@ function exportBest() {
               {{ row.rank }}
             </span>
           </template>
+          <template #cell-name="{ row }">
+            <button type="button" class="hover:text-primary flex items-center gap-2 text-start font-medium hover:underline" @click="openPanel(row.id)">{{ row.name }} <RiderCode :code="row.id" /></button>
+          </template>
           <template #cell-orders="{ row }"><span class="font-medium tabular-nums">{{ num(row.orders) }}</span></template>
           <template #cell-extraAmount="{ row }"><span class="tabular-nums">{{ sar(row.extraAmount) }}</span></template>
           <template #cell-total="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.total) }}</span></template>
         </DataTable>
       </Card>
     </template>
+
+    <RiderSidePanel v-model:open="panelOpen" :rider-id="panelRider" />
   </div>
 </template>

@@ -3,12 +3,16 @@ import { useI18n } from 'vue-i18n'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import Avatar from '@/components/common/Avatar.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { CONTRACTS } from '@/api/fixtures'
 
 const props = defineProps({
   riders: { type: Array, default: () => [] },
 })
+// clicking a rider opens the side panel (#9) instead of leaving the page
+const emit = defineEmits(['select'])
 
 const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
@@ -39,6 +43,7 @@ function barClass(r) {
   <Card>
     <CardHeader>
       <CardTitle>{{ t('dashboard.ridersTitle') }}</CardTitle>
+      <p class="text-muted-foreground text-xs">{{ t('dashboard.riderPanelHint') }}</p>
     </CardHeader>
     <CardContent class="px-0">
       <div class="overflow-x-auto">
@@ -62,7 +67,13 @@ function barClass(r) {
               class="hover:bg-muted/40 border-b transition-colors last:border-0"
             >
               <td class="px-5 py-3 font-medium">
-                <RouterLink :to="`/riders/${r.id}`" class="hover:text-primary hover:underline">{{ r.name }}</RouterLink>
+                <button type="button" class="flex items-center gap-2.5 text-start" @click="emit('select', r)">
+                  <Avatar :initials="r.name.charAt(0)" :src="r.photo?.url" class="size-8 text-xs" />
+                  <span class="min-w-0">
+                    <span class="hover:text-primary block truncate hover:underline">{{ r.name }}</span>
+                    <RiderCode :code="r.id" />
+                  </span>
+                </button>
               </td>
               <td class="text-muted-foreground px-5 py-3">{{ contractLabel(r.contract) }}</td>
               <td class="px-5 py-3 tabular-nums">{{ num(r.orders) }}</td>

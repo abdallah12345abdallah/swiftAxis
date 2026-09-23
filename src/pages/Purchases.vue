@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import PurchaseDialog from '@/components/purchases/PurchaseDialog.vue'
 import SupplierDialog from '@/components/purchases/SupplierDialog.vue'
+import PurchaseItemDialog from '@/components/purchases/PurchaseItemDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { exportCsv, todayStamp } from '@/lib/export'
@@ -20,6 +21,7 @@ import {
 } from '@/api/purchases'
 import { fetchCostCenters } from '@/api/ledger'
 import { fetchVehicles } from '@/api/vehicles'
+import { fetchPurchaseItems } from '@/api/catalogs'
 
 const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
@@ -33,6 +35,19 @@ const vat = ref({ rows: [], totalVat: 0, totalPreTax: 0 })
 const byCenter = ref([])
 const centers = ref([])
 const vehicles = ref([])
+const items = ref([])
+
+const itemDialog = ref(false)
+const editingItem = ref(null)
+const itemOptions = computed(() => items.value.filter((i) => i.active).map((i) => ({ value: i.id, label: i.name, hint: i.unit })))
+function openAddItem() {
+  editingItem.value = null
+  itemDialog.value = true
+}
+function openEditItem(i) {
+  editingItem.value = i
+  itemDialog.value = true
+}
 
 const purchaseDialog = ref(false)
 const supplierDialog = ref(false)
@@ -50,14 +65,15 @@ const vehicleOptions = computed(() => [
 const tabs = computed(() => [
   { value: 'purchases', label: t('purchases.tabs.purchases') },
   { value: 'suppliers', label: t('purchases.tabs.suppliers') },
+  { value: 'items', label: t('purchases.tabs.items') },
   { value: 'vat', label: t('purchases.tabs.vat') },
   { value: 'byCenter', label: t('purchases.tabs.byCenter') },
 ])
 
 async function load() {
   loading.value = true
-  ;[purchases.value, suppliers.value, vat.value, byCenter.value, centers.value, vehicles.value] = await Promise.all([
-    fetchPurchases(), fetchSuppliers(), vatReport(), purchasesByCostCenter(), fetchCostCenters(), fetchVehicles(),
+  ;[purchases.value, suppliers.value, vat.value, byCenter.value, centers.value, vehicles.value, items.value] = await Promise.all([
+    fetchPurchases(), fetchSuppliers(), vatReport(), purchasesByCostCenter(), fetchCostCenters(), fetchVehicles(), fetchPurchaseItems(),
   ])
   loading.value = false
 }
@@ -86,6 +102,7 @@ function exportVat() {
       <template #actions>
         <Button v-if="tab === 'purchases'" @click="purchaseDialog = true"><Plus /> {{ t('purchases.addPurchase') }}</Button>
         <Button v-else-if="tab === 'suppliers'" @click="openAddSupplier"><Plus /> {{ t('purchases.addSupplier') }}</Button>
+        <Button v-else-if="tab === 'items'" @click="openAddItem"><Plus /> {{ t('purchases.items.add') }}</Button>
         <Button v-else-if="tab === 'vat'" variant="outline" @click="exportVat"><Download /> {{ t('common.export') }}</Button>
       </template>
     </PageHeader>
@@ -146,6 +163,32 @@ function exportVat() {
       </DataTable>
     </Card>
 
+    <!-- Purchase items (#6) -->
+    <Card v-else-if="tab === 'items'" class="overflow-hidden">
+      <DataTable
+        :loading="loading" :rows="items" :empty="t('purchases.empty')"
+        :columns="[
+          { key: 'name', label: t('purchases.items.name'), sortable: true },
+          { key: 'category', label: t('purchases.items.category') },
+          { key: 'unit', label: t('purchases.items.unit'), hideBelow: 'sm' },
+          { key: 'usage', label: t('purchases.items.usage'), align: 'end', hideBelow: 'md' },
+          { key: 'active', label: t('common.status') },
+          { key: 'actions', label: t('common.actions'), align: 'end' },
+        ]"
+      >
+        <template #cell-name="{ row }"><span class="font-medium">{{ row.name }}</span></template>
+        <template #cell-category="{ row }"><Badge variant="secondary">{{ loc(SUPPLIER_CATEGORIES, row.category) }}</Badge></template>
+        <template #cell-unit="{ row }"><span class="text-muted-foreground">{{ row.unit || '—' }}</span></template>
+        <template #cell-usage="{ row }"><span class="tabular-nums">{{ num(row.usage) }}</span></template>
+        <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
+        <template #cell-actions="{ row }">
+          <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEditItem(row)">
+            <Pencil class="size-4" />
+          </button>
+        </template>
+      </DataTable>
+    </Card>
+
     <!-- VAT report -->
     <Card v-else-if="tab === 'vat'" class="overflow-hidden">
       <DataTable
@@ -191,7 +234,8 @@ function exportVat() {
       </DataTable>
     </Card>
 
-    <PurchaseDialog v-model:open="purchaseDialog" :supplier-options="supplierOptions" :cost-center-options="costCenterOptions" :vehicle-options="vehicleOptions" :suppliers="suppliers" @saved="load" />
+    <PurchaseDialog v-model:open="purchaseDialog" :supplier-options="supplierOptions" :cost-center-options="costCenterOptions" :vehicle-options="vehicleOptions" :suppliers="suppliers" :item-options="itemOptions" @saved="load" />
+    <PurchaseItemDialog v-model:open="itemDialog" :item="editingItem" :category-options="categoryOptions" @saved="load" />
     <SupplierDialog v-model:open="supplierDialog" :supplier="editingSupplier" :category-options="categoryOptions" @saved="load" />
   </div>
 </template>

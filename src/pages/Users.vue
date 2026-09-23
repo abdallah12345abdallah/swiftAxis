@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, Pencil, Power, Check, Search } from 'lucide-vue-next'
+import { Plus, Pencil, Power, Check, Search, Warehouse } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
 import { Tabs } from '@/components/ui/tabs'
@@ -11,14 +11,39 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/dropdown'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 import UserDialog from '@/components/users/UserDialog.vue'
-import { NAV_ITEMS, ALL_ROLES } from '@/lib/constants'
+import { NAV_ITEMS, ALL_ROLES, ROLE_CONVERSIONS } from '@/lib/constants'
+import { useToast } from '@/composables/useToast'
 import { useDate } from '@/lib/format'
-import { fetchUsers, toggleUser } from '@/api/users'
+import { fetchUsers, toggleUser, convertRole } from '@/api/users'
 import { fetchAudit } from '@/api/audit'
 
 const { t } = useI18n()
 const { formatDate } = useDate()
+const toast = useToast()
+
+// role conversion (#8): supervisor → warehouse keeper
+const convertDialog = ref(false)
+const converting = ref(null)
+const convertBusy = ref(false)
+const conversionTarget = (u) => ROLE_CONVERSIONS[u.role]
+function openConvert(u) {
+  converting.value = u
+  convertDialog.value = true
+}
+async function doConvert() {
+  if (convertBusy.value || !converting.value) return
+  convertBusy.value = true
+  try {
+    const u = await convertRole(converting.value.id)
+    toast.success(t('users.convert.done', { role: t(`roles.${u.role}`) }))
+    convertDialog.value = false
+    await Promise.all([loadUsers(), loadAudit()])
+  } finally {
+    convertBusy.value = false
+  }
+}
 
 const tab = ref('users')
 const loading = ref(true)
@@ -101,11 +126,15 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
             <span class="font-medium">{{ row.name }}</span>
           </div>
         </template>
-        <template #cell-role="{ row }"><Badge>{{ t(`roles.${row.role}`) }}</Badge></template>
+        <template #cell-role="{ row }">
+          <Badge>{{ t(`roles.${row.role}`) }}</Badge>
+          <p v-if="row.previousRole" class="text-muted-foreground mt-0.5 text-xs">{{ t('users.convert.converted', { role: t(`roles.${row.previousRole}`) }) }}</p>
+        </template>
         <template #cell-mobile="{ row }"><span dir="ltr" class="text-muted-foreground tabular-nums">{{ row.mobile }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
           <div class="flex items-center justify-end gap-1">
+            <Button v-if="conversionTarget(row)" size="sm" variant="outline" @click="openConvert(row)"><Warehouse /> {{ t('users.convert.action') }}</Button>
             <button type="button" class="hover:bg-accent text-muted-foreground hover:text-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="openEdit(row)"><Pencil class="size-4" /></button>
             <button type="button" class="hover:bg-accent text-muted-foreground inline-flex size-8 items-center justify-center rounded-lg" @click="toggle(row)"><Power class="size-4" /></button>
           </div>
@@ -165,5 +194,15 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
     </Card>
 
     <UserDialog v-model:open="userDialog" :user="editingUser" :role-options="roleOptions" @saved="loadUsers" />
+
+    <Dialog v-model:open="convertDialog" :title="t('users.convert.title')" :icon="Warehouse">
+      <p v-if="converting" class="text-muted-foreground text-sm leading-relaxed">
+        {{ t('users.convert.hint', { name: converting.name, from: t(`roles.${converting.role}`), to: t(`roles.${conversionTarget(converting)}`) }) }}
+      </p>
+      <template #footer>
+        <Button variant="ghost" @click="convertDialog = false">{{ t('common.cancel') }}</Button>
+        <Button :disabled="convertBusy" @click="doConvert">{{ t('users.convert.confirm') }}</Button>
+      </template>
+    </Dialog>
   </div>
 </template>

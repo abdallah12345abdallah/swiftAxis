@@ -4,6 +4,7 @@ import { UNDERPERFORMANCE_RATIO } from '@/lib/constants'
 import { profitability, assignmentOf } from './vehicles'
 import { profitAndLoss } from './ledger'
 import { formulaFor, computeCommission } from './commissions'
+import { orderNosFor } from './orders'
 
 /* Reports (EP-06). Aggregates existing data into a report payload. */
 
@@ -46,7 +47,9 @@ export function fetchRidersPeriodReport({ from, to } = {}) {
       : 0
     return {
       id: r.id,
+      code: r.id,
       name: r.name,
+      orderNos: orderNosFor(r.id, from, to),
       plate: vehicle?.plate ?? null,
       shift: assignment?.shift ?? null,
       sharedVehicle: !!(vehicle?.morningRiderId && vehicle?.eveningRiderId),
@@ -73,7 +76,7 @@ export function fetchBestRiders() {
   const rows = RIDERS.filter((r) => r.active && r.orders > 0)
     .map((r) => {
       const b = computeCommission(r.orders, formulaFor(r))
-      return { id: r.id, name: r.name, orders: r.orders, goal: r.goal, extraAmount: b.extraAmount, total: b.total }
+      return { id: r.id, code: r.id, name: r.name, orders: r.orders, goal: r.goal, extraAmount: b.extraAmount, total: b.total }
     })
     .sort((a, b) => b.orders - a.orders)
     .map((r, i) => ({ ...r, rank: i + 1 }))

@@ -7,6 +7,7 @@ import {
 } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -131,13 +132,13 @@ function barClass(r) {
 /* ── export (US-005) ────────────────────────────────────── */
 function exportCsv() {
   const headers = [
-    t('riders.table.rider'), t('riders.form.nationalId'), t('riders.form.mobile'),
+    t('common.riderCode'), t('riders.table.rider'), t('riders.form.nationalId'), t('riders.form.mobile'),
     t('riders.filters.city'), t('riders.table.contracts'), t('riders.table.vehicle'),
     t('riders.table.orders'), t('riders.table.commission'), t('riders.table.wallet'),
     t('riders.table.status'),
   ]
   const rows = filtered.value.map((r) => [
-    r.name, r.nationalId, r.mobile, cityName(r.city),
+    r.id, r.name, r.nationalId, r.mobile, cityName(r.city),
     (r.contracts ?? [r.contract]).map(contractName).join(' | '),
     `${vehicleTypeName(r.vehicleType)} ${r.vehicle}`,
     r.orders, r.commission, r.wallet, statusLabel(r),
@@ -243,10 +244,13 @@ function exportCsv() {
                 <!-- rider -->
                 <td class="px-5 py-3">
                   <div class="flex items-center gap-3">
-                    <Avatar :initials="r.name.charAt(0)" />
+                    <Avatar :initials="r.name.charAt(0)" :src="r.photo?.url" />
                     <div class="min-w-0">
                       <RouterLink :to="`/riders/${r.id}`" class="hover:text-primary block truncate font-medium hover:underline">{{ r.name }}</RouterLink>
-                      <p class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ r.nationalId }}</p>
+                      <p class="text-muted-foreground flex items-center gap-1.5 text-xs tabular-nums">
+                        <RiderCode :code="r.id" />
+                        <span dir="ltr">{{ r.nationalId }}</span>
+                      </p>
                     </div>
                   </div>
                 </td>

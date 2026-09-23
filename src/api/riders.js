@@ -69,6 +69,7 @@ export function createRider(payload) {
   const rider = {
     id: nextRiderId(),
     name: payload.name,
+    photo: payload.photo?.url ? { name: payload.photo.name, url: payload.photo.url } : null,
     nationalId: payload.nationalId,
     mobile: payload.mobile,
     city: payload.city,
@@ -95,6 +96,7 @@ export function updateRider(id, payload) {
   const contracts = payload.contracts?.length ? payload.contracts : rider.contracts
   Object.assign(rider, {
     name: payload.name,
+    photo: payload.photo === undefined ? rider.photo : payload.photo?.url ? { name: payload.photo.name, url: payload.photo.url } : null,
     mobile: payload.mobile,
     city: payload.city,
     contracts,

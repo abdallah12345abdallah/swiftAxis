@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Dropdown } from '@/components/ui/dropdown'
 import { Dialog } from '@/components/ui/dialog'
 import FormulaDialog from '@/components/commissions/FormulaDialog.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { exportCsv, todayStamp } from '@/lib/export'
 import { useToast } from '@/composables/useToast'
@@ -152,6 +153,7 @@ function exportReview() {
           { key: 'total', label: t('commissions.monthly.total'), align: 'end', sortable: true },
         ]"
       >
+        <template #cell-name="{ row }"><span class="flex items-center gap-2">{{ row.name }} <RiderCode :code="row.id" /></span></template>
         <template #cell-orders="{ row }"><span class="tabular-nums">{{ num(row.orders) }}</span></template>
         <template #cell-base="{ row }"><span class="tabular-nums">{{ sar(row.base) }}</span></template>
         <template #cell-extra="{ row }"><span class="tabular-nums">{{ num(row.extra) }}</span></template>

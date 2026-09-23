@@ -16,6 +16,8 @@ import TopRiders from '@/components/dashboard/TopRiders.vue'
 import RiderPerformanceTable from '@/components/dashboard/RiderPerformanceTable.vue'
 import AlertsPanel from '@/components/dashboard/AlertsPanel.vue'
 import GoalRing from '@/components/dashboard/GoalRing.vue'
+import RiderSidePanel from '@/components/riders/RiderSidePanel.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import LineTrendChart from '@/components/charts/LineTrendChart.vue'
 import WeeklyChart from '@/components/charts/WeeklyChart.vue'
 
@@ -30,6 +32,14 @@ const period = ref('month')
 const data = ref(null)
 
 const PERIODS = ['day', 'month', 'year']
+
+// rider side panel (#9)
+const panelOpen = ref(false)
+const panelRider = ref('')
+function openPanel(r) {
+  panelRider.value = r.id
+  panelOpen.value = true
+}
 
 const dateStr = computed(() =>
   new Intl.DateTimeFormat(locale.value === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
@@ -63,8 +73,9 @@ watch(() => auth.role, load)
         <h1 class="mt-1 text-2xl font-bold tracking-tight">
           {{ t('dashboard.welcome', { name: auth.user?.name }) }}
         </h1>
-        <p class="text-muted-foreground mt-0.5 text-sm">
+        <p class="text-muted-foreground mt-0.5 flex items-center gap-2 text-sm">
           {{ isRider ? t('dashboard.subtitleRider') : t('dashboard.subtitleManager') }}
+          <RiderCode v-if="isRider" :code="auth.user?.riderId" />
         </p>
       </div>
 
@@ -119,11 +130,12 @@ watch(() => auth.role, load)
 
       <!-- leaderboard + table -->
       <div class="grid gap-6 lg:grid-cols-3">
-        <TopRiders :riders="data.comparison" />
+        <TopRiders :riders="data.comparison" @select="openPanel" />
         <div class="lg:col-span-2">
-          <RiderPerformanceTable :riders="data.riders" />
+          <RiderPerformanceTable :riders="data.riders" @select="openPanel" />
         </div>
       </div>
+      <RiderSidePanel v-model:open="panelOpen" :rider-id="panelRider" />
     </template>
 
     <!-- ── Rider (own data only, US-020) ──────────────────── -->

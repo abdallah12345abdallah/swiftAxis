@@ -5,6 +5,7 @@ import { Download } from 'lucide-vue-next'
 import { Dialog } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { exportCsv, todayStamp } from '@/lib/export'
@@ -32,18 +33,22 @@ watch(
   },
 )
 
+const statusVariant = { pending: 'warning', approved: 'success', rejected: 'danger' }
+const counts = (m) => m.type === 'deposit' || m.status === 'approved'
+
 function exportStatement() {
   exportCsv(
     `wallet-${props.rider.id}-${todayStamp()}`,
-    [t('common.date'), t('wallets.type'), t('common.amount'), t('wallets.runningBalance')],
-    rows.value.map((m) => [m.date, m.type, m.amount, m.balance]),
+    [t('common.date'), t('wallets.type'), t('common.status'), t('common.amount'), t('wallets.runningBalance')],
+    rows.value.map((m) => [m.date, m.type, m.status ?? 'posted', m.amount, m.balance]),
   )
 }
 </script>
 
 <template>
   <Dialog :open="open" size="lg" :title="t('wallets.statementTitle', { name: rider?.name })" @update:open="emit('update:open', $event)">
-    <div class="mb-3 flex justify-end">
+    <div class="mb-3 flex items-center justify-between">
+      <RiderCode :code="rider?.id" />
       <Button variant="outline" size="sm" @click="exportStatement"><Download /> {{ t('common.export') }}</Button>
     </div>
     <div class="max-h-[50vh] overflow-auto rounded-xl border">
@@ -57,18 +62,19 @@ function exportStatement() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="m in rows" :key="m.id" class="border-t">
+          <tr v-for="m in rows" :key="m.id" class="border-t" :class="!counts(m) ? 'opacity-70' : ''">
             <td class="px-4 py-2 tabular-nums">{{ formatDate(m.date) }}</td>
             <td class="px-4 py-2">
               <Badge :variant="m.type === 'deposit' ? 'success' : 'secondary'">
                 {{ m.type === 'deposit' ? t('wallets.deposit') : t('wallets.handoverType') }}
               </Badge>
+              <Badge v-if="m.type === 'handover' && m.status && m.status !== 'approved'" :variant="statusVariant[m.status] ?? 'secondary'" class="ms-1">{{ t(`wallets.deposits.statuses.${m.status}`) }}</Badge>
               <span class="text-muted-foreground ms-2 text-xs">{{ m.label }}</span>
             </td>
             <td class="px-4 py-2 text-end tabular-nums" :class="m.type === 'deposit' ? 'text-success' : 'text-danger'">
               {{ m.type === 'deposit' ? '+' : '−' }}{{ sar(m.amount) }}
             </td>
-            <td class="px-4 py-2 text-end font-semibold tabular-nums">{{ sar(m.balance) }}</td>
+            <td class="px-4 py-2 text-end font-semibold tabular-nums">{{ counts(m) ? sar(m.balance) : '—' }}</td>
           </tr>
           <tr v-if="!loading && !rows.length"><td colspan="4" class="text-muted-foreground py-8 text-center">{{ t('wallets.empty') }}</td></tr>
         </tbody>

@@ -1,6 +1,6 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, UserCog, Check, ShieldCheck, Calculator, Bike } from 'lucide-vue-next'
+import { ChevronDown, UserCog, Check, ShieldCheck, Calculator, Bike, Warehouse } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ALL_ROLES, ROLES } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ const ROLE_ICONS = {
   [ROLES.MANAGER]: ShieldCheck,
   [ROLES.SUPERVISOR]: UserCog,
   [ROLES.ACCOUNTANT]: Calculator,
+  [ROLES.STOREKEEPER]: Warehouse,
   [ROLES.RIDER]: Bike,
 }
 </script>

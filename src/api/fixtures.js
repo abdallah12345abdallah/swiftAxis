@@ -44,14 +44,14 @@ export const CONTRACT_LIST = [
     `contract` stays as the primary contract for backward-compat (dashboard);
     `contracts` is the full list a rider is linked to (US-002). */
 export const RIDERS = [
-  { id: 'R-001', name: 'محمد الغامدي', nationalId: '1043215678', mobile: '0551234567', city: 'jeddah', contract: 'hunger', contracts: ['hunger'], vehicleId: 'v1', vehicleType: 'motorcycle', vehicle: 'ABC-1234', orders: 512, goal: 480, commission: 4820, wallet: 340, active: true },
-  { id: 'R-002', name: 'عبدالله القحطاني', nationalId: '1055678901', mobile: '0553456789', city: 'jeddah', contract: 'hunger', contracts: ['hunger', 'internal'], vehicleId: 'v2', vehicleType: 'motorcycle', vehicle: 'DEF-5678', orders: 604, goal: 480, commission: 5960, wallet: 910, active: true },
-  { id: 'R-003', name: 'يوسف الزهراني', nationalId: '1067890123', mobile: '0556789012', city: 'makkah', contract: 'jahez', contracts: ['jahez'], vehicleId: 'v3', vehicleType: 'motorcycle', vehicle: 'GHI-9012', orders: 318, goal: 480, commission: 2740, wallet: 155, active: true },
-  { id: 'R-004', name: 'فهد العمري', nationalId: '1078901234', mobile: '0559012345', city: 'jeddah', contract: 'internal', contracts: ['internal'], vehicleId: 'v4', vehicleType: 'car', vehicle: 'JKL-3456', orders: 470, goal: 450, commission: 4390, wallet: 780, active: true },
-  { id: 'R-005', name: 'سلطان الحربي', nationalId: '1089012345', mobile: '0552345678', city: 'taif', contract: 'hunger', contracts: ['hunger'], vehicleId: 'v5', vehicleType: 'motorcycle', vehicle: 'MNO-7890', orders: 289, goal: 480, commission: 2510, wallet: 60, active: true },
-  { id: 'R-006', name: 'ماجد الشمري', nationalId: '1090123456', mobile: '0554567890', city: 'jeddah', contract: 'jahez', contracts: ['jahez'], vehicleId: 'v6', vehicleType: 'motorcycle', vehicle: 'PQR-2345', orders: 553, goal: 480, commission: 5320, wallet: 1180, active: true },
-  { id: 'R-007', name: 'تركي المطيري', nationalId: '1101234567', mobile: '0557890123', city: 'makkah', contract: 'internal', contracts: ['internal'], vehicleId: 'v7', vehicleType: 'car', vehicle: 'STU-6789', orders: 401, goal: 450, commission: 3680, wallet: 240, active: true },
-  { id: 'R-008', name: 'ناصر الدوسري', nationalId: '1112345678', mobile: '0550123456', city: 'jeddah', contract: 'hunger', contracts: ['hunger'], vehicleId: 'v2', vehicleType: 'motorcycle', vehicle: 'DEF-5678', orders: 0, goal: 480, commission: 0, wallet: 0, active: false },
+  { id: 'R-001', name: 'محمد الغامدي', photo: null, nationalId: '1043215678', mobile: '0551234567', city: 'jeddah', contract: 'hunger', contracts: ['hunger'], vehicleId: 'v1', vehicleType: 'motorcycle', vehicle: 'ABC-1234', orders: 512, goal: 480, commission: 4820, wallet: 340, active: true },
+  { id: 'R-002', name: 'عبدالله القحطاني', photo: null, nationalId: '1055678901', mobile: '0553456789', city: 'jeddah', contract: 'hunger', contracts: ['hunger', 'internal'], vehicleId: 'v2', vehicleType: 'motorcycle', vehicle: 'DEF-5678', orders: 604, goal: 480, commission: 5960, wallet: 910, active: true },
+  { id: 'R-003', name: 'يوسف الزهراني', photo: null, nationalId: '1067890123', mobile: '0556789012', city: 'makkah', contract: 'jahez', contracts: ['jahez'], vehicleId: 'v3', vehicleType: 'motorcycle', vehicle: 'GHI-9012', orders: 318, goal: 480, commission: 2740, wallet: 155, active: true },
+  { id: 'R-004', name: 'فهد العمري', photo: null, nationalId: '1078901234', mobile: '0559012345', city: 'jeddah', contract: 'internal', contracts: ['internal'], vehicleId: 'v4', vehicleType: 'car', vehicle: 'JKL-3456', orders: 470, goal: 450, commission: 4390, wallet: 780, active: true },
+  { id: 'R-005', name: 'سلطان الحربي', photo: null, nationalId: '1089012345', mobile: '0552345678', city: 'taif', contract: 'hunger', contracts: ['hunger'], vehicleId: 'v5', vehicleType: 'motorcycle', vehicle: 'MNO-7890', orders: 289, goal: 480, commission: 2510, wallet: 60, active: true },
+  { id: 'R-006', name: 'ماجد الشمري', photo: null, nationalId: '1090123456', mobile: '0554567890', city: 'jeddah', contract: 'jahez', contracts: ['jahez'], vehicleId: 'v6', vehicleType: 'motorcycle', vehicle: 'PQR-2345', orders: 553, goal: 480, commission: 5320, wallet: 1180, active: true },
+  { id: 'R-007', name: 'تركي المطيري', photo: null, nationalId: '1101234567', mobile: '0557890123', city: 'makkah', contract: 'internal', contracts: ['internal'], vehicleId: 'v7', vehicleType: 'car', vehicle: 'STU-6789', orders: 401, goal: 450, commission: 3680, wallet: 240, active: true },
+  { id: 'R-008', name: 'ناصر الدوسري', photo: null, nationalId: '1112345678', mobile: '0550123456', city: 'jeddah', contract: 'hunger', contracts: ['hunger'], vehicleId: 'v2', vehicleType: 'motorcycle', vehicle: 'DEF-5678', orders: 0, goal: 480, commission: 0, wallet: 0, active: false },
 ]
 
 /** Trend series per period. labels align to orders/commissions arrays. */
@@ -93,56 +93,86 @@ export const CHART_OF_ACCOUNTS = [
   { id: 'bank', code: '1020', name: 'البنك', en: 'Bank', type: 'asset' },
   { id: 'input_vat', code: '1030', name: 'ضريبة القيمة المضافة — المدخلات', en: 'Input VAT', type: 'asset' },
   { id: 'rider_wallets', code: '1040', name: 'عُهد المناديب (كاش)', en: 'Rider cash on hand', type: 'asset' },
+  { id: 'receivables', code: '1050', name: 'ذمم العملاء', en: 'Accounts receivable', type: 'asset' },
+  { id: 'rider_receivables', code: '1060', name: 'مديونيات المناديب', en: 'Rider receivables', type: 'asset' },
   { id: 'riders_payable', code: '2010', name: 'ذمم المناديب (عمولات)', en: 'Riders payable', type: 'liability' },
   { id: 'suppliers', code: '2020', name: 'الموردون', en: 'Suppliers payable', type: 'liability' },
+  { id: 'output_vat', code: '2030', name: 'ضريبة القيمة المضافة — المخرجات', en: 'Output VAT', type: 'liability' },
   { id: 'capital', code: '3010', name: 'رأس المال', en: 'Capital', type: 'equity' },
   { id: 'delivery_revenue', code: '4010', name: 'إيرادات التوصيل', en: 'Delivery revenue', type: 'revenue' },
   { id: 'commissions_expense', code: '5010', name: 'مصروف العمولات', en: 'Commissions expense', type: 'expense' },
   { id: 'vehicle_expense', code: '5020', name: 'مصروفات السيارات', en: 'Vehicle expenses', type: 'expense' },
   { id: 'supplies_expense', code: '5030', name: 'مصروف المستلزمات', en: 'Supplies & purchases', type: 'expense' },
+  { id: 'general_expense', code: '5040', name: 'مصروفات عمومية وإدارية', en: 'General & admin expenses', type: 'expense' },
+  { id: 'salaries_expense', code: '5050', name: 'رواتب وأجور', en: 'Salaries & wages', type: 'expense' },
 ]
 
 /** Cost centers (US-025) with monthly budgets in SAR.
     cc-veh-* centers belong to a single vehicle (vehicleId set). */
 export const COST_CENTERS = [
-  { id: 'cc-hunger', name: 'هانجر — جدة', budget: 120000, active: true },
-  { id: 'cc-jahez', name: 'جاهز — جدة', budget: 80000, active: true },
-  { id: 'cc-internal', name: 'العقود الداخلية', budget: 60000, active: true },
-  { id: 'cc-fleet', name: 'أسطول السيارات — عام', budget: 40000, active: true },
-  { id: 'cc-veh-v1', name: 'مركبة ABC-1234', budget: 0, active: true, vehicleId: 'v1' },
-  { id: 'cc-veh-v2', name: 'مركبة DEF-5678', budget: 0, active: true, vehicleId: 'v2' },
-  { id: 'cc-veh-v3', name: 'مركبة GHI-9012', budget: 0, active: true, vehicleId: 'v3' },
-  { id: 'cc-veh-v4', name: 'مركبة JKL-3456', budget: 0, active: true, vehicleId: 'v4' },
-  { id: 'cc-veh-v5', name: 'مركبة MNO-7890', budget: 0, active: true, vehicleId: 'v5' },
-  { id: 'cc-veh-v6', name: 'مركبة PQR-2345', budget: 0, active: true, vehicleId: 'v6' },
-  { id: 'cc-veh-v7', name: 'مركبة STU-6789', budget: 0, active: true, vehicleId: 'v7' },
+  { id: 'cc-hunger', code: 'CC-100', name: 'هانجر — جدة', budget: 120000, active: true },
+  { id: 'cc-jahez', code: 'CC-200', name: 'جاهز — جدة', budget: 80000, active: true },
+  { id: 'cc-internal', code: 'CC-300', name: 'العقود الداخلية', budget: 60000, active: true },
+  { id: 'cc-fleet', code: 'CC-400', name: 'أسطول السيارات — عام', budget: 40000, active: true },
+  { id: 'cc-veh-v1', code: 'CC-401', name: 'مركبة ABC-1234', budget: 0, active: true, vehicleId: 'v1' },
+  { id: 'cc-veh-v2', code: 'CC-402', name: 'مركبة DEF-5678', budget: 0, active: true, vehicleId: 'v2' },
+  { id: 'cc-veh-v3', code: 'CC-403', name: 'مركبة GHI-9012', budget: 0, active: true, vehicleId: 'v3' },
+  { id: 'cc-veh-v4', code: 'CC-404', name: 'مركبة JKL-3456', budget: 0, active: true, vehicleId: 'v4' },
+  { id: 'cc-veh-v5', code: 'CC-405', name: 'مركبة MNO-7890', budget: 0, active: true, vehicleId: 'v5' },
+  { id: 'cc-veh-v6', code: 'CC-406', name: 'مركبة PQR-2345', budget: 0, active: true, vehicleId: 'v6' },
+  { id: 'cc-veh-v7', code: 'CC-407', name: 'مركبة STU-6789', budget: 0, active: true, vehicleId: 'v7' },
 ]
 
-/** Seed journal entries (balanced). lines: [{account, costCenter, debit, credit}] */
+/** Document types for journal entries (the "symbol" of the general journal screen).
+    Each type numbers its own documents: prefix-year-0001. */
+export const DOCUMENT_TYPES = [
+  { id: 'jv', name: 'قيد يومية عامة', en: 'General journal entry', prefix: 'JV' },
+  { id: 'rv', name: 'سند قبض', en: 'Receipt voucher', prefix: 'RV' },
+  { id: 'pv', name: 'سند صرف', en: 'Payment voucher', prefix: 'PV' },
+  { id: 'ov', name: 'قيد افتتاحي', en: 'Opening entry', prefix: 'OV' },
+  { id: 'adj', name: 'قيد تسوية', en: 'Adjustment entry', prefix: 'ADJ' },
+]
+
+/** Fiscal years. A journal entry must fall inside its fiscal year; closed years reject new entries. */
+export const FISCAL_YEARS = [
+  { id: 'fy2025', name: 'السنة المالية 2025', en: 'Fiscal year 2025', year: 2025, dateFrom: '2025-01-01', dateTo: '2025-12-31', isDefault: false, closed: true },
+  { id: 'fy2026', name: 'السنة المالية 2026', en: 'Fiscal year 2026', year: 2026, dateFrom: '2026-01-01', dateTo: '2026-12-31', isDefault: true, closed: false },
+]
+
+/** Seed journal entries (balanced). serial = global running number, ref = document
+    number (per document type). lines: [{account, costCenter, debit, credit, description}] */
 export const JOURNAL = [
   {
-    id: 'j1', ref: 'JV-2026-0001', date: '2026-06-30', source: 'commissions',
-    description: 'عمولات شهر يونيو 2026',
+    id: 'j1', serial: 1, ref: 'JV-2026-0001', docType: 'jv', fiscalYear: 'fy2026', date: '2026-06-30', source: 'commissions',
+    description: 'عمولات شهر يونيو 2026', createdBy: 'سارة الدوسري',
     lines: [
-      { account: 'commissions_expense', costCenter: 'cc-hunger', debit: 18200, credit: 0 },
-      { account: 'riders_payable', costCenter: 'cc-hunger', debit: 0, credit: 18200 },
+      { account: 'commissions_expense', costCenter: 'cc-hunger', debit: 18200, credit: 0, description: 'عمولات مناديب هانجر' },
+      { account: 'riders_payable', costCenter: 'cc-hunger', debit: 0, credit: 18200, description: '' },
     ],
   },
   {
-    id: 'j2', ref: 'JV-2026-0002', date: '2026-06-28', source: 'vehicles',
-    description: 'صيانة سيارة ABC-1234',
+    id: 'j2', serial: 2, ref: 'JV-2026-0002', docType: 'jv', fiscalYear: 'fy2026', date: '2026-06-28', source: 'vehicles',
+    description: 'صيانة سيارة ABC-1234', createdBy: 'فيصل الجهني',
     lines: [
-      { account: 'vehicle_expense', costCenter: 'cc-fleet', debit: 650, credit: 0 },
-      { account: 'cash', costCenter: 'cc-fleet', debit: 0, credit: 650 },
+      { account: 'vehicle_expense', costCenter: 'cc-fleet', debit: 650, credit: 0, description: 'صيانة دورية' },
+      { account: 'cash', costCenter: 'cc-fleet', debit: 0, credit: 650, description: '' },
     ],
   },
   {
-    id: 'j3', ref: 'JV-2026-0003', date: '2026-06-25', source: 'purchases',
-    description: 'شراء مستلزمات — قطع غيار',
+    id: 'j3', serial: 3, ref: 'JV-2026-0003', docType: 'jv', fiscalYear: 'fy2026', date: '2026-06-25', source: 'purchases',
+    description: 'شراء مستلزمات — قطع غيار', createdBy: 'سارة الدوسري',
     lines: [
-      { account: 'supplies_expense', costCenter: 'cc-fleet', debit: 1200, credit: 0 },
-      { account: 'input_vat', costCenter: 'cc-fleet', debit: 180, credit: 0 },
-      { account: 'suppliers', costCenter: 'cc-fleet', debit: 0, credit: 1380 },
+      { account: 'supplies_expense', costCenter: 'cc-fleet', debit: 1200, credit: 0, description: 'قطع غيار دراجات' },
+      { account: 'input_vat', costCenter: 'cc-fleet', debit: 180, credit: 0, description: 'ضريبة مدخلات' },
+      { account: 'suppliers', costCenter: 'cc-fleet', debit: 0, credit: 1380, description: '' },
+    ],
+  },
+  {
+    id: 'j4', serial: 4, ref: 'JV-2026-0004', docType: 'jv', fiscalYear: 'fy2026', date: '2026-07-01', source: 'manual',
+    description: 'إيجار المستودع — يوليو', createdBy: 'سارة الدوسري',
+    lines: [
+      { account: 'general_expense', costCenter: 'cc-internal', debit: 4000, credit: 0, description: 'إيجار شهر يوليو' },
+      { account: 'bank', costCenter: 'cc-internal', debit: 0, credit: 4000, description: 'تحويل بنكي' },
     ],
   },
 ]
@@ -226,13 +256,13 @@ export const EXPENSE_TYPES = {
 /** Vehicles. value = purchase value in SAR. Up to two riders (one per shift).
     Each vehicle owns a cost center (cc-veh-*) for its expenses. */
 export const VEHICLES = [
-  { id: 'v1', plate: 'ABC-1234', type: 'motorcycle', morningRiderId: 'R-001', eveningRiderId: null, value: 18000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v1' },
-  { id: 'v2', plate: 'DEF-5678', type: 'motorcycle', morningRiderId: 'R-002', eveningRiderId: 'R-008', value: 18500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v2' },
-  { id: 'v3', plate: 'GHI-9012', type: 'motorcycle', morningRiderId: 'R-003', eveningRiderId: null, value: 16500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v3' },
-  { id: 'v4', plate: 'JKL-3456', type: 'car', morningRiderId: 'R-004', eveningRiderId: null, value: 78000, status: 'maintenance', statusFrom: '2026-07-10', statusTo: '2026-07-30', costCenter: 'cc-veh-v4' },
-  { id: 'v5', plate: 'MNO-7890', type: 'motorcycle', morningRiderId: 'R-005', eveningRiderId: null, value: 15500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v5' },
-  { id: 'v6', plate: 'PQR-2345', type: 'motorcycle', morningRiderId: 'R-006', eveningRiderId: null, value: 19000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v6' },
-  { id: 'v7', plate: 'STU-6789', type: 'car', morningRiderId: 'R-007', eveningRiderId: null, value: 69000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v7' },
+  { id: 'v1', plate: 'ABC-1234', type: 'motorcycle', chassis: 'JH2PC37017M200001', color: 'أسود', model: 'Honda CB150', year: 2023, tankCapacity: 12, morningRiderId: 'R-001', eveningRiderId: null, value: 18000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v1' },
+  { id: 'v2', plate: 'DEF-5678', type: 'motorcycle', chassis: 'JH2PC37017M200002', color: 'أحمر', model: 'Honda CB150', year: 2023, tankCapacity: 12, morningRiderId: 'R-002', eveningRiderId: 'R-008', value: 18500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v2' },
+  { id: 'v3', plate: 'GHI-9012', type: 'motorcycle', chassis: 'MLHKC0910P5200003', color: 'أزرق', model: 'Yamaha YBR125', year: 2022, tankCapacity: 13, morningRiderId: 'R-003', eveningRiderId: null, value: 16500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v3' },
+  { id: 'v4', plate: 'JKL-3456', type: 'car', chassis: 'KMHCT41DAKU200004', color: 'أبيض', model: 'Hyundai Accent', year: 2022, tankCapacity: 45, morningRiderId: 'R-004', eveningRiderId: null, value: 78000, status: 'maintenance', statusFrom: '2026-07-10', statusTo: '2026-07-30', costCenter: 'cc-veh-v4' },
+  { id: 'v5', plate: 'MNO-7890', type: 'motorcycle', chassis: 'MLHKC0910P5200005', color: 'أسود', model: 'Yamaha YBR125', year: 2021, tankCapacity: 13, morningRiderId: 'R-005', eveningRiderId: null, value: 15500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v5' },
+  { id: 'v6', plate: 'PQR-2345', type: 'motorcycle', chassis: 'JH2PC37017M200006', color: 'أبيض', model: 'Honda CB150', year: 2024, tankCapacity: 12, morningRiderId: 'R-006', eveningRiderId: null, value: 19000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v6' },
+  { id: 'v7', plate: 'STU-6789', type: 'car', chassis: 'JTDBR32E0J0200007', color: 'فضي', model: 'Toyota Yaris', year: 2021, tankCapacity: 42, morningRiderId: 'R-007', eveningRiderId: null, value: 69000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v7' },
 ]
 
 export const VEHICLE_EXPENSES = [
@@ -269,4 +299,129 @@ export const USERS = [
   { id: 'u2', name: 'خالد الشهري', role: 'supervisor', mobile: '0500000002', active: true },
   { id: 'u3', name: 'سارة الدوسري', role: 'accountant', mobile: '0500000003', active: true },
   { id: 'u4', name: 'محمد الغامدي', role: 'rider', mobile: '0551234567', active: true },
+]
+
+/* ── Manual orders (#3) ─────────────────────────────────── */
+
+/** Individually-entered orders. Each one rolls up into the rider's daily log
+    (orders +1, cash += collected) so counts and wallets stay in sync. */
+export const MANUAL_ORDERS = [
+  { id: 'mo1', orderNo: 'HS-88213', riderId: 'R-001', date: '2026-07-02', time: '13:40', km: 4.2, price: 18, collected: 18, createdBy: 'خالد الشهري' },
+  { id: 'mo2', orderNo: 'HS-88251', riderId: 'R-001', date: '2026-07-02', time: '14:05', km: 6.8, price: 24, collected: 0, createdBy: 'خالد الشهري' },
+  { id: 'mo3', orderNo: 'JZ-10422', riderId: 'R-006', date: '2026-07-01', time: '19:20', km: 3.1, price: 15, collected: 15, createdBy: 'خالد الشهري' },
+  { id: 'mo4', orderNo: 'HS-88302', riderId: 'R-002', date: '2026-07-02', time: '12:15', km: 5.5, price: 21, collected: 21, createdBy: 'أحمد العتيبي' },
+]
+
+/* ── Treasuries & banks (#4) ────────────────────────────── */
+
+export const TREASURY_KINDS = {
+  cash: { ar: 'خزنة نقدية', en: 'Cash box' },
+  bank: { ar: 'حساب بنكي', en: 'Bank account' },
+  rider: { ar: 'خزنة مناديب (عهدة)', en: 'Rider custody box' },
+}
+
+/** Treasuries. `account` = the GL account the treasury maps to.
+    kind 'rider' boxes hold cash still in riders' hands (عهدة). */
+export const TREASURIES = [
+  { id: 'tr-main', name: 'الخزنة الرئيسية', kind: 'cash', account: 'cash', opening: 25000, active: true, isMain: true },
+  { id: 'tr-bank', name: 'مصرف الراجحي — الحساب الجاري', kind: 'bank', account: 'bank', iban: 'SA0380000000608010167519', opening: 180000, active: true },
+  { id: 'tr-riders-jed', name: 'خزنة مناديب جدة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true },
+  { id: 'tr-riders-mak', name: 'خزنة مناديب مكة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true },
+  { id: 'tr-riders-taif', name: 'خزنة مناديب الطائف', kind: 'rider', account: 'rider_wallets', opening: 0, active: true },
+]
+
+/** Rider → treasury link (treasury settings screen). */
+export const RIDER_TREASURY = {
+  'R-001': 'tr-riders-jed',
+  'R-002': 'tr-riders-jed',
+  'R-003': 'tr-riders-mak',
+  'R-004': 'tr-riders-jed',
+  'R-005': 'tr-riders-taif',
+  'R-006': 'tr-riders-jed',
+  'R-007': 'tr-riders-mak',
+  'R-008': 'tr-riders-jed',
+}
+
+/** Treasury movements. type ∈ receipt|payment|transfer_in|transfer_out.
+    status ∈ posted|pending|rejected (transfers born from cash handovers wait
+    for the accountant). amount is always positive. */
+export const TREASURY_MOVEMENTS = [
+  { id: 'tm1', ref: 'RV-2026-0001', type: 'receipt', treasuryId: 'tr-bank', date: '2026-06-05', amount: 43056, party: 'هانجر استيشن', description: 'سداد فاتورة مايو', account: 'receivables', costCenter: null, riderId: null, status: 'posted', source: 'sales' },
+  { id: 'tm2', ref: 'PV-2026-0001', type: 'payment', treasuryId: 'tr-main', date: '2026-06-28', amount: 650, party: 'ورشة النخبة', description: 'صيانة سيارة ABC-1234', account: 'vehicle_expense', costCenter: 'cc-veh-v1', expenseItem: 'maintenance', riderId: null, status: 'posted', source: 'vehicles' },
+  { id: 'tm3', ref: 'TR-2026-0001', type: 'transfer_out', treasuryId: 'tr-bank', date: '2026-06-01', amount: 10000, party: 'الخزنة الرئيسية', description: 'تغذية الخزنة الرئيسية', transferId: 'tf1', status: 'posted', source: 'treasury' },
+  { id: 'tm4', ref: 'TR-2026-0001', type: 'transfer_in', treasuryId: 'tr-main', date: '2026-06-01', amount: 10000, party: 'مصرف الراجحي — الحساب الجاري', description: 'تغذية الخزنة الرئيسية', transferId: 'tf1', status: 'posted', source: 'treasury' },
+  { id: 'tm5', ref: 'RV-2026-0002', type: 'receipt', treasuryId: 'tr-riders-jed', date: '2026-06-01', amount: 3210, party: 'مناديب جدة', description: 'رصيد افتتاحي — عُهد المناديب', account: 'rider_wallets', riderId: null, status: 'posted', source: 'wallets' },
+  { id: 'tm6', ref: 'RV-2026-0003', type: 'receipt', treasuryId: 'tr-riders-mak', date: '2026-06-01', amount: 395, party: 'مناديب مكة', description: 'رصيد افتتاحي — عُهد المناديب', account: 'rider_wallets', riderId: null, status: 'posted', source: 'wallets' },
+  { id: 'tm7', ref: 'RV-2026-0004', type: 'receipt', treasuryId: 'tr-riders-taif', date: '2026-06-01', amount: 60, party: 'مناديب الطائف', description: 'رصيد افتتاحي — عُهد المناديب', account: 'rider_wallets', riderId: null, status: 'posted', source: 'wallets' },
+  { id: 'tm8', ref: 'PV-2026-0002', type: 'payment', treasuryId: 'tr-main', date: '2026-06-20', amount: 500, party: 'عبدالله القحطاني', description: 'سحب من الرصيد — سلفة على الراتب', account: 'riders_payable', costCenter: null, expenseItem: null, riderId: 'R-002', status: 'posted', source: 'withdrawal' },
+]
+
+/* ── Rider balances, withdrawals & debts (#4b) ───────────── */
+
+/** Withdrawals from a rider's balance — each one created a payment voucher. */
+export const RIDER_WITHDRAWALS = [
+  { id: 'wd1', riderId: 'R-002', date: '2026-06-20', amount: 500, reason: 'سلفة على الراتب', treasuryId: 'tr-main', voucherRef: 'PV-2026-0002', by: 'سارة الدوسري' },
+]
+
+/** Debts on riders (converted from un-deposited cash, or manual). */
+export const RIDER_DEBTS = [
+  { id: 'd1', riderId: 'R-006', date: '2026-06-30', amount: 420, remaining: 420, note: 'عجز إيداع يونيو', noticeRef: 'DN-2026-0001', by: 'سارة الدوسري' },
+]
+
+/** Debit / credit notices issued to riders. type ∈ debit|credit. */
+export const RIDER_NOTICES = [
+  { id: 'n1', ref: 'DN-2026-0001', riderId: 'R-006', type: 'debit', date: '2026-06-30', amount: 420, note: 'تحويل المتبقي من الإيداع إلى مديونية', source: 'debt', by: 'سارة الدوسري' },
+  { id: 'n2', ref: 'DN-2026-0002', riderId: 'R-002', type: 'debit', date: '2026-06-20', amount: 500, note: 'سحب من الرصيد — سلفة على الراتب', source: 'withdrawal', by: 'سارة الدوسري' },
+]
+
+/* ── Vehicle handover, shifts & fuel (#5) ───────────────── */
+
+/** Work shifts (editable). Ids match the legacy SHIFTS keys so existing
+    assignments keep resolving. */
+export const WORK_SHIFTS = [
+  { id: 'morning', name: 'صباحي', en: 'Morning', from: '07:00', to: '15:00', active: true },
+  { id: 'evening', name: 'مسائي', en: 'Evening', from: '15:00', to: '23:00', active: true },
+]
+
+/** Vehicle handover log. fromType/toType ∈ rider|company. fuel = 0–100 (%). */
+export const VEHICLE_HANDOVERS = [
+  { id: 'vh1', vehicleId: 'v2', date: '2026-07-01', time: '15:05', shiftId: 'evening', fromType: 'rider', fromRiderId: 'R-002', toType: 'rider', toRiderId: 'R-008', odometer: 18420, fuel: 60, condition: 'good', notes: '', by: 'خالد الشهري' },
+  { id: 'vh2', vehicleId: 'v4', date: '2026-07-10', time: '09:30', shiftId: 'morning', fromType: 'rider', fromRiderId: 'R-004', toType: 'company', toRiderId: null, odometer: 61200, fuel: 25, condition: 'damaged', notes: 'خدش في الباب الأمامي — دخول الصيانة', by: 'فيصل الجهني' },
+]
+
+/** Fuel sheet — one row per fill-up. Also creates a `fuel` vehicle expense. */
+export const FUEL_LOGS = [
+  { id: 'f1', vehicleId: 'v1', riderId: 'R-001', date: '2026-06-20', liters: 11.5, amount: 400, odometer: 12210, station: 'الدريس — الحمراء', note: '', expenseId: 've2' },
+  { id: 'f2', vehicleId: 'v6', riderId: 'R-006', date: '2026-07-01', liters: 9.8, amount: 23, odometer: 4020, station: 'ساسكو — الروضة', note: '', expenseId: null },
+]
+
+/* ── Catalogs (#6) ──────────────────────────────────────── */
+
+/** Expense items (was the fixed EXPENSE_TYPES map). `account` = GL account. */
+export const EXPENSE_ITEMS = [
+  { id: 'fuel', name: 'وقود', en: 'Fuel', account: 'vehicle_expense', active: true },
+  { id: 'maintenance', name: 'صيانة', en: 'Maintenance', account: 'vehicle_expense', active: true },
+  { id: 'insurance', name: 'تأمين', en: 'Insurance', account: 'vehicle_expense', active: true },
+  { id: 'registration', name: 'تسجيل', en: 'Registration', account: 'vehicle_expense', active: true },
+  { id: 'fines', name: 'مخالفات', en: 'Fines', account: 'vehicle_expense', active: true },
+  { id: 'rent', name: 'إيجار', en: 'Rent', account: 'general_expense', active: true },
+  { id: 'salaries', name: 'رواتب', en: 'Salaries', account: 'salaries_expense', active: true },
+  { id: 'other', name: 'أخرى', en: 'Other', account: 'general_expense', active: true },
+]
+
+/** Purchase items catalog. */
+export const PURCHASE_ITEMS = [
+  { id: 'pi1', name: 'قطع غيار دراجات', category: 'parts', unit: 'قطعة', active: true },
+  { id: 'pi2', name: 'وقود', category: 'fuel', unit: 'لتر', active: true },
+  { id: 'pi3', name: 'صناديق توصيل', category: 'equipment', unit: 'قطعة', active: true },
+  { id: 'pi4', name: 'زيوت محركات', category: 'parts', unit: 'عبوة', active: true },
+]
+
+/* ── Sales invoices (#7) ────────────────────────────────── */
+
+/** Sales invoices raised from partner sheets (Hunger Station …). VAT is
+    computed automatically at VAT_RATE. status ∈ issued|paid */
+export const SALES_INVOICES = [
+  { id: 'si1', ref: 'SI-2026-0001', contract: 'hunger', period: '2026-05', date: '2026-06-02', orders: 3120, unitPrice: 12, preTax: 37440, vat: 5616, total: 43056, sheet: 'HS-May-2026.xlsx', status: 'paid', journalRef: null },
+  { id: 'si2', ref: 'SI-2026-0002', contract: 'hunger', period: '2026-06', date: '2026-07-01', orders: 3347, unitPrice: 12, preTax: 40164, vat: 6024.6, total: 46188.6, sheet: 'HS-June-2026.xlsx', status: 'issued', journalRef: null },
 ]

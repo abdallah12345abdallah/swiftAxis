@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Bike, Car, Wallet, AlertTriangle } from 'lucide-vue-next'
 import Avatar from '@/components/common/Avatar.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
 import WeeklyChart from '@/components/charts/WeeklyChart.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -87,10 +88,11 @@ const vehicleStatusVariant = (s) => (s === 'active' ? 'success' : s === 'mainten
       <!-- header -->
       <Card class="p-5">
         <div class="flex flex-wrap items-center gap-4">
-          <Avatar :initials="rider.name.charAt(0)" class="size-14 text-lg" />
+          <Avatar :initials="rider.name.charAt(0)" :src="rider.photo?.url" class="size-14 text-lg" />
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
               <h1 class="text-xl font-bold">{{ rider.name }}</h1>
+              <RiderCode :code="rider.id" class="text-xs" />
               <Badge :variant="statusVariant(rider)">{{ statusLabel(rider) }}</Badge>
               <AlertTriangle v-if="rider.underperforming" class="text-warning-foreground size-4" />
             </div>
@@ -148,7 +150,13 @@ const vehicleStatusVariant = (s) => (s === 'active' ? 'success' : s === 'mainten
                 <div class="flex items-center gap-2 font-medium">
                   <component :is="assignment.vehicle.type === 'car' ? Car : Bike" class="text-muted-foreground size-4" />
                   <span dir="ltr">{{ assignment.vehicle.plate }}</span>
-                  <span class="text-muted-foreground">— {{ loc(VEHICLE_TYPES, assignment.vehicle.type) }}</span>
+                  <span class="text-muted-foreground">— {{ assignment.vehicle.model || loc(VEHICLE_TYPES, assignment.vehicle.type) }}</span>
+                </div>
+                <div v-if="assignment.vehicle.chassis || assignment.vehicle.color || assignment.vehicle.year" class="text-muted-foreground grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <span v-if="assignment.vehicle.color">{{ t('vehicles.fields.color') }}: <b class="text-foreground">{{ assignment.vehicle.color }}</b></span>
+                  <span v-if="assignment.vehicle.year">{{ t('vehicles.fields.year') }}: <b class="text-foreground tabular-nums">{{ assignment.vehicle.year }}</b></span>
+                  <span v-if="assignment.vehicle.tankCapacity">{{ t('vehicles.fields.tankCapacity') }}: <b class="text-foreground tabular-nums">{{ assignment.vehicle.tankCapacity }}</b></span>
+                  <span v-if="assignment.vehicle.chassis" class="col-span-2">{{ t('vehicles.fields.chassis') }}: <b class="text-foreground" dir="ltr">{{ assignment.vehicle.chassis }}</b></span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-muted-foreground">{{ t('riderDetail.shift') }}</span>

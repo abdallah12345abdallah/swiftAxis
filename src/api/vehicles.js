@@ -1,12 +1,14 @@
 import { mockDelay } from '@/services/http'
-import { VEHICLES, VEHICLE_EXPENSES, RIDERS, COST_CENTERS } from './fixtures'
+import { VEHICLES, VEHICLE_EXPENSES, RIDERS, COST_CENTERS, WORK_SHIFTS, VEHICLE_HANDOVERS, FUEL_LOGS, EXPENSE_ITEMS } from './fixtures'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
 
-/* Vehicles & expenses (EP-05). A vehicle carries up to two riders (one per
-   shift) and owns a dedicated cost center for its expenses. */
+/* Vehicles & expenses (EP-05) + handover, shifts and the fuel sheet (#5).
+   A vehicle carries up to two riders (one per shift) and owns a dedicated
+   cost center for its expenses. */
 
 const riderById = (id) => RIDERS.find((r) => r.id === id)
+const todayISO = () => new Date().toISOString().slice(0, 10)
 
 function decorate(v) {
   return {
@@ -14,6 +16,7 @@ function decorate(v) {
     morningRiderName: riderById(v.morningRiderId)?.name ?? null,
     eveningRiderName: riderById(v.eveningRiderId)?.name ?? null,
     ridersLabel: [riderById(v.morningRiderId)?.name, riderById(v.eveningRiderId)?.name].filter(Boolean).join(' / ') || '—',
+    label: [v.plate, v.model].filter(Boolean).join(' · '),
   }
 }
 
@@ -47,6 +50,12 @@ function normalizeVehiclePayload(payload) {
     status: payload.status || 'active',
     statusFrom: payload.status && payload.status !== 'active' ? payload.statusFrom || null : null,
     statusTo: payload.status && payload.status !== 'active' ? payload.statusTo || null : null,
+    // identity (#5)
+    chassis: payload.chassis?.trim() || '',
+    color: payload.color?.trim() || '',
+    model: payload.model?.trim() || '',
+    year: Number(payload.year) || null,
+    tankCapacity: Number(payload.tankCapacity) || null,
   }
 }
 
@@ -58,7 +67,7 @@ export function createVehicle(payload) {
   const id = `v${vSeq}`
   // every vehicle gets its own cost center so its expenses can be traced
   const ccId = `cc-veh-${id}`
-  COST_CENTERS.push({ id: ccId, name: `مركبة ${fields.plate}`, budget: 0, active: true, vehicleId: id })
+  COST_CENTERS.push({ id: ccId, code: `CC-4${String(vSeq).padStart(2, '0')}`, name: `مركبة ${fields.plate}`, budget: 0, active: true, vehicleId: id })
   const v = { id, ...fields, costCenter: ccId }
   VEHICLES.push(v)
   logAudit({ action: 'create', entity: 'vehicles', detail: v.plate })
@@ -79,9 +88,10 @@ export function updateVehicle(id, payload) {
 
 const inRange = (d, from, to) => (!from || d >= from) && (!to || d <= to)
 
-export function fetchExpenses({ vehicleId, from, to } = {}) {
+export function fetchExpenses({ vehicleId, from, to, type } = {}) {
   const rows = VEHICLE_EXPENSES.filter((e) => {
     if (vehicleId && e.vehicleId !== vehicleId) return false
+    if (type && e.type !== type) return false
     if (!inRange(e.date, from, to)) return false
     return true
   })
@@ -91,7 +101,7 @@ export function fetchExpenses({ vehicleId, from, to } = {}) {
 }
 
 let eSeq = VEHICLE_EXPENSES.length
-/** Create an expense and auto-post Dr Vehicle expense / Cr Cash (US-018). */
+/** Create an expense and auto-post Dr expense account (from the item) / Cr Cash (US-018). */
 export async function createExpense(payload) {
   eSeq += 1
   const exp = {
@@ -105,12 +115,13 @@ export async function createExpense(payload) {
   }
   VEHICLE_EXPENSES.push(exp)
   const cc = VEHICLES.find((v) => v.id === exp.vehicleId)?.costCenter || 'cc-fleet'
+  const account = EXPENSE_ITEMS.find((i) => i.id === exp.type)?.account || 'vehicle_expense'
   await postEntry({
     source: 'vehicles',
     date: exp.date,
     description: `مصروف سيارة — ${exp.invoiceNo}`,
     lines: [
-      { account: 'vehicle_expense', costCenter: cc, debit: exp.amount, credit: 0 },
+      { account, costCenter: cc, debit: exp.amount, credit: 0 },
       { account: 'cash', costCenter: cc, debit: 0, credit: exp.amount },
     ],
   })
@@ -146,4 +157,136 @@ export function expenseBreakdown({ granularity = 'month', vehicleId } = {}) {
     .map((type) => ({ type, total: rows.filter((e) => e.type === type).reduce((s, e) => s + e.amount, 0) }))
     .sort((a, b) => b.total - a.total)
   return mockDelay({ categories: buckets, series, totalsByType })
+}
+
+/* ── Work shifts (#5) ────────────────────────────────────── */
+export const shiftById = (id) => WORK_SHIFTS.find((s) => s.id === id)
+
+export function fetchShifts() {
+  return mockDelay(WORK_SHIFTS.map((s) => ({ ...s, vehicles: VEHICLES.filter((v) => v[`${s.id}RiderId`]).length, handovers: VEHICLE_HANDOVERS.filter((h) => h.shiftId === s.id).length })))
+}
+export function createShift(payload) {
+  if (!payload.name?.trim()) return Promise.reject(new Error('NAME_REQUIRED'))
+  const id = `shift-${WORK_SHIFTS.length + 1}`
+  const s = { id, name: payload.name.trim(), en: payload.en?.trim() || payload.name.trim(), from: payload.from || '00:00', to: payload.to || '00:00', active: payload.active ?? true }
+  WORK_SHIFTS.push(s)
+  logAudit({ action: 'create', entity: 'shifts', detail: s.name })
+  return mockDelay(s)
+}
+export function updateShift(id, payload) {
+  const s = shiftById(id)
+  if (!s) return Promise.reject(new Error('NOT_FOUND'))
+  Object.assign(s, { name: payload.name?.trim() || s.name, en: payload.en?.trim() || s.en, from: payload.from || s.from, to: payload.to || s.to, active: payload.active ?? s.active })
+  logAudit({ action: 'update', entity: 'shifts', detail: s.name })
+  return mockDelay(s)
+}
+
+/* ── Vehicle handover (#5) ───────────────────────────────── */
+function decorateHandover(h) {
+  const v = VEHICLES.find((x) => x.id === h.vehicleId)
+  return {
+    ...h,
+    plate: v?.plate ?? '—',
+    model: v?.model ?? '',
+    shiftName: shiftById(h.shiftId)?.name ?? h.shiftId,
+    fromName: h.fromType === 'company' ? null : riderById(h.fromRiderId)?.name ?? h.fromRiderId,
+    toName: h.toType === 'company' ? null : riderById(h.toRiderId)?.name ?? h.toRiderId,
+  }
+}
+
+export function fetchHandovers({ vehicleId, riderId, from, to } = {}) {
+  const rows = VEHICLE_HANDOVERS.filter((h) => {
+    if (vehicleId && h.vehicleId !== vehicleId) return false
+    if (riderId && h.fromRiderId !== riderId && h.toRiderId !== riderId) return false
+    return inRange(h.date, from, to)
+  })
+    .map(decorateHandover)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.time < b.time ? 1 : -1))
+  return mockDelay(rows)
+}
+
+let hSeq = VEHICLE_HANDOVERS.length
+/** Document a handover. The receiving rider becomes the vehicle's rider for
+    that shift (or the shift is freed when it goes back to the company). */
+export function createHandover(payload) {
+  const v = VEHICLES.find((x) => x.id === payload.vehicleId)
+  if (!v) return Promise.reject(new Error('VEHICLE_REQUIRED'))
+  if (!payload.shiftId || !shiftById(payload.shiftId)) return Promise.reject(new Error('SHIFT_REQUIRED'))
+  const fromType = payload.fromType || 'rider'
+  const toType = payload.toType || 'rider'
+  if (fromType === 'rider' && !payload.fromRiderId) return Promise.reject(new Error('FROM_REQUIRED'))
+  if (toType === 'rider' && !payload.toRiderId) return Promise.reject(new Error('TO_REQUIRED'))
+  if (fromType === 'company' && toType === 'company') return Promise.reject(new Error('SAME_PARTY'))
+  if (fromType === 'rider' && toType === 'rider' && payload.fromRiderId === payload.toRiderId) return Promise.reject(new Error('SAME_PARTY'))
+  hSeq += 1
+  const h = {
+    id: `vh${hSeq}`,
+    vehicleId: v.id,
+    date: payload.date || todayISO(),
+    time: payload.time || new Date().toTimeString().slice(0, 5),
+    shiftId: payload.shiftId,
+    fromType,
+    fromRiderId: fromType === 'rider' ? payload.fromRiderId : null,
+    toType,
+    toRiderId: toType === 'rider' ? payload.toRiderId : null,
+    odometer: Number(payload.odometer) || 0,
+    fuel: Math.max(0, Math.min(100, Number(payload.fuel) || 0)),
+    condition: payload.condition || 'good',
+    notes: payload.notes || '',
+    photo: payload.photo ? { name: payload.photo.name, url: payload.photo.url } : null,
+    by: payload.by || '',
+  }
+  VEHICLE_HANDOVERS.push(h)
+  // keep the vehicle's shift assignment in step with the paperwork
+  const key = h.shiftId === 'evening' ? 'eveningRiderId' : h.shiftId === 'morning' ? 'morningRiderId' : null
+  if (key) v[key] = toType === 'rider' ? h.toRiderId : null
+  logAudit({ action: 'create', entity: 'vehicles', detail: `تسليم/استلام ${v.plate}` })
+  return mockDelay(decorateHandover(h))
+}
+
+/* ── Fuel sheet (#5 / #6) ────────────────────────────────── */
+function decorateFuel(f) {
+  const v = VEHICLES.find((x) => x.id === f.vehicleId)
+  return { ...f, plate: v?.plate ?? '—', model: v?.model ?? '', riderName: riderById(f.riderId)?.name ?? '—', pricePerLiter: f.liters ? Math.round((f.amount / f.liters) * 100) / 100 : 0 }
+}
+
+export function fetchFuelSheet({ vehicleId, riderId, from, to } = {}) {
+  const rows = FUEL_LOGS.filter((f) => (!vehicleId || f.vehicleId === vehicleId) && (!riderId || f.riderId === riderId) && inRange(f.date, from, to))
+    .map(decorateFuel)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+  const byVehicle = VEHICLES.map((v) => {
+    const mine = rows.filter((r) => r.vehicleId === v.id)
+    const liters = mine.reduce((s, r) => s + r.liters, 0)
+    const amount = mine.reduce((s, r) => s + r.amount, 0)
+    return { id: v.id, plate: v.plate, model: v.model, tankCapacity: v.tankCapacity, fills: mine.length, liters, amount, avgPrice: liters ? Math.round((amount / liters) * 100) / 100 : 0 }
+  }).filter((r) => r.fills || !vehicleId)
+  return mockDelay({
+    rows,
+    byVehicle,
+    totals: { liters: rows.reduce((s, r) => s + r.liters, 0), amount: rows.reduce((s, r) => s + r.amount, 0), fills: rows.length },
+  })
+}
+
+let fSeq = FUEL_LOGS.length
+/** Log a fill-up. Also books a `fuel` expense on the vehicle's cost center. */
+export async function createFuelLog(payload) {
+  if (!payload.vehicleId) return Promise.reject(new Error('VEHICLE_REQUIRED'))
+  const amt = Number(payload.amount) || 0
+  if (amt <= 0) return Promise.reject(new Error('INVALID_AMOUNT'))
+  const exp = await createExpense({ vehicleId: payload.vehicleId, type: 'fuel', amount: amt, date: payload.date || todayISO(), invoiceNo: payload.invoiceNo || '—', note: payload.station ? `بنزين — ${payload.station}` : 'بنزين' })
+  fSeq += 1
+  const f = {
+    id: `f${fSeq}`,
+    vehicleId: payload.vehicleId,
+    riderId: payload.riderId || null,
+    date: payload.date || todayISO(),
+    liters: Number(payload.liters) || 0,
+    amount: amt,
+    odometer: Number(payload.odometer) || 0,
+    station: payload.station || '',
+    note: payload.note || '',
+    expenseId: exp.id,
+  }
+  FUEL_LOGS.push(f)
+  return mockDelay(decorateFuel(f))
 }

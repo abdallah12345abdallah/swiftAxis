@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { FileDrop } from '@/components/ui/file-drop'
+import Avatar from '@/components/common/Avatar.vue'
 import { cn } from '@/lib/utils'
 import { createRider, updateRider } from '@/api/riders'
 
@@ -26,6 +28,7 @@ const isEdit = computed(() => !!props.rider)
 const saving = ref(false)
 
 const blank = () => ({
+  photo: null,
   name: '',
   nationalId: '',
   mobile: '',
@@ -66,6 +69,7 @@ watch(
     Object.keys(errors).forEach((k) => delete errors[k])
     if (props.rider) {
       Object.assign(form, {
+        photo: props.rider.photo ?? null,
         name: props.rider.name,
         nationalId: props.rider.nationalId,
         mobile: props.rider.mobile,
@@ -133,6 +137,15 @@ async function submit() {
     @update:open="emit('update:open', $event)"
   >
     <form class="space-y-4" @submit.prevent="submit">
+      <!-- photo (#1) -->
+      <div class="flex items-start gap-4">
+        <Avatar :initials="(form.name || '?').charAt(0)" :src="form.photo?.url" class="size-20 text-2xl" />
+        <div class="min-w-0 flex-1 space-y-1.5">
+          <label class="text-sm font-medium">{{ t('riders.form.photo') }} <span class="text-muted-foreground text-xs font-normal">({{ t('common.optional') }})</span></label>
+          <FileDrop v-model="form.photo" accept="image/*" :hint="t('riders.form.photoHint')" />
+        </div>
+      </div>
+
       <div class="grid gap-4 sm:grid-cols-2">
         <!-- name -->
         <div class="space-y-1.5 sm:col-span-2">

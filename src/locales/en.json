@@ -51,13 +51,33 @@
     "saved": "Saved successfully",
     "none": "None",
     "required": "Required",
-    "clear": "Clear"
+    "clear": "Clear",
+    "time": "Time",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "details": "Details",
+    "close": "Close",
+    "confirm": "Confirm",
+    "photo": "Photo",
+    "code": "Code",
+    "riderCode": "Rider code",
+    "optional": "Optional",
+    "company": "Company",
+    "by": "By",
+    "kind": "Type",
+    "ref": "Reference",
+    "description": "Description",
+    "name": "Name",
+    "showAll": "Show all",
+    "hide": "Hide"
   },
   "roles": {
     "manager": "System Manager",
     "supervisor": "Supervisor",
     "accountant": "Accountant",
-    "rider": "Rider"
+    "rider": "Rider",
+    "storekeeper": "Warehouse Keeper"
   },
   "datepicker": {
     "selectDate": "Pick a date",
@@ -81,7 +101,10 @@
     "ledger": "General Ledger",
     "purchases": "Purchases & VAT",
     "users": "Users & Permissions",
-    "settings": "Settings"
+    "settings": "Settings",
+    "treasury": "Treasury & Banks",
+    "sales": "Sales Invoices",
+    "journalEntry": "Journal entry"
   },
   "login": {
     "title": "Welcome back",
@@ -160,7 +183,8 @@
       "walletOver": "{name}'s balance exceeded the limit ({amount} SAR)",
       "lowPerformer": "{name} is below 70% of target",
       "empty": "No current alerts 👍"
-    }
+    },
+    "riderPanelHint": "Click a rider's name to open the details panel"
   },
   "riders": {
     "title": "Riders",
@@ -223,7 +247,10 @@
       "errNationalIdFormat": "National ID must be 10 digits",
       "errDuplicate": "This national ID already exists in the system",
       "errMobile": "Enter a valid mobile (05xxxxxxxx)",
-      "errContract": "Select at least one contract"
+      "errContract": "Select at least one contract",
+      "photo": "Profile photo",
+      "photoHint": "Upload the rider's photo (JPG / PNG)",
+      "photoChange": "Change photo"
     }
   },
   "contracts": {
@@ -261,18 +288,49 @@
   "users": {
     "title": "Users & Permissions",
     "subtitle": "Manage users, roles and the audit trail",
-    "tabs": { "users": "Users", "roles": "Roles & Access", "audit": "Audit Log" },
+    "tabs": {
+      "users": "Users",
+      "roles": "Roles & Access",
+      "audit": "Audit Log"
+    },
     "add": "Add user",
     "userTitle": "User",
     "name": "Name",
     "role": "Role",
     "mobile": "Mobile",
-    "matrix": { "page": "Page", "hint": "What each role can access (from the access matrix)" },
-    "audit": { "time": "Time", "user": "User", "action": "Action", "entity": "Entity", "detail": "Detail", "ip": "IP", "search": "Search log…", "allActions": "All actions", "immutable": "Audit entries are read-only" },
-    "actions": { "login": "Login", "logout": "Logout", "create": "Create", "update": "Update", "delete": "Delete" },
+    "matrix": {
+      "page": "Page",
+      "hint": "What each role can access (from the access matrix)"
+    },
+    "audit": {
+      "time": "Time",
+      "user": "User",
+      "action": "Action",
+      "entity": "Entity",
+      "detail": "Detail",
+      "ip": "IP",
+      "search": "Search log…",
+      "allActions": "All actions",
+      "immutable": "Audit entries are read-only"
+    },
+    "actions": {
+      "login": "Login",
+      "logout": "Logout",
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete"
+    },
     "errName": "Name is required",
     "saved": "Saved",
-    "empty": "No records"
+    "empty": "No records",
+    "convert": {
+      "action": "Convert to warehouse keeper",
+      "title": "Convert account role",
+      "hint": "{name}'s permissions will change from \"{from}\" to \"{to}\". The account keeps its data and the change is written to the audit log.",
+      "confirm": "Confirm conversion",
+      "done": "Role converted to {role}",
+      "converted": "Converted from {role}"
+    }
   },
   "reports": {
     "title": "Reports",
@@ -283,12 +341,22 @@
     "print": "Download PDF",
     "monthlyTitle": "Monthly Performance Report",
     "signature": "Authorized signature",
-    "summary": { "title": "Summary", "orders": "Total orders", "commissions": "Commissions", "activeRiders": "Active riders", "avgOrders": "Avg orders" },
+    "summary": {
+      "title": "Summary",
+      "orders": "Total orders",
+      "commissions": "Commissions",
+      "activeRiders": "Active riders",
+      "avgOrders": "Avg orders"
+    },
     "ridersTitle": "Rider performance",
     "vehiclesTitle": "Vehicle profitability",
     "pnlTitle": "Financial summary (P&L)",
     "comparisonTitle": "Rider comparison",
-    "tabs": { "monthly": "Monthly report", "period": "Riders period report", "best": "Best riders" },
+    "tabs": {
+      "monthly": "Monthly report",
+      "period": "Riders period report",
+      "best": "Best riders"
+    },
     "period": {
       "title": "Riders report for a period",
       "range": "Period",
@@ -301,7 +369,10 @@
       "orders": "Orders",
       "commission": "Commission",
       "vehicleExpenses": "Vehicle expenses",
-      "sharedNote": "Vehicle expenses are the full vehicle total; a * marks a vehicle shared by two riders"
+      "sharedNote": "Vehicle expenses are the full vehicle total; a * marks a vehicle shared by two riders",
+      "orderNos": "Order numbers",
+      "showOrders": "Show {n}",
+      "noOrderNos": "No order numbers recorded"
     },
     "best": {
       "title": "Best riders of the month",
@@ -313,31 +384,97 @@
   "purchases": {
     "title": "Purchases & VAT",
     "subtitle": "Record purchases, suppliers, and input VAT",
-    "tabs": { "purchases": "Purchases", "suppliers": "Suppliers", "vat": "VAT Report", "byCenter": "By Cost Center" },
+    "tabs": {
+      "purchases": "Purchases",
+      "suppliers": "Suppliers",
+      "vat": "VAT Report",
+      "byCenter": "By Cost Center",
+      "items": "Purchase items"
+    },
     "addPurchase": "Add purchase",
     "purchaseTitle": "Record purchase",
     "addSupplier": "Add supplier",
     "supplierTitle": "Supplier",
     "fields": {
-      "supplier": "Supplier", "itemType": "Item type", "qty": "Qty", "unitPrice": "Unit price",
-      "date": "Date", "inclVat": "Price includes VAT", "taxable": "Subject to VAT (15%)",
-      "costCenter": "Cost center", "invoiceNo": "Invoice no.", "preTax": "Pre-tax", "vat": "VAT", "total": "Total", "receipt": "Invoice / receipt",
-      "vehicle": "Vehicle", "noVehicle": "Not linked to a vehicle", "derivedCostCenter": "Cost center (from vehicle)", "supplierTaxNo": "Supplier tax no."
+      "supplier": "Supplier",
+      "itemType": "Item type",
+      "qty": "Qty",
+      "unitPrice": "Unit price",
+      "date": "Date",
+      "inclVat": "Price includes VAT",
+      "taxable": "Subject to VAT (15%)",
+      "costCenter": "Cost center",
+      "invoiceNo": "Invoice no.",
+      "preTax": "Pre-tax",
+      "vat": "VAT",
+      "total": "Total",
+      "receipt": "Invoice / receipt",
+      "vehicle": "Vehicle",
+      "noVehicle": "Not linked to a vehicle",
+      "derivedCostCenter": "Cost center (from vehicle)",
+      "supplierTaxNo": "Supplier tax no.",
+      "item": "Item",
+      "itemPh": "Pick from purchase items",
+      "itemOther": "Other item (free text)",
+      "supplierTaxNoHint": "Filled from the supplier record; can be edited on the invoice."
     },
-    "supplier": { "name": "Supplier name", "taxNo": "Tax registration no.", "mobile": "Mobile", "category": "Category", "purchases": "Purchases", "errTax": "Tax no. must be 15 digits, start & end with 3", "errName": "Name is required" },
-    "vat": { "invoice": "Invoice", "taxNo": "Tax no.", "preTax": "Pre-tax", "amount": "VAT", "total": "Total VAT" },
-    "center": { "name": "Cost center", "budget": "Budget", "spent": "Spent", "variance": "Variance" },
+    "supplier": {
+      "name": "Supplier name",
+      "taxNo": "Tax registration no.",
+      "mobile": "Mobile",
+      "category": "Category",
+      "purchases": "Purchases",
+      "errTax": "Tax no. must be 15 digits, start & end with 3",
+      "errName": "Name is required"
+    },
+    "vat": {
+      "invoice": "Invoice",
+      "taxNo": "Tax no.",
+      "preTax": "Pre-tax",
+      "amount": "VAT",
+      "total": "Total VAT"
+    },
+    "center": {
+      "name": "Cost center",
+      "budget": "Budget",
+      "spent": "Spent",
+      "variance": "Variance"
+    },
     "saved": "Saved",
-    "empty": "No records"
+    "empty": "No records",
+    "items": {
+      "title": "Purchase items",
+      "add": "Add item",
+      "addTitle": "New purchase item",
+      "editTitle": "Edit item",
+      "name": "Item name",
+      "category": "Category",
+      "unit": "Unit",
+      "unitPh": "e.g. piece, liter, pack",
+      "usage": "Times purchased",
+      "saved": "Saved",
+      "errName": "Name is required"
+    }
   },
   "vehicles": {
     "title": "Vehicles & Expenses",
     "subtitle": "Fleet expenses and per-vehicle profitability",
-    "tabs": { "vehicles": "Vehicles", "expenses": "Expenses", "profitability": "Profitability" },
+    "tabs": {
+      "vehicles": "Vehicles",
+      "expenses": "Expenses",
+      "profitability": "Profitability",
+      "handover": "Handover",
+      "shifts": "Work shifts",
+      "fuel": "Fuel sheet",
+      "expenseItems": "Expense items"
+    },
     "plate": "Plate",
     "type": "Type",
     "rider": "Riders",
-    "riders": { "morning": "Morning rider", "evening": "Evening rider" },
+    "riders": {
+      "morning": "Morning rider",
+      "evening": "Evening rider"
+    },
     "statusLabel": "Status",
     "statusFrom": "From",
     "statusTo": "To",
@@ -347,17 +484,116 @@
     "vehicleTitle": "Vehicle",
     "addExpense": "Add expense",
     "expenseTitle": "Vehicle expense",
-    "fields": { "vehicle": "Vehicle", "type": "Expense type", "amount": "Amount", "date": "Date", "invoiceNo": "Invoice no.", "note": "Note", "receipt": "Receipt", "value": "Vehicle value (SAR)" },
+    "fields": {
+      "vehicle": "Vehicle",
+      "type": "Expense type",
+      "amount": "Amount",
+      "date": "Date",
+      "invoiceNo": "Invoice no.",
+      "note": "Note",
+      "receipt": "Receipt",
+      "value": "Vehicle value (SAR)",
+      "chassis": "Chassis no.",
+      "color": "Color",
+      "model": "Model",
+      "year": "Year",
+      "tankCapacity": "Fuel tank capacity (L)"
+    },
     "charts": {
       "title": "Expense breakdown",
       "subtitle": "Spot which expense type is inflating costs",
-      "granularity": { "day": "Daily", "month": "Monthly", "year": "Yearly" },
+      "granularity": {
+        "day": "Daily",
+        "month": "Monthly",
+        "year": "Yearly"
+      },
       "allVehicles": "All vehicles",
       "byType": "Totals by type"
     },
-    "prof": { "vehicle": "Vehicle", "revenue": "Revenue", "expenses": "Expenses", "net": "Net", "margin": "Margin" },
+    "prof": {
+      "vehicle": "Vehicle",
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "net": "Net",
+      "margin": "Margin"
+    },
     "saved": "Saved",
-    "empty": "No records"
+    "empty": "No records",
+    "identity": "Vehicle details",
+    "handover": {
+      "title": "Vehicle handover",
+      "add": "Record handover",
+      "hint": "The vehicle's shift rider is updated automatically from the receiving party.",
+      "vehicle": "Vehicle",
+      "shift": "Work shift",
+      "from": "Handing over",
+      "to": "Receiving",
+      "rider": "Rider",
+      "company": "Company",
+      "odometer": "Odometer (km)",
+      "fuel": "Fuel level (%)",
+      "condition": "Vehicle condition",
+      "conditions": {
+        "good": "Good",
+        "damaged": "Damaged"
+      },
+      "photo": "Photo",
+      "time": "Time",
+      "by": "Recorded by",
+      "saved": "Handover documented",
+      "empty": "No handovers",
+      "errVehicle": "Pick a vehicle",
+      "errShift": "Pick a work shift",
+      "errParty": "Set both parties",
+      "errSame": "Both parties can't be the same"
+    },
+    "shifts": {
+      "title": "Work shifts",
+      "add": "Add shift",
+      "addTitle": "New work shift",
+      "editTitle": "Edit shift",
+      "name": "Shift name",
+      "nameEn": "English name",
+      "from": "From",
+      "to": "To",
+      "vehicles": "Linked vehicles",
+      "handovers": "Handovers",
+      "saved": "Saved",
+      "errName": "Name is required",
+      "hint": "A shift links the vehicle and the rider together on the handover screen."
+    },
+    "fuel": {
+      "title": "Fuel expense sheet",
+      "add": "Record fill-up",
+      "hint": "Each fill-up is booked as a fuel expense on the vehicle's cost center automatically.",
+      "rider": "Rider",
+      "liters": "Liters",
+      "amount": "Amount",
+      "pricePerLiter": "Price / liter",
+      "odometer": "Odometer",
+      "station": "Station",
+      "fills": "Fill-ups",
+      "byVehicle": "Totals per vehicle",
+      "tank": "Tank capacity",
+      "saved": "Fill-up recorded",
+      "empty": "No fill-ups",
+      "allRiders": "All riders",
+      "errVehicle": "Pick a vehicle",
+      "errAmount": "Enter the amount"
+    },
+    "expenseItems": {
+      "title": "Expense items",
+      "add": "Add item",
+      "addTitle": "New expense item",
+      "editTitle": "Edit item",
+      "name": "Item name",
+      "nameEn": "English name",
+      "account": "GL account",
+      "usage": "Times used",
+      "saved": "Saved",
+      "errName": "Name is required",
+      "hint": "Items are used by vehicle expenses and treasury payment vouchers."
+    }
   },
   "wallets": {
     "title": "Cash Wallets",
@@ -378,12 +614,109 @@
     "type": "Type",
     "allTypes": "All movements",
     "empty": "No wallet movements",
-    "searchPlaceholder": "Search rider…"
+    "searchPlaceholder": "Search rider…",
+    "tabs": {
+      "wallets": "Wallets",
+      "deposits": "Deposit approvals",
+      "withdrawals": "Balance withdrawals",
+      "debts": "Debts"
+    },
+    "pending": "Awaiting approval",
+    "available": "Available to hand over",
+    "debt": "Debt",
+    "treasury": "Custody box",
+    "receipt": "Bank / handover receipt image",
+    "receiptRequired": "A receipt image is required for every handover",
+    "exceedsBalance": "Amount exceeds the rider's available balance",
+    "handoverHint": "A transfer from the rider's custody box to the main treasury is created automatically and stays pending until the accountant approves it.",
+    "submittedPending": "Handover recorded — awaiting accountant approval",
+    "deposits": {
+      "title": "Deposits",
+      "pendingOnly": "Pending only",
+      "all": "All deposits",
+      "approve": "Approve",
+      "reject": "Reject",
+      "decisionTitle": "Accountant decision",
+      "decisionNote": "Decision note",
+      "decisionHint": "The note is stored with the accountant's name and the decision date.",
+      "decidedBy": "{name} — {date}",
+      "approved": "Deposit approved and the transfer posted to the main treasury",
+      "rejected": "Deposit rejected",
+      "viewReceipt": "View receipt",
+      "transfer": "Transfer",
+      "empty": "No deposits",
+      "submitted": "Submitted",
+      "wallet": "Wallet balance",
+      "decision": "Decision",
+      "statuses": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      }
+    },
+    "withdrawals": {
+      "title": "Withdraw from rider balance",
+      "add": "Record withdrawal",
+      "hint": "A payment voucher is created automatically from the chosen treasury and a debit notice is issued to the rider.",
+      "reason": "Reason",
+      "reasonPh": "e.g. Salary advance",
+      "treasury": "Pay from treasury",
+      "voucher": "Payment voucher",
+      "saved": "Withdrawal recorded — payment voucher {ref} created",
+      "empty": "No withdrawals",
+      "total": "Total withdrawals",
+      "count": "Transactions"
+    },
+    "debts": {
+      "title": "Debts",
+      "details": "Debt details",
+      "convert": "Convert remaining to debt",
+      "convertTitle": "Convert remaining balance to a debt",
+      "convertHint": "The amount is deducted from the rider's wallet and recorded as a debt with an automatic debit notice.",
+      "remaining": "Remaining",
+      "notice": "Debit / credit notice",
+      "noticeTitle": "Issue a debit / credit notice",
+      "noticeType": "Notice type",
+      "debit": "Debit notice",
+      "credit": "Credit notice",
+      "settleInto": "Collect the amount into treasury",
+      "noSettle": "No cash collection",
+      "totalDebt": "Total debt",
+      "debtsList": "Debts",
+      "noticesList": "Notices",
+      "withdrawalsList": "Withdrawals",
+      "depositsList": "Deposits",
+      "treasuryMoves": "Treasury movements",
+      "saved": "Notice issued",
+      "converted": "Amount converted to a debt and a debit notice issued",
+      "empty": "No debts",
+      "noNotices": "No notices",
+      "noMoves": "No movements",
+      "wallet": "Wallet",
+      "lastNotice": "Last notice",
+      "source": {
+        "debt": "Debt",
+        "withdrawal": "Withdrawal",
+        "manual": "Manual",
+        "settlement": "Settlement",
+        "orders": "Orders",
+        "wallets": "Cash handover",
+        "treasury": "Treasury"
+      },
+      "kpi": {
+        "total": "Total debts",
+        "riders": "Riders with debts",
+        "pending": "Pending deposits"
+      }
+    }
   },
   "commissions": {
     "title": "Commissions",
     "subtitle": "Flexible commission formulas and monthly payout review",
-    "tabs": { "formulas": "Formulas", "monthly": "Monthly Review" },
+    "tabs": {
+      "formulas": "Formulas",
+      "monthly": "Monthly Review"
+    },
     "formula": {
       "contract": "Contract",
       "target": "Target (orders)",
@@ -417,7 +750,10 @@
       "approved": "Month approved and posted",
       "empty": "No data"
     },
-    "history": { "title": "Formula change history", "empty": "No changes yet" }
+    "history": {
+      "title": "Formula change history",
+      "empty": "No changes yet"
+    }
   },
   "orders": {
     "title": "Daily Orders",
@@ -425,8 +761,19 @@
     "entryTitle": "Log today's orders",
     "myLogs": "My recent logs",
     "allLogs": "Order logs",
-    "fields": { "date": "Date", "orders": "Orders", "cash": "Cash collected", "hours": "Work hours", "notes": "Notes (optional)" },
-    "preview": { "title": "Expected commission", "base": "Base", "extra": "Extra ({n} orders)", "total": "Total" },
+    "fields": {
+      "date": "Date",
+      "orders": "Orders",
+      "cash": "Cash collected",
+      "hours": "Work hours",
+      "notes": "Notes (optional)"
+    },
+    "preview": {
+      "title": "Expected commission",
+      "base": "Base",
+      "extra": "Extra ({n} orders)",
+      "total": "Total"
+    },
     "save": "Save log",
     "futureDate": "Can't log a future date",
     "filterRider": "Rider",
@@ -445,12 +792,49 @@
     "confirmImport": "Approve import",
     "imported": "{n} rows imported",
     "saved": "Order log saved",
-    "empty": "No order logs"
+    "empty": "No order logs",
+    "tabs": {
+      "logs": "Daily logs",
+      "manual": "Manual orders"
+    },
+    "manual": {
+      "add": "Add manual order",
+      "title": "Enter an order manually",
+      "hint": "The order is added to the rider's daily log automatically and the collected amount goes to their wallet.",
+      "orderNo": "Order no.",
+      "orderNoPh": "e.g. HS-88213",
+      "time": "Order time",
+      "km": "Kilometers",
+      "price": "Order price",
+      "collected": "Collected amount",
+      "rider": "Rider",
+      "riderPh": "Pick a rider",
+      "uncollected": "Uncollected",
+      "createdBy": "Entered by",
+      "saved": "Order saved",
+      "errOrderNo": "Order number is required",
+      "errDuplicate": "This order number already exists",
+      "errRider": "Pick a rider",
+      "errCollected": "Collected amount can't exceed the order price",
+      "empty": "No manual orders",
+      "stats": {
+        "count": "Orders",
+        "price": "Total price",
+        "collected": "Total collected",
+        "km": "Total km"
+      },
+      "source": "Manual"
+    }
   },
   "ledger": {
     "title": "General Ledger",
     "subtitle": "Journal entries, trial balance, P&L and cost centers",
-    "tabs": { "journal": "Journal", "trial": "Trial Balance", "pnl": "Profit & Loss", "costCenters": "Cost Centers" },
+    "tabs": {
+      "journal": "Journal",
+      "trial": "Trial Balance",
+      "pnl": "Profit & Loss",
+      "costCenters": "Cost Centers"
+    },
     "newEntry": "New entry",
     "ref": "Ref",
     "source": "Source",
@@ -471,9 +855,29 @@
     "vehicleWarningOpenEnded": "Warning: this cost center belongs to vehicle {plate}, which is {status} since {from} — remember this when allocating month-end costs",
     "vehicleWarningNoPeriod": "Warning: this cost center belongs to vehicle {plate}, which is currently {status}",
     "empty": "No entries for this period",
-    "pnl": { "revenue": "Revenue", "expenses": "Expenses", "net": "Net profit", "totalRevenue": "Total revenue", "totalExpense": "Total expenses" },
-    "cc": { "name": "Cost center", "budget": "Budget", "actual": "Actual", "variance": "Variance", "add": "Add cost center", "addTitle": "Add cost center", "editTitle": "Edit cost center", "over": "Over budget", "errName": "Name is required" },
-    "form": { "addTitle": "New journal entry", "save": "Post entry", "descriptionPh": "e.g. June commissions" }
+    "pnl": {
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "net": "Net profit",
+      "totalRevenue": "Total revenue",
+      "totalExpense": "Total expenses"
+    },
+    "cc": {
+      "name": "Cost center",
+      "budget": "Budget",
+      "actual": "Actual",
+      "variance": "Variance",
+      "add": "Add cost center",
+      "addTitle": "Add cost center",
+      "editTitle": "Edit cost center",
+      "over": "Over budget",
+      "errName": "Name is required"
+    },
+    "form": {
+      "addTitle": "New journal entry",
+      "save": "Post entry",
+      "descriptionPh": "e.g. June commissions"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -504,5 +908,217 @@
     "buttons": "Buttons",
     "badges": "Badges",
     "cards": "Cards"
+  },
+  "riderPanel": {
+    "title": "Rider details",
+    "orders": "Orders",
+    "commission": "Commission",
+    "target": "Target",
+    "salary": "Base salary",
+    "expected": "Expected salary",
+    "chart": "Performance chart",
+    "vehicle": "Vehicle details",
+    "openFull": "Open full profile",
+    "wallet": "Wallet balance",
+    "hint": "Click a rider's name in the table to see their details here"
+  },
+  "treasury": {
+    "title": "Treasury & Banks",
+    "subtitle": "Cash boxes and bank accounts — receipt / payment vouchers, transfers and statements",
+    "tabs": {
+      "treasuries": "Treasuries & balances",
+      "payments": "Payment vouchers",
+      "receipts": "Receipt vouchers",
+      "transfers": "Transfers",
+      "statement": "Statement",
+      "settings": "Rider links"
+    },
+    "add": "Add treasury / bank",
+    "addTitle": "New treasury / bank",
+    "editTitle": "Edit treasury",
+    "name": "Name",
+    "kind": "Type",
+    "iban": "IBAN",
+    "opening": "Opening balance",
+    "balance": "Balance",
+    "pendingIn": "Pending in",
+    "riders": "Linked riders",
+    "movements": "Movements",
+    "main": "Main",
+    "kpi": {
+      "cash": "Cash on hand",
+      "bank": "Bank balances",
+      "custody": "Rider custody",
+      "pending": "Pending transfers",
+      "total": "Total liquidity"
+    },
+    "voucher": {
+      "receipt": "Receipt voucher",
+      "payment": "Payment voucher",
+      "newReceipt": "New receipt voucher",
+      "newPayment": "New payment voucher",
+      "treasury": "Treasury",
+      "party": "Payee",
+      "payer": "Received from",
+      "description": "Description",
+      "account": "Counter account",
+      "expenseItem": "Expense item",
+      "expenseItemPh": "Pick an expense item",
+      "costCenter": "Cost center",
+      "costCenterPh": "No cost center",
+      "costCenterHint": "The expense can be charged to any cost center, e.g. a specific vehicle.",
+      "saved": "Voucher {ref} posted",
+      "empty": "No vouchers",
+      "errTreasury": "Pick a treasury",
+      "errAmount": "Enter a valid amount"
+    },
+    "transfer": {
+      "title": "Transfer between treasuries",
+      "new": "New transfer",
+      "from": "From treasury",
+      "to": "To treasury",
+      "same": "Pick two different treasuries",
+      "saved": "Transfer {ref} completed",
+      "empty": "No transfers",
+      "rider": "Rider"
+    },
+    "statement": {
+      "pick": "Pick a treasury",
+      "opening": "Opening balance",
+      "in": "In",
+      "out": "Out",
+      "closing": "Closing balance",
+      "empty": "No movements in this period",
+      "type": "Type"
+    },
+    "types": {
+      "receipt": "Receipt",
+      "payment": "Payment",
+      "transfer_in": "Transfer in",
+      "transfer_out": "Transfer out"
+    },
+    "statuses": {
+      "posted": "Posted",
+      "pending": "Pending",
+      "rejected": "Rejected"
+    },
+    "settings": {
+      "hint": "Every rider is linked to a custody box where collected cash is recorded; on handover the cash moves to the main treasury automatically once the accountant approves.",
+      "rider": "Rider",
+      "city": "City",
+      "treasury": "Treasury",
+      "saved": "Link updated",
+      "unlinked": "Not linked (default)"
+    },
+    "errName": "Name is required",
+    "saved": "Saved"
+  },
+  "sales": {
+    "title": "Sales Invoices",
+    "subtitle": "Register partner sheets (Hunger Station …) as sales invoices with VAT computed automatically",
+    "tabs": {
+      "invoices": "Invoices",
+      "vat": "Output VAT"
+    },
+    "add": "Register sheet as invoice",
+    "newTitle": "New sales invoice",
+    "sheet": "Partner sheet (Excel / PDF)",
+    "sheetHint": "Upload the Hunger Station sheet to prefill the invoice",
+    "parsed": "{n} orders extracted from the sheet",
+    "contract": "Contract / client",
+    "contractPh": "Pick a contract",
+    "period": "Period (month)",
+    "date": "Invoice date",
+    "orders": "Orders",
+    "unitPrice": "Price per order",
+    "extra": "Extra amounts (pre-tax)",
+    "preTax": "Pre-tax",
+    "vat": "VAT ({rate}%)",
+    "vatAuto": "VAT is added automatically with the invoice — no manual step.",
+    "total": "Total incl. VAT",
+    "status": "Status",
+    "statuses": {
+      "issued": "Issued",
+      "paid": "Paid"
+    },
+    "markPaid": "Record payment",
+    "paidTitle": "Record invoice payment",
+    "paidInto": "Receiving treasury / bank",
+    "paidDate": "Payment date",
+    "journal": "Journal",
+    "receiptRef": "Receipt voucher",
+    "saved": "Invoice {ref} registered and posted",
+    "paidSaved": "Payment recorded and receipt voucher created",
+    "errContract": "Pick a contract",
+    "errDuplicate": "An invoice already exists for this contract and period",
+    "errAmount": "Enter the order count and price",
+    "errTreasury": "Pick the receiving treasury",
+    "empty": "No invoices",
+    "kpi": {
+      "count": "Invoices",
+      "preTax": "Sales pre-tax",
+      "vat": "Output VAT",
+      "due": "Outstanding"
+    }
+  },
+  "journal": {
+    "title": "General Journal Entry",
+    "subtitle": "Create and edit journal entries: header, debit / credit lines, print and search",
+    "back": "Back to ledger",
+    "header": "Entry details",
+    "serial": "Entry no.",
+    "docNo": "Document no.",
+    "docType": "Document type",
+    "docTypePh": "Pick a document type",
+    "fiscalYear": "Fiscal year",
+    "yearClosed": "Closed",
+    "statement": "Entry title (general statement)",
+    "afterSave": "Generated after save",
+    "savedBadge": "Saved",
+    "unsavedBadge": "New, unsaved",
+    "modified": "Unsaved changes",
+    "readOnly": "This entry was posted automatically by the \"{source}\" module or belongs to a closed year; it is read-only.",
+    "addLine": "Add a line",
+    "flowHint": "Account → cost center → debit or credit → statement, then Enter adds the line and returns to the account. Debit and credit can't both be filled on one line.",
+    "account": "Account no. / name",
+    "accountPh": "Search by number or name…",
+    "accountNo": "Account no.",
+    "accountName": "Account name",
+    "costCenter": "Cost center",
+    "costCenterPh": "Search by code or name…",
+    "ccCode": "Code",
+    "lineStatement": "Statement",
+    "add": "Add",
+    "noLines": "No lines yet — add the first one from the form above",
+    "difference": "Unbalanced — difference {amount}",
+    "save": "Save",
+    "print": "Print",
+    "show": "Show",
+    "new": "New",
+    "duplicate": "Duplicate",
+    "refresh": "Refresh data",
+    "refreshHint": "Reload cost centers, chart of accounts, fiscal years and document types?",
+    "refreshed": "Reference data refreshed",
+    "searchTitle": "Show an entry",
+    "search": "Search",
+    "searchHint": "Search by entry no. or document no. (at least one) within the selected fiscal year.",
+    "discardTitle": "Discard changes?",
+    "discardHint": "The current entry has unsaved data that will be lost when starting a new one.",
+    "discard": "Discard and start new",
+    "saved": "Entry {ref} saved",
+    "duplicated": "Entry duplicated as new document {ref}",
+    "createdBy": "Created by",
+    "errLine": "Line error: pick the account and cost center and enter a debit or a credit",
+    "errYear": "A fiscal year must be selected",
+    "errYearClosed": "The selected fiscal year is closed",
+    "errDocType": "A document type must be selected",
+    "errDate": "The entry date is outside the selected fiscal year",
+    "errEmpty": "Add at least one line",
+    "errUnbalanced": "The entry is not balanced",
+    "errSaveFirst": "Save the document first",
+    "errCriteria": "Enter an entry no. or a document no.",
+    "errGeneric": "Something went wrong",
+    "notFound": "Entry not found",
+    "notEditable": "This entry can't be edited"
   }
 }

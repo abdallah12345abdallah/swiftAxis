@@ -8,6 +8,7 @@ export const DEMO_USERS = {
   [ROLES.MANAGER]: { name: 'أحمد العتيبي', role: ROLES.MANAGER, riderId: null },
   [ROLES.SUPERVISOR]: { name: 'خالد الشهري', role: ROLES.SUPERVISOR, riderId: null },
   [ROLES.ACCOUNTANT]: { name: 'سارة الدوسري', role: ROLES.ACCOUNTANT, riderId: null },
+  [ROLES.STOREKEEPER]: { name: 'فيصل الجهني', role: ROLES.STOREKEEPER, riderId: null },
   [ROLES.RIDER]: { name: 'محمد الغامدي', role: ROLES.RIDER, riderId: 'R-001' },
 }
 

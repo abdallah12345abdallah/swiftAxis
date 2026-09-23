@@ -25,6 +25,8 @@ const saving = ref(false)
 const form = reactive({
   plate: '', type: 'motorcycle', morningRiderId: '', eveningRiderId: '',
   value: '', status: 'active', statusFrom: '', statusTo: '',
+  // identity (#5)
+  chassis: '', color: '', model: '', year: '', tankCapacity: '',
 })
 const errors = reactive({})
 
@@ -45,6 +47,11 @@ watch(
       status: props.vehicle?.status ?? 'active',
       statusFrom: props.vehicle?.statusFrom ?? '',
       statusTo: props.vehicle?.statusTo ?? '',
+      chassis: props.vehicle?.chassis ?? '',
+      color: props.vehicle?.color ?? '',
+      model: props.vehicle?.model ?? '',
+      year: props.vehicle?.year ?? '',
+      tankCapacity: props.vehicle?.tankCapacity ?? '',
     })
     Object.keys(errors).forEach((k) => delete errors[k])
   },
@@ -76,7 +83,7 @@ async function submit() {
 </script>
 
 <template>
-  <Dialog :open="open" :title="t('vehicles.vehicleTitle')" @update:open="emit('update:open', $event)">
+  <Dialog :open="open" size="lg" :title="t('vehicles.vehicleTitle')" @update:open="emit('update:open', $event)">
     <form class="space-y-4" @submit.prevent="submit">
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
@@ -90,6 +97,33 @@ async function submit() {
         </div>
       </div>
 
+      <!-- identity (#5) -->
+      <p class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">{{ t('vehicles.identity') }}</p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('vehicles.fields.model') }}</label>
+          <Input v-model="form.model" />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('vehicles.fields.chassis') }}</label>
+          <Input v-model="form.chassis" dir="ltr" />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('vehicles.fields.color') }}</label>
+          <Input v-model="form.color" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium">{{ t('vehicles.fields.year') }}</label>
+            <Input v-model="form.year" type="number" min="1990" max="2100" dir="ltr" />
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium">{{ t('vehicles.fields.tankCapacity') }}</label>
+            <Input v-model="form.tankCapacity" type="number" min="0" dir="ltr" />
+          </div>
+        </div>
+      </div>
+
       <div class="space-y-1.5">
         <label class="text-sm font-medium">{{ t('vehicles.fields.value') }}</label>
         <Input v-model="form.value" type="number" dir="ltr" min="0" />
@@ -98,11 +132,11 @@ async function submit() {
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.riders.morning') }}</label>
-          <Dropdown v-model="form.morningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" />
+          <Dropdown v-model="form.morningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" clearable />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.riders.evening') }}</label>
-          <Dropdown v-model="form.eveningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" />
+          <Dropdown v-model="form.eveningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" clearable />
         </div>
       </div>
       <p v-if="errors.riders" class="text-danger text-xs">{{ errors.riders }}</p>

@@ -18,6 +18,7 @@ const props = defineProps({
   costCenterOptions: { type: Array, default: () => [] },
   vehicleOptions: { type: Array, default: () => [] }, // [{ value, label, costCenter }]
   suppliers: { type: Array, default: () => [] }, // raw list (taxNo lookup)
+  itemOptions: { type: Array, default: () => [] }, // purchase items catalog (#6)
 })
 const emit = defineEmits(['update:open', 'saved'])
 
@@ -26,9 +27,10 @@ const { sar } = useCurrency()
 const toast = useToast()
 const saving = ref(false)
 const receipt = ref(null)
+const OTHER = '__other__'
 const form = reactive({
-  supplierId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10),
-  inclVat: false, taxable: true, vehicleId: '', costCenter: '', invoiceNo: '',
+  supplierId: '', itemId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10),
+  inclVat: false, taxable: true, vehicleId: '', costCenter: '', invoiceNo: '', supplierTaxNo: '',
 })
 const errors = reactive({})
 
@@ -36,7 +38,7 @@ watch(
   () => props.open,
   (v) => {
     if (!v) return
-    Object.assign(form, { supplierId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10), inclVat: false, taxable: true, vehicleId: '', costCenter: '', invoiceNo: '' })
+    Object.assign(form, { supplierId: '', itemId: '', itemType: '', qty: 1, unitPrice: '', date: new Date().toISOString().slice(0, 10), inclVat: false, taxable: true, vehicleId: '', costCenter: '', invoiceNo: '', supplierTaxNo: '' })
     receipt.value = null
     Object.keys(errors).forEach((k) => delete errors[k])
   },
@@ -44,7 +46,15 @@ watch(
 
 const totals = computed(() => computeTotals(form))
 
-const supplierTaxNo = computed(() => props.suppliers.find((s) => s.id === form.supplierId)?.taxNo ?? null)
+// the supplier's registered tax no. prefills the invoice field; it stays editable (#6)
+watch(
+  () => form.supplierId,
+  (id) => {
+    form.supplierTaxNo = props.suppliers.find((s) => s.id === id)?.taxNo ?? ''
+  },
+)
+const itemPickOptions = computed(() => [...props.itemOptions, { value: OTHER, label: t('purchases.fields.itemOther') }])
+const isOtherItem = computed(() => form.itemId === OTHER)
 
 // vehicle chosen → cost center derived from it (#10)
 const derivedCostCenter = computed(() => {
@@ -59,12 +69,14 @@ async function submit() {
   if (saving.value) return
   Object.keys(errors).forEach((k) => delete errors[k])
   if (!form.supplierId) errors.supplierId = t('common.required')
+  if (!form.itemId || (isOtherItem.value && !form.itemType.trim())) errors.item = t('common.required')
+  if (form.supplierTaxNo && !/^3\d{13}3$/.test(form.supplierTaxNo.trim())) errors.supplierTaxNo = t('purchases.supplier.errTax')
   if (!form.vehicleId && !form.costCenter) errors.costCenter = t('common.required')
   if (!(Number(form.unitPrice) > 0)) errors.unitPrice = t('common.required')
   if (Object.keys(errors).length) return
   saving.value = true
   try {
-    await createPurchase({ ...form })
+    await createPurchase({ ...form, itemId: isOtherItem.value ? null : form.itemId })
     toast.success(t('purchases.saved'))
     emit('saved')
     emit('update:open', false)
@@ -81,13 +93,20 @@ async function submit() {
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.supplier') }}</label>
           <Dropdown v-model="form.supplierId" :options="supplierOptions" :placeholder="t('purchases.fields.supplier')" :invalid="!!errors.supplierId" />
-          <p v-if="supplierTaxNo" class="text-muted-foreground text-xs">
-            {{ t('purchases.fields.supplierTaxNo') }}: <span dir="ltr" class="tabular-nums">{{ supplierTaxNo }}</span>
-          </p>
         </div>
         <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('purchases.fields.supplierTaxNo') }}</label>
+          <Input v-model="form.supplierTaxNo" dir="ltr" inputmode="numeric" placeholder="3xxxxxxxxxxxxx3" :invalid="!!errors.supplierTaxNo" />
+          <p v-if="errors.supplierTaxNo" class="text-danger text-xs">{{ errors.supplierTaxNo }}</p>
+          <p v-else class="text-muted-foreground text-xs">{{ t('purchases.fields.supplierTaxNoHint') }}</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium">{{ t('purchases.fields.item') }}</label>
+          <Dropdown v-model="form.itemId" :options="itemPickOptions" :placeholder="t('purchases.fields.itemPh')" :invalid="!!errors.item" />
+        </div>
+        <div v-if="isOtherItem" class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.itemType') }}</label>
-          <Input v-model="form.itemType" />
+          <Input v-model="form.itemType" :invalid="!!errors.item" />
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.fields.qty') }}</label>

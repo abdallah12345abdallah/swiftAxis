@@ -1,5 +1,5 @@
 import { mockDelay } from '@/services/http'
-import { SUPPLIERS, PURCHASES, COST_CENTERS, VEHICLES } from './fixtures'
+import { SUPPLIERS, PURCHASES, COST_CENTERS, VEHICLES, PURCHASE_ITEMS } from './fixtures'
 import { VAT_RATE } from '@/lib/constants'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
@@ -60,7 +60,7 @@ export function fetchPurchases({ from, to, supplierId } = {}) {
     .map((p) => ({
       ...p,
       supplierName: supplierById(p.supplierId)?.name ?? '—',
-      supplierTaxNo: supplierById(p.supplierId)?.taxNo ?? '—',
+      supplierTaxNo: p.supplierTaxNo || supplierById(p.supplierId)?.taxNo || '—',
       vehiclePlate: VEHICLES.find((v) => v.id === p.vehicleId)?.plate ?? null,
     }))
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -74,10 +74,16 @@ export async function createPurchase(payload) {
   const ref = `PO-${new Date().getFullYear()}-${String(pSeq).padStart(4, '0')}`
   // a purchase linked to a vehicle is charged to that vehicle's cost center (#10)
   const vehicle = payload.vehicleId ? VEHICLES.find((v) => v.id === payload.vehicleId) : null
+  // item from the catalog (#6) — free text still accepted for one-offs
+  const item = payload.itemId ? PURCHASE_ITEMS.find((i) => i.id === payload.itemId) : null
+  const supplierTaxNo = String(payload.supplierTaxNo || '').trim()
+  if (supplierTaxNo && !validTaxNo(supplierTaxNo)) return Promise.reject(new Error('INVALID_TAX'))
   const purchase = {
     id: `p${pSeq}`,
     supplierId: payload.supplierId,
-    itemType: payload.itemType,
+    supplierTaxNo: supplierTaxNo || supplierById(payload.supplierId)?.taxNo || '',
+    itemId: item?.id ?? null,
+    itemType: item?.name ?? payload.itemType,
     qty: Number(payload.qty) || 0,
     unitPrice: Number(payload.unitPrice) || 0,
     date: payload.date,
@@ -103,7 +109,7 @@ export function vatReport({ from, to } = {}) {
   const rows = PURCHASES.filter((p) => inRange(p.date, from, to) && p.vat > 0).map((p) => ({
     ...p,
     supplierName: supplierById(p.supplierId)?.name ?? '—',
-    taxNo: supplierById(p.supplierId)?.taxNo ?? '—',
+    taxNo: p.supplierTaxNo || supplierById(p.supplierId)?.taxNo || '—',
   }))
   return mockDelay({ rows, totalVat: rows.reduce((s, r) => s + r.vat, 0), totalPreTax: rows.reduce((s, r) => s + r.preTax, 0) })
 }

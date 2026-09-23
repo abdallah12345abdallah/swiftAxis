@@ -5,6 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
+  Landmark, Receipt,
   Bell, LogOut, User, ChevronDown, UserCircle,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
@@ -15,12 +16,14 @@ import LangToggle from '@/components/common/LangToggle.vue'
 import RoleSwitcher from '@/components/common/RoleSwitcher.vue'
 import Menu from '@/components/common/Menu.vue'
 import Avatar from '@/components/common/Avatar.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { Badge } from '@/components/ui/badge'
 import { ToastHost } from '@/components/ui/toast'
 
 const ICONS = {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
+  Landmark, Receipt,
 }
 
 const { t, locale } = useI18n()
@@ -92,7 +95,7 @@ function logout() {
               <button type="button" class="border-border bg-card/50 hover:bg-accent flex h-9 items-center gap-2 rounded-lg border px-1.5 transition-colors">
                 <span class="hidden text-end lg:block">
                   <span class="block text-xs font-semibold leading-tight">{{ auth.user?.name }}</span>
-                  <span class="text-muted-foreground block text-[11px] leading-tight">{{ t(`roles.${auth.role}`) }}</span>
+                  <span class="text-muted-foreground flex items-center gap-1 text-[11px] leading-tight">{{ t(`roles.${auth.role}`) }} <RiderCode v-if="auth.user?.riderId" :code="auth.user.riderId" class="text-[10px]" /></span>
                 </span>
                 <Avatar :initials="auth.initials" class="size-6 text-xs" />
                 <ChevronDown
@@ -109,7 +112,7 @@ function logout() {
               </div>
               <div class="min-w-0">
                 <p class="truncate text-sm font-semibold">{{ auth.user?.name }}</p>
-                <Badge variant="default" class="mt-1">{{ t(`roles.${auth.role}`) }}</Badge>
+                <span class="mt-1 flex items-center gap-1.5"><Badge variant="default">{{ t(`roles.${auth.role}`) }}</Badge><RiderCode v-if="auth.user?.riderId" :code="auth.user.riderId" /></span>
               </div>
             </div>
 

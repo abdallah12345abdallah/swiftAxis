@@ -3,6 +3,7 @@ import { reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
 import Avatar from '@/components/common/Avatar.vue'
+import RiderCode from '@/components/common/RiderCode.vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -31,7 +32,7 @@ function save() {
           <Avatar :initials="auth.initials" class="size-16 text-xl" />
           <div>
             <p class="text-lg font-bold">{{ auth.user?.name }}</p>
-            <Badge class="mt-1">{{ t(`roles.${auth.role}`) }}</Badge>
+            <span class="mt-1 flex items-center gap-1.5"><Badge>{{ t(`roles.${auth.role}`) }}</Badge><RiderCode v-if="auth.user?.riderId" :code="auth.user.riderId" /></span>
           </div>
         </div>
 
