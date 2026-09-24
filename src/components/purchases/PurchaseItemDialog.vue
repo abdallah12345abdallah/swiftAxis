@@ -7,7 +7,7 @@ import { Dropdown } from '@/components/ui/dropdown'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
-import { createPurchaseItem, updatePurchaseItem } from '@/api/catalogs'
+import { createPurchaseItem, updatePurchaseItem, fetchUnits, unitCode } from '@/api/catalogs'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -16,28 +16,39 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open', 'saved'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const toast = useToast()
 const isEdit = computed(() => !!props.item)
 const saving = ref(false)
 const form = reactive({ name: '', category: 'other', unit: '', active: true })
 const errors = reactive({})
 
+/* coded units of measure — the unit is picked, not typed */
+const units = ref([])
+const unitOptions = computed(() =>
+  units.value
+    .filter((u) => u.active !== false || u.code === form.unit)
+    .map((u) => ({ value: u.code, label: `${u.code} — ${locale.value === 'ar' ? u.name : u.en}` })),
+)
+
 watch(
   () => props.open,
   (v) => {
     if (!v) return
-    Object.assign(form, { name: props.item?.name ?? '', category: props.item?.category ?? 'other', unit: props.item?.unit ?? '', active: props.item?.active ?? true })
+    Object.assign(form, { name: props.item?.name ?? '', category: props.item?.category ?? 'other', unit: unitCode(props.item?.unit), active: props.item?.active ?? true })
     delete errors.name
+    delete errors.unit
+    fetchUnits().then((u) => (units.value = u))
   },
 )
 
 async function submit() {
   if (saving.value) return
-  if (!form.name.trim()) {
-    errors.name = t('purchases.items.errName')
-    return
-  }
+  delete errors.name
+  delete errors.unit
+  if (!form.name.trim()) errors.name = t('purchases.items.errName')
+  if (!form.unit) errors.unit = t('purchases.items.errUnit')
+  if (errors.name || errors.unit) return
   saving.value = true
   try {
     isEdit.value ? await updatePurchaseItem(props.item.id, { ...form }) : await createPurchaseItem({ ...form })
@@ -65,7 +76,8 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('purchases.items.unit') }}</label>
-          <Input v-model="form.unit" :placeholder="t('purchases.items.unitPh')" />
+          <Dropdown v-model="form.unit" :options="unitOptions" :placeholder="t('purchases.items.unitPick')" :invalid="!!errors.unit" searchable />
+          <p v-if="errors.unit" class="text-danger text-xs">{{ errors.unit }}</p>
         </div>
       </div>
       <div class="bg-muted/40 flex items-center justify-between rounded-lg px-4 py-3">

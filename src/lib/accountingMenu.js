@@ -23,6 +23,7 @@ export const ACCOUNTING_MENU = [
       { key: 'transactions', screens: [
         { key: 'journalEntry', to: '/ledger/entry' },
         { key: 'journalList', to: '/ledger' },
+        { key: 'journalVoided', to: '/ledger/voided' },
       ] },
       { key: 'statementItems', screens: [
         { key: 'itemsDirectory', component: 'ItemsDirectory' },

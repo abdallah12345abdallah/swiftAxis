@@ -12,7 +12,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { NAV_ITEMS, NAV_GROUPS, ROLES, ALL_ROLES } from '@/lib/constants'
-import { SUB_SCREENS, isSubActive, subLocation, currentScreen } from '@/lib/subScreens'
+import { SUB_SCREENS, isSubActive, subLocation, currentScreen, allowedScreens } from '@/lib/subScreens'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 import Menu from '@/components/common/Menu.vue'
 import Avatar from '@/components/common/Avatar.vue'
@@ -43,7 +43,8 @@ const groups = computed(() =>
   NAV_GROUPS.map((g) => ({ ...g, items: g.items.map((k) => allowed.value.find((i) => i.key === k)).filter(Boolean) })).filter((g) => g.items.length),
 )
 const isModuleActive = (item) => route.path === item.to || route.path.startsWith(item.to + '/')
-const subsOf = (key) => SUB_SCREENS[key]?.items ?? []
+/* only the screens this role may open (e.g. a rider sees "my wallet" alone) */
+const subsOf = (key) => allowedScreens(key, auth.role)
 
 /* a module's screens are separate pages, listed under it on every screen size */
 const hasScreens = (key) => subsOf(key).length > 0

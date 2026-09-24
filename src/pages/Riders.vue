@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import {
   Plus, Download, Pencil, Power, PowerOff, AlertTriangle,
-  Users, UserCheck, TrendingDown, Package, Bike, Car,
+  Users, UserCheck, TrendingDown, Package,
 } from 'lucide-vue-next'
 import FilterBar from '@/components/common/FilterBar.vue'
 import MetricTile from '@/components/common/MetricTile.vue'
@@ -21,9 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import RiderFormDialog from '@/components/riders/RiderFormDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { WALLET_WARNING_THRESHOLD } from '@/lib/constants'
-import { CITIES, VEHICLE_TYPES } from '@/api/fixtures'
+import { CITIES } from '@/api/fixtures'
 import { fetchRiders, fetchContracts, toggleRiderActive } from '@/api/riders'
-import { fetchVehicles } from '@/api/vehicles'
 
 const { t, locale } = useI18n()
 const confirm = useConfirm()
@@ -32,7 +31,6 @@ const { sar, num } = useCurrency()
 const loading = ref(true)
 const riders = ref([])
 const contracts = ref([])
-const vehicles = ref([])
 
 // filters
 const query = ref('')
@@ -55,10 +53,10 @@ const editingRider = ref(null)
 
 async function load() {
   loading.value = true
-  ;[riders.value, contracts.value, vehicles.value] = await Promise.all([
+  // no vehicle column: a rider's vehicle lives in the vehicles module (handovers)
+  ;[riders.value, contracts.value] = await Promise.all([
     fetchRiders(),
     fetchContracts(),
-    fetchVehicles(),
   ])
   loading.value = false
 }
@@ -75,7 +73,6 @@ const contractOptions = computed(() =>
 
 const contractName = (id) => contracts.value.find((c) => c.id === id)?.company ?? id
 const cityName = (k) => loc(CITIES, k)
-const vehicleTypeName = (k) => loc(VEHICLE_TYPES, k)
 
 /* ── filtering ──────────────────────────────────────────── */
 const filtered = computed(() =>
@@ -162,14 +159,13 @@ function barClass(r) {
 function exportCsv() {
   const headers = [
     t('common.riderCode'), t('riders.table.rider'), t('riders.form.nationalId'), t('riders.form.mobile'),
-    t('riders.filters.city'), t('riders.table.contracts'), t('riders.table.vehicle'),
+    t('riders.filters.city'), t('riders.table.contracts'),
     t('riders.table.orders'), t('riders.table.commission'), t('riders.table.wallet'),
     t('riders.table.status'),
   ]
   const rows = filtered.value.map((r) => [
     r.id, r.name, r.nationalId, r.mobile, cityName(r.city),
     (r.contracts ?? [r.contract]).map(contractName).join(' | '),
-    `${vehicleTypeName(r.vehicleType)} ${r.vehicle}`,
     r.orders, r.commission, r.wallet, statusLabel(r),
   ])
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
@@ -235,7 +231,6 @@ function exportCsv() {
               <tr class="text-muted-foreground border-b">
                 <th class="px-5 py-3 text-start font-medium">{{ t('riders.table.rider') }}</th>
                 <th class="hidden px-5 py-3 text-start font-medium lg:table-cell">{{ t('riders.table.contracts') }}</th>
-                <th class="hidden px-5 py-3 text-start font-medium md:table-cell">{{ t('riders.table.vehicle') }}</th>
                 <th class="px-5 py-3 text-start font-medium">{{ t('riders.table.orders') }}</th>
                 <th class="hidden px-5 py-3 text-start font-medium xl:table-cell">{{ t('riders.table.commission') }}</th>
                 <th class="hidden px-5 py-3 text-start font-medium xl:table-cell">{{ t('riders.table.wallet') }}</th>
@@ -268,13 +263,6 @@ function exportCsv() {
                     <Badge v-for="cid in (r.contracts ?? [r.contract])" :key="cid" variant="secondary">
                       {{ contractName(cid) }}
                     </Badge>
-                  </div>
-                </td>
-                <!-- vehicle -->
-                <td class="text-muted-foreground hidden px-5 py-3 md:table-cell">
-                  <div class="flex items-center gap-2">
-                    <component :is="r.vehicleType === 'car' ? Car : Bike" class="size-4 shrink-0" />
-                    <span dir="ltr">{{ r.vehicle }}</span>
                   </div>
                 </td>
                 <!-- orders + progress -->
@@ -320,7 +308,6 @@ function exportCsv() {
       :rider="editingRider"
       :contract-options="contractOptions"
       :city-options="cityOptions"
-      :vehicles="vehicles"
       @saved="load"
     />
   </div>

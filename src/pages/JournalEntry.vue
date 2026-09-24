@@ -577,7 +577,7 @@ const SHORTCUTS = [
       <template #actions>
         <!-- one joined toolbar: create / find, then what applies to the open entry -->
         <div class="je-tools">
-          <RouterLink to="/ledger" class="je-tool"><ArrowRight class="size-4 ltr:rotate-180" /> {{ t('journal.back') }}</RouterLink>
+          <RouterLink :to="header.status === 'voided' ? '/ledger/voided' : '/ledger'" class="je-tool"><ArrowRight class="size-4 ltr:rotate-180" /> {{ t('journal.back') }}</RouterLink>
           <i class="je-sep" />
           <button type="button" class="je-tool is-icon" :title="t('journal.refresh')" @click="askRefresh"><RefreshCw class="size-4" :class="refreshing && 'animate-spin'" /></button>
           <i class="je-sep" />

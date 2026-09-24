@@ -75,9 +75,10 @@ export function createRider(payload) {
     city: payload.city,
     contract: contracts[0] ?? null,
     contracts,
+    // the vehicle is assigned later through the vehicles module (handovers)
     vehicleId: payload.vehicleId ?? null,
-    vehicleType: payload.vehicleType,
-    vehicle: payload.vehicle,
+    vehicleType: payload.vehicleType ?? '',
+    vehicle: payload.vehicle ?? '',
     orders: 0,
     goal: 480,
     commission: 0,
@@ -101,9 +102,10 @@ export function updateRider(id, payload) {
     city: payload.city,
     contracts,
     contract: contracts[0] ?? rider.contract,
-    vehicleId: payload.vehicleId ?? null,
-    vehicleType: payload.vehicleType,
-    vehicle: payload.vehicle,
+    // the edit form has no vehicle field: keep the rider's vehicle unless one is sent
+    vehicleId: 'vehicleId' in payload ? payload.vehicleId ?? null : rider.vehicleId ?? null,
+    vehicleType: 'vehicleType' in payload ? payload.vehicleType : rider.vehicleType,
+    vehicle: 'vehicle' in payload ? payload.vehicle : rider.vehicle,
     active: payload.active ?? rider.active,
     // nationalId intentionally NOT updated
   })

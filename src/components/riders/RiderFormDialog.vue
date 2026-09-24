@@ -1,8 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bike, Car, Info } from 'lucide-vue-next'
-import { VEHICLE_TYPES } from '@/api/fixtures'
+import { Info } from 'lucide-vue-next'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/dropdown'
@@ -18,11 +17,12 @@ const props = defineProps({
   rider: { type: Object, default: null }, // null = create
   contractOptions: { type: Array, default: () => [] }, // [{ value, label }]
   cityOptions: { type: Array, default: () => [] },
-  vehicles: { type: Array, default: () => [] }, // the fleet, from fetchVehicles()
 })
 const emit = defineEmits(['update:open', 'saved'])
 
-const { t, locale } = useI18n()
+/* No vehicle here: a rider's vehicle is assigned through handovers in the
+   vehicles module, so this form never touches the rider's vehicle data. */
+const { t } = useI18n()
 
 const isEdit = computed(() => !!props.rider)
 const saving = ref(false)
@@ -33,30 +33,9 @@ const blank = () => ({
   nationalId: '',
   mobile: '',
   city: '',
-  vehicleId: '',
   contracts: [],
   active: true,
 })
-
-/* The fleet as one pickable list: "type · plate", with the current assignment
-   as a hint. A vehicle seats one rider per shift, so one whose two shifts are
-   both taken by other riders can't be picked. */
-const typeName = (k) => VEHICLE_TYPES[k]?.[locale.value] ?? VEHICLE_TYPES[k]?.ar ?? k
-
-const vehicleOptions = computed(() =>
-  props.vehicles.map((v) => {
-    const riderId = props.rider?.id
-    const shiftsTaken = [v.morningRiderId, v.eveningRiderId].filter(Boolean)
-    const mine = riderId && shiftsTaken.includes(riderId)
-    return {
-      value: v.id,
-      label: `${typeName(v.type)} · ${v.plate}`,
-      icon: v.type === 'car' ? Car : Bike,
-      hint: shiftsTaken.length ? v.ridersLabel : t('riders.form.vehicleFree'),
-      disabled: !mine && shiftsTaken.length >= 2,
-    }
-  }),
-)
 
 const form = reactive(blank())
 const errors = reactive({})
@@ -74,11 +53,6 @@ watch(
         nationalId: props.rider.nationalId,
         mobile: props.rider.mobile,
         city: props.rider.city,
-        // older records only carry the plate — match it back to the fleet
-        vehicleId:
-          props.rider.vehicleId ??
-          props.vehicles.find((v) => v.plate === props.rider.vehicle)?.id ??
-          '',
         contracts: [...(props.rider.contracts ?? [])],
         active: props.rider.active,
       })
@@ -108,14 +82,8 @@ async function submit() {
   if (saving.value || !validate()) return
   saving.value = true
   try {
-    // the picker holds the vehicle id; plate + type stay denormalised on the
-    // rider so tables, exports and reports keep reading them directly
-    const picked = props.vehicles.find((v) => v.id === form.vehicleId) ?? null
-    const payload = {
-      ...form,
-      vehicle: picked?.plate ?? '',
-      vehicleType: picked?.type ?? '',
-    }
+    // no vehicle fields: saving keeps the rider's current vehicle as it is
+    const payload = { ...form }
     const saved = isEdit.value
       ? await updateRider(props.rider.id, payload)
       : await createRider(payload)
@@ -176,21 +144,11 @@ async function submit() {
         </div>
 
         <!-- city -->
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 sm:col-span-2">
           <label class="text-sm font-medium">{{ t('riders.form.city') }}</label>
           <Dropdown v-model="form.city" :options="cityOptions" :placeholder="t('riders.form.cityPh')" />
         </div>
 
-        <!-- vehicle — one pick from the fleet (type + plate) -->
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('riders.form.vehicle') }}</label>
-          <Dropdown
-            v-model="form.vehicleId"
-            :options="vehicleOptions"
-            :placeholder="t('riders.form.vehiclePh')"
-            clearable
-          />
-        </div>
       </div>
 
       <!-- contracts multi-select -->

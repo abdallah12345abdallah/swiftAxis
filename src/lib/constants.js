@@ -44,7 +44,8 @@ export const NAV_ITEMS = [
     key: 'orders',
     to: '/orders',
     icon: 'ClipboardList',
-    roles: [ROLES.MANAGER, ROLES.SUPERVISOR, ROLES.RIDER],
+    // the accountant only reaches the manual-orders screen (see subScreens.js)
+    roles: [ROLES.MANAGER, ROLES.SUPERVISOR, ROLES.ACCOUNTANT, ROLES.RIDER],
     epic: 'EP-02',
   },
   {
@@ -58,7 +59,8 @@ export const NAV_ITEMS = [
     key: 'wallets',
     to: '/wallets',
     icon: 'Wallet',
-    roles: [ROLES.MANAGER, ROLES.SUPERVISOR, ROLES.ACCOUNTANT],
+    // the rider only reaches their own wallet screen (see subScreens.js)
+    roles: [ROLES.MANAGER, ROLES.SUPERVISOR, ROLES.ACCOUNTANT, ROLES.RIDER],
     epic: 'EP-04',
   },
   {

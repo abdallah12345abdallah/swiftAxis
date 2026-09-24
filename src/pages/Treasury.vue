@@ -7,8 +7,10 @@ import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import {
   Plus, Pencil, Download, Landmark, Banknote, Wallet, ArrowLeftRight, Star,
-  ArrowDownLeft, ArrowUpRight, Link2,
+  ArrowDownLeft, ArrowUpRight, Link2, ShieldCheck,
 } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import { ROLES } from '@/lib/constants'
 import { useConfirm } from '@/composables/useConfirm'
 import PageHeader from '@/components/common/PageHeader.vue'
 import FilterBar from '@/components/common/FilterBar.vue'
@@ -29,7 +31,7 @@ import { useToast } from '@/composables/useToast'
 import { TREASURY_KINDS } from '@/api/fixtures'
 import {
   fetchTreasuries, fetchBalances, fetchMovements, fetchTransfers, fetchTreasuryStatement,
-  fetchRiderTreasuryMap, setRiderTreasury,
+  fetchRiderTreasuryMap, setRiderTreasury, canUseTreasury, PARTY_TYPES,
 } from '@/api/treasury'
 import { fetchAccounts, fetchCostCenters } from '@/api/ledger'
 import { fetchExpenseItems } from '@/api/catalogs'
@@ -39,6 +41,7 @@ const confirm = useConfirm()
 const { sar, num } = useCurrency()
 const { formatDate } = useDate()
 const toast = useToast()
+const auth = useAuthStore()
 
 const tab = useRouteTab('treasuries')
 const tabs = computed(() => [
@@ -71,13 +74,19 @@ const loc = (map, k) => map[k]?.[locale.value] ?? map[k]?.ar ?? k
 const kindIcon = (k) => (k === 'bank' ? Banknote : k === 'rider' ? Wallet : Landmark)
 
 const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name, hint: loc(TREASURY_KINDS, x.kind) })))
-const nonRiderTreasuryOptions = computed(() => treasuryOptions.value.filter((o) => treasuries.value.find((x) => x.id === o.value)?.kind !== 'rider'))
+/* boxes the signed-in role has permission on (manager: all) — the only ones
+   offered when moving money (vouchers, transfers) */
+const permittedTreasuryOptions = computed(() => treasuryOptions.value.filter((o) => canUseTreasury(treasuries.value.find((x) => x.id === o.value), auth.role)))
+const nonRiderTreasuryOptions = computed(() => permittedTreasuryOptions.value.filter((o) => treasuries.value.find((x) => x.id === o.value)?.kind !== 'rider'))
+const voucherDefaultTreasury = computed(() => (nonRiderTreasuryOptions.value.some((o) => o.value === mainId.value) ? mainId.value : nonRiderTreasuryOptions.value[0]?.value ?? ''))
+const accessRoles = (row) => (Array.isArray(row.userRoles) ? row.userRoles : null)
+const partyTypeTone = { customer: 'success', supplier: 'default', account: 'secondary' }
 const mainId = computed(() => treasuries.value.find((x) => x.isMain)?.id ?? '')
 const accountOptions = computed(() =>
   accounts.value.filter((a) => !a.isGroup && a.active !== false && !['cash', 'bank', 'rider_wallets'].includes(a.id)).map((a) => ({ value: a.id, label: locale.value === 'ar' ? a.name : a.en, hint: a.code })),
 )
 const costCenterOptions = computed(() => centers.value.filter((c) => c.active).map((c) => ({ value: c.id, label: c.name })))
-const expenseItemOptions = computed(() => expenseItems.value.filter((i) => i.active).map((i) => ({ value: i.id, label: locale.value === 'ar' ? i.name : i.en })))
+const expenseItemOptions = computed(() => expenseItems.value.filter((i) => i.active).map((i) => ({ value: i.id, label: locale.value === 'ar' ? i.name : i.en, account: i.account })))
 const accName = (id) => {
   const a = accounts.value.find((x) => x.id === id)
   return a ? (locale.value === 'ar' ? a.name : a.en) : id ?? '—'
@@ -197,7 +206,7 @@ const shownStatement = computed(() => {
    Each screen is its own page, so this state starts fresh on each one. */
 const listQuery = ref('')
 const listRange = ref(['', ''])
-const listFilters = ref({ treasury: '', status: '', expenseItem: '', costCenter: '', from: '', to: '' })
+const listFilters = ref({ treasury: '', status: '', partyType: '', expenseItem: '', costCenter: '', from: '', to: '' })
 const listStatusOptions = computed(() => ['posted', 'pending', 'rejected'].map((k) => ({ value: k, label: t(`treasury.statuses.${k}`) })))
 const treasuryNameOptions = computed(() => treasuries.value.map((x) => ({ value: x.name, label: x.name })))
 const listFilterDefs = computed(() => {
@@ -211,6 +220,7 @@ const listFilterDefs = computed(() => {
   return [
     { key: 'treasury', label: t('treasury.voucher.treasury'), options: treasuryOptions.value },
     { key: 'status', label: t('common.status'), options: listStatusOptions.value },
+    { key: 'partyType', label: t('treasury.voucher.partyType'), options: PARTY_TYPES.map((k) => ({ value: k, label: t(`treasury.voucher.partyTypes.${k}`) })) },
     ...(tab.value === 'payments'
       ? [
           { key: 'expenseItem', label: t('treasury.voucher.expenseItem'), options: expenseItemOptions.value },
@@ -230,9 +240,10 @@ const shownVouchers = computed(() => {
   const rows = tab.value === 'payments' ? payments.value : receipts.value
   return rows.filter((r) =>
     inListRange(r.date) &&
-    hasText(q, r.ref, r.party, r.description, r.riderId) &&
+    hasText(q, r.ref, r.party, r.description, r.riderId, r.invoiceNo) &&
     (!f.treasury || r.treasuryId === f.treasury) &&
     (!f.status || r.status === f.status) &&
+    (!f.partyType || r.partyType === f.partyType) &&
     (!f.expenseItem || r.expenseItem === f.expenseItem) &&
     (!f.costCenter || r.costCenter === f.costCenter),
   )
@@ -254,6 +265,7 @@ const voucherColumns = (isPayment) => [
   { key: 'date', label: t('common.date'), sortable: true },
   { key: 'treasuryName', label: t('treasury.voucher.treasury'), hideBelow: 'md' },
   { key: 'party', label: isPayment ? t('treasury.voucher.party') : t('treasury.voucher.payer'), sortable: true },
+  ...(isPayment ? [{ key: 'invoiceNo', label: t('treasury.voucher.invoiceNo'), hideBelow: 'md' }] : []),
   { key: 'description', label: t('common.description'), hideBelow: 'lg' },
   { key: 'account', label: isPayment ? t('treasury.voucher.expenseItem') : t('treasury.voucher.account'), hideBelow: 'xl' },
   { key: 'amount', label: t('common.amount'), align: 'end', sortable: true },
@@ -294,6 +306,7 @@ const voucherColumns = (isPayment) => [
             { key: 'kind', label: t('treasury.kind') },
             { key: 'riders', label: t('treasury.riders'), align: 'end', hideBelow: 'md' },
             { key: 'pendingIn', label: t('treasury.pendingIn'), align: 'end', hideBelow: 'lg' },
+            { key: 'userRoles', label: t('treasury.access.column'), hideBelow: 'xl' },
             { key: 'balance', label: t('treasury.balance'), align: 'end', sortable: true },
             { key: 'active', label: t('common.status'), hideBelow: 'sm' },
             { key: 'actions', label: t('common.actions'), align: 'end' },
@@ -311,6 +324,14 @@ const voucherColumns = (isPayment) => [
           <template #cell-kind="{ row }"><Badge variant="secondary">{{ loc(TREASURY_KINDS, row.kind) }}</Badge></template>
           <template #cell-riders="{ row }"><span class="tabular-nums">{{ row.riders ? num(row.riders) : '—' }}</span></template>
           <template #cell-pendingIn="{ row }"><span class="tabular-nums" :class="row.pendingIn ? 'text-warning-foreground' : 'text-muted-foreground'">{{ row.pendingIn ? sar(row.pendingIn) : '—' }}</span></template>
+          <template #cell-userRoles="{ row }">
+            <span v-if="!accessRoles(row)" class="text-muted-foreground text-xs">{{ t('treasury.access.everyone') }}</span>
+            <span v-else class="flex flex-wrap items-center gap-1">
+              <ShieldCheck class="text-primary size-3.5" :aria-label="t('treasury.access.column')" />
+              <Badge variant="secondary">{{ t('roles.manager') }}</Badge>
+              <Badge v-for="r in accessRoles(row)" :key="r" variant="secondary">{{ t(`roles.${r}`) }}</Badge>
+            </span>
+          </template>
           <template #cell-balance="{ row }"><span class="font-semibold tabular-nums" :class="row.balance < 0 ? 'text-danger' : ''">{{ sar(row.balance) }}</span></template>
           <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
           <template #cell-actions="{ row }">
@@ -334,7 +355,14 @@ const voucherColumns = (isPayment) => [
           <Badge v-if="row.status !== 'posted'" :variant="statusVariant[row.status]" class="ms-1">{{ t(`treasury.statuses.${row.status}`) }}</Badge>
         </template>
         <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span></template>
-        <template #cell-party="{ row }"><span class="flex items-center gap-2">{{ row.party || '—' }} <RiderCode v-if="row.riderId" :code="row.riderId" /></span></template>
+        <template #cell-party="{ row }">
+          <span class="flex items-center gap-2">
+            <Badge v-if="row.partyType" :variant="partyTypeTone[row.partyType]" class="shrink-0">{{ t(`treasury.voucher.partyTypes.${row.partyType}`) }}</Badge>
+            <span class="min-w-0 truncate">{{ row.party || (row.partyType === 'account' ? accName(row.account) : '—') }}</span>
+            <RiderCode v-if="row.riderId" :code="row.riderId" />
+          </span>
+        </template>
+        <template #cell-invoiceNo="{ row }"><span v-if="row.invoiceNo" dir="ltr" class="tabular-nums">{{ row.invoiceNo }}</span><span v-else class="text-muted-foreground">—</span></template>
         <template #cell-description="{ row }"><span class="text-muted-foreground">{{ row.description || '—' }}</span></template>
         <template #cell-account="{ row }">
           <template v-if="tab === 'payments'">
@@ -440,7 +468,7 @@ const voucherColumns = (isPayment) => [
     </Card>
 
     <TreasuryDialog v-model:open="treasuryDialog" :treasury="editingTreasury" @saved="load" />
-    <VoucherDialog v-model:open="voucherDialog" :mode="voucherMode" :treasury-options="nonRiderTreasuryOptions" :account-options="accountOptions" :expense-item-options="expenseItemOptions" :cost-center-options="costCenterOptions" :default-treasury="mainId" @saved="load" />
-    <TransferDialog v-model:open="transferDialog" :treasury-options="treasuryOptions" @saved="load" />
+    <VoucherDialog v-model:open="voucherDialog" :mode="voucherMode" :treasury-options="nonRiderTreasuryOptions" :account-options="accountOptions" :expense-item-options="expenseItemOptions" :cost-center-options="costCenterOptions" :default-treasury="voucherDefaultTreasury" @saved="load" />
+    <TransferDialog v-model:open="transferDialog" :treasury-options="permittedTreasuryOptions" :all-boxes="auth.role === ROLES.MANAGER" @saved="load" />
   </div>
 </template>

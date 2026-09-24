@@ -253,3 +253,52 @@ export function fetchRiderDebts(riderId) {
       .sort(byDateDesc),
   })
 }
+
+/** The rider's own wallet ("my wallet" screen): today's figures plus every
+    past movement on one timeline, newest first. Only this rider's records.
+    history row: { id, date, kind, status, amount, sign (1 | -1 | 0), label, ref, balance }
+      kind: collected | handover | toDebt | withdrawal | debit | credit
+    `balance` is the wallet balance after the row, for rows that move the
+    wallet (collected cash, approved handovers, cash turned into a debt). */
+export function fetchMyWallet(riderId) {
+  const rider = riderById(riderId)
+  if (!rider) return Promise.reject(new Error('NOT_FOUND'))
+
+  // wallet movements, oldest first, with the running balance
+  let running = 0
+  const walletRows = WALLET_MOVEMENTS.filter((m) => m.riderId === riderId)
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+    .map((m) => {
+      const kind = m.type === 'deposit' ? 'collected' : m.converted ? 'toDebt' : 'handover'
+      const moves = m.type === 'deposit' || m.status === 'approved'
+      if (moves) running += m.type === 'deposit' ? m.amount : -m.amount
+      return {
+        id: m.id, date: m.date, kind, status: m.type === 'deposit' ? 'posted' : m.status,
+        amount: m.amount, sign: !moves ? 0 : m.type === 'deposit' ? 1 : -1,
+        label: m.label, ref: m.transferRef ?? '', balance: moves ? running : null,
+        decision: m.decision ?? null, receipt: m.receipt ?? null,
+      }
+    })
+  const withdrawalRows = RIDER_WITHDRAWALS.filter((w) => w.riderId === riderId).map((w) => ({
+    id: w.id, date: w.date, kind: 'withdrawal', status: 'posted', amount: w.amount, sign: 0,
+    label: w.reason, ref: w.voucherRef, balance: null,
+  }))
+  // hand-written notices only — the others already show as a withdrawal / debt row
+  const noticeRows = RIDER_NOTICES.filter((n) => n.riderId === riderId && n.source === 'manual').map((n) => ({
+    id: n.id, date: n.date, kind: n.type === 'debit' ? 'debit' : 'credit', status: 'posted', amount: n.amount, sign: 0,
+    label: n.note, ref: n.ref, balance: null,
+  }))
+
+  const pending = pendingOf(riderId)
+  const debts = RIDER_DEBTS.filter((d) => d.riderId === riderId)
+  return mockDelay({
+    rider: {
+      id: rider.id, name: rider.name, photo: rider.photo,
+      treasuryName: treasuryOfRider(riderId)?.name ?? '—',
+      balance: rider.wallet, pending, available: rider.wallet - pending,
+      debt: debtOf(riderId), openDebts: debts.filter((d) => d.remaining > 0).length,
+      over: rider.wallet > WALLET_WARNING_THRESHOLD, limit: WALLET_WARNING_THRESHOLD,
+    },
+    history: [...walletRows, ...withdrawalRows, ...noticeRows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
+  })
+}

@@ -58,8 +58,9 @@ const orderFilters = computed({
   },
 })
 const createdByOptions = computed(() => [...new Set(manual.value.map((m) => m.createdBy).filter(Boolean))].map((n) => ({ value: n, label: n })))
+// a rider only ever sees their own records, so there is no rider filter for them
 const filterDefs = computed(() => [
-  { key: 'rider', label: t('orders.filterRider'), options: riderOptions.value },
+  ...(isRider.value ? [] : [{ key: 'rider', label: t('orders.filterRider'), options: riderOptions.value }]),
   ...(tab.value === 'logs'
     ? [
         { key: 'volume', label: t('orders.filters.volumeMin'), type: 'number', min: 0 },
@@ -100,7 +101,9 @@ async function load() {
   const rid = isRider.value ? auth.user?.riderId : filterRider.value || undefined
   const [from, to] = dateRange.value
   const q = { riderId: rid, from: from || undefined, to: to || undefined }
-  ;[logs.value, manual.value] = await Promise.all([fetchOrders(q), isRider.value ? [] : fetchManualOrders(q)])
+  // manual orders follow the role: a rider gets their own records only, the
+  // manager / supervisor / accountant get everyone's
+  ;[logs.value, manual.value] = await Promise.all([fetchOrders(q), fetchManualOrders(q)])
   loading.value = false
 }
 onMounted(load)
@@ -124,7 +127,7 @@ const columns = computed(() => [
 const manualColumns = computed(() => [
   { key: 'orderNo', label: t('orders.manual.orderNo'), sortable: true },
   { key: 'date', label: t('orders.fields.date'), sortable: true },
-  { key: 'riderName', label: t('orders.manual.rider'), sortable: true },
+  ...(!isRider.value ? [{ key: 'riderName', label: t('orders.manual.rider'), sortable: true }] : []),
   { key: 'km', label: t('orders.manual.km'), align: 'end', hideBelow: 'md' },
   { key: 'price', label: t('orders.manual.price'), align: 'end', sortable: true },
   { key: 'collected', label: t('orders.manual.collected'), align: 'end', sortable: true },
@@ -165,15 +168,15 @@ function exportManual() {
           <Button variant="outline" @click="exportLogs"><Download /> {{ t('common.export') }}</Button>
           <Button v-if="isManager" @click="importDialog = true"><Upload /> {{ t('orders.import') }}</Button>
         </template>
-        <template v-else-if="!isRider">
+        <template v-else-if="tab === 'manual'">
           <Button variant="outline" @click="exportManual"><Download /> {{ t('common.export') }}</Button>
           <Button @click="manualDialog = true"><Plus /> {{ t('orders.manual.add') }}</Button>
         </template>
       </template>
     </PageHeader>
 
-    <!-- Rider view: entry form + own logs -->
-    <div v-if="isRider" class="grid gap-6 lg:grid-cols-2">
+    <!-- Rider view: entry form + own logs (their manual orders use the view below) -->
+    <div v-if="isRider && tab === 'logs'" class="grid gap-6 lg:grid-cols-2">
       <OrderEntryForm :rider-id="auth.user?.riderId" @saved="load" />
       <Card class="overflow-hidden">
         <div class="flex items-center justify-between border-b p-5 font-semibold">
@@ -199,7 +202,7 @@ function exportManual() {
       </Card>
     </div>
 
-    <!-- Manager/Supervisor view -->
+    <!-- Manager/Supervisor view; the manual-orders screen for every role (a rider's rows are their own) -->
     <div v-else class="space-y-4">
       <FilterBar
         v-model="orderFilters"

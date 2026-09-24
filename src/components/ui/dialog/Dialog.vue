@@ -10,7 +10,7 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: '' },
   description: { type: String, default: '' },
-  size: { type: String, default: 'md' }, // sm | md | lg
+  size: { type: String, default: 'md' }, // sm | md | lg | xl
   // optional lucide component shown in a tinted chip beside the title
   icon: { type: [Object, Function], default: null },
   // "Origin Morph": grow the panel out of the element that opened it.
@@ -21,7 +21,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:open'])
 
-const SIZES = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' }
+const SIZES = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-4xl' }
 
 /* ── scroll-aware chrome ─────────────────────────────────────────────
    The header and footer rules stay invisible until there is actually

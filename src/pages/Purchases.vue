@@ -45,7 +45,11 @@ const items = ref([])
 
 const itemDialog = ref(false)
 const editingItem = ref(null)
-const itemOptions = computed(() => items.value.filter((i) => i.active).map((i) => ({ value: i.id, label: i.name, hint: i.unit })))
+const unitName = (x) => (locale.value === 'ar' ? x.unitName : x.unitEn) || x.unitName || ''
+const itemOptions = computed(() => items.value.filter((i) => i.active).map((i) => ({ value: i.id, label: i.name, hint: unitName(i), unit: i.unit })))
+/* a purchase's items: the first one, and how many more */
+const moreItems = (p) => Math.max(0, (p.lines?.length ?? 1) - 1)
+const itemsTitle = (p) => (p.lines ?? []).map((l) => `${l.itemType} × ${num(l.qty)}${unitName(l) ? ` ${unitName(l)}` : ''}`).join(' · ')
 function openAddItem() {
   editingItem.value = null
   itemDialog.value = true
@@ -75,7 +79,7 @@ const vatRows = computed(() => {
   return vat.value.rows
     .filter((r) => (!from || r.date >= from) && (!to || r.date <= to))
     .filter((r) => !vatFilters.value.supplier || r.supplierName === vatFilters.value.supplier)
-    .filter((r) => !q || [r.invoiceNo, r.supplierName, r.taxNo, r.itemType, r.ref].some((v) => v && String(v).toLowerCase().includes(q)))
+    .filter((r) => !q || [r.invoiceNo, r.supplierName, r.taxNo, r.itemType, r.ref, ...(r.lines ?? []).map((l) => l.itemType)].some((v) => v && String(v).toLowerCase().includes(q)))
     .sort((a, b) => (a.date < b.date ? 1 : -1))
 })
 const vatTotals = computed(() => ({
@@ -123,7 +127,7 @@ const shownPurchases = computed(() => {
   const [a, b] = purRange.value
   const f = purFilters.value
   return purchases.value.filter((p) =>
-    (!q || [p.ref, p.invoiceNo, p.supplierName, p.itemType].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!q || [p.ref, p.invoiceNo, p.supplierName, p.itemType, ...(p.lines ?? []).map((l) => l.itemType)].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
     (!a || p.date >= a) && (!b || p.date <= b) &&
     (!f.supplier || p.supplierId === f.supplier) &&
     (!f.vehicle || (f.vehicle === 'none' ? !p.vehicleId : p.vehicleId === f.vehicle)) &&
@@ -161,7 +165,7 @@ const shownItems = computed(() => {
   const q = itemQuery.value.trim().toLowerCase()
   const f = itemFilters.value
   return items.value.filter((i) =>
-    (!q || [i.name, i.en, i.unit].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!q || [i.name, i.en, i.unit, i.unitName, i.unitEn].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
     (!f.category || i.category === f.category) &&
     (!f.status || (f.status === 'active') === (i.active !== false)),
   )
@@ -219,7 +223,7 @@ function exportVat() {
           { key: 'supplierName', label: t('purchases.fields.supplier'), sortable: true },
           { key: 'supplierTaxNo', label: t('purchases.fields.supplierTaxNo'), hideBelow: 'xl' },
           { key: 'vehiclePlate', label: t('purchases.fields.vehicle'), hideBelow: 'lg' },
-          { key: 'itemType', label: t('purchases.fields.itemType'), hideBelow: 'md' },
+          { key: 'itemType', label: t('purchases.lines.items'), hideBelow: 'md' },
           { key: 'preTax', label: t('purchases.fields.preTax'), align: 'end', hideBelow: 'lg' },
           { key: 'vat', label: t('purchases.fields.vat'), align: 'end', hideBelow: 'sm' },
           { key: 'total', label: t('purchases.fields.total'), align: 'end', sortable: true },
@@ -231,6 +235,12 @@ function exportVat() {
         <template #cell-vehiclePlate="{ row }">
           <span v-if="row.vehiclePlate" dir="ltr">{{ row.vehiclePlate }}</span>
           <span v-else class="text-muted-foreground">—</span>
+        </template>
+        <template #cell-itemType="{ row }">
+          <span class="inline-flex max-w-[16rem] items-center gap-1.5" :title="itemsTitle(row)">
+            <span class="truncate">{{ row.lines?.[0]?.itemType ?? row.itemType }}</span>
+            <span v-if="moreItems(row)" class="pu-more">{{ t('purchases.lines.more', { n: num(moreItems(row)) }) }}</span>
+          </span>
         </template>
         <template #cell-preTax="{ row }"><span class="tabular-nums">{{ sar(row.preTax) }}</span></template>
         <template #cell-vat="{ row }"><span class="text-orange tabular-nums">{{ sar(row.vat) }}</span></template>
@@ -284,7 +294,10 @@ function exportVat() {
       >
         <template #cell-name="{ row }"><span class="font-medium">{{ row.name }}</span></template>
         <template #cell-category="{ row }"><Badge variant="secondary">{{ loc(SUPPLIER_CATEGORIES, row.category) }}</Badge></template>
-        <template #cell-unit="{ row }"><span class="text-muted-foreground">{{ row.unit || '—' }}</span></template>
+        <template #cell-unit="{ row }">
+          <span v-if="row.unit" class="inline-flex items-center gap-1.5"><span class="pu-unit" dir="ltr">{{ row.unit }}</span>{{ unitName(row) }}</span>
+          <span v-else class="text-muted-foreground">—</span>
+        </template>
         <template #cell-usage="{ row }"><span class="tabular-nums">{{ num(row.usage) }}</span></template>
         <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
         <template #cell-actions="{ row }">
@@ -346,7 +359,7 @@ function exportVat() {
                     <span class="vt-av">{{ initials(r.supplierName) }}</span>
                     <div class="min-w-0">
                       <p class="truncate font-semibold">{{ r.supplierName }}</p>
-                      <p class="text-muted-foreground truncate text-xs">{{ r.itemType }}</p>
+                      <p class="text-muted-foreground truncate text-xs" :title="itemsTitle(r)">{{ r.itemType }}<template v-if="moreItems(r)"> · {{ t('purchases.lines.more', { n: num(moreItems(r)) }) }}</template></p>
                     </div>
                   </div>
                 </td>
@@ -424,6 +437,10 @@ function exportVat() {
 </template>
 
 <style scoped>
+/* purchases list: "+N" more items, coded unit chip */
+.pu-more { flex: none; padding: 0.05rem 0.45rem; border-radius: 9999px; font-size: 10.5px; font-weight: 800; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); font-variant-numeric: tabular-nums; }
+.pu-unit { font: 700 11px ui-monospace, 'IBM Plex Mono', monospace; padding: 0.05rem 0.4rem; border-radius: 0.35rem; background: var(--muted); color: var(--muted-foreground); }
+
 /* VAT report */
 .vt-inv { font: 700 12.5px ui-monospace, 'IBM Plex Mono', monospace; padding: 0.1rem 0.5rem; border-radius: 0.4rem; background: var(--muted); }
 .vt-av {

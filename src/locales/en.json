@@ -544,7 +544,9 @@
       "unitPh": "e.g. piece, liter, pack",
       "usage": "Times purchased",
       "saved": "Saved",
-      "errName": "Name is required"
+      "errName": "Name is required",
+      "unitPick": "Pick a unit",
+      "errUnit": "Pick a unit"
     },
     "searchPh": "Search by ref, supplier invoice, supplier or item…",
     "filters": {
@@ -554,7 +556,20 @@
       "notTaxed": "Not taxable"
     },
     "searchSuppliers": "Search by supplier name or tax no.…",
-    "searchItems": "Search by item name…"
+    "searchItems": "Search by item name…",
+    "lines": {
+      "title": "Invoice items",
+      "items": "Items",
+      "lineTotal": "Line total",
+      "vatOf": "VAT {amount}",
+      "noVat": "Not subject to VAT",
+      "remove": "Remove item",
+      "add": "Add item",
+      "more": "+{n}",
+      "invoiceTotal": "Invoice total",
+      "errLines": "Complete the highlighted items: item, quantity and unit price.",
+      "errSave": "Could not save the invoice"
+    }
   },
   "vehicles": {
     "title": "Vehicles & Expenses",
@@ -796,7 +811,8 @@
       "wallets": "Wallets",
       "deposits": "Deposit approvals",
       "withdrawals": "Balance withdrawals",
-      "debts": "Debts"
+      "debts": "Debts",
+      "mine": "My wallet"
     },
     "pending": "Awaiting approval",
     "available": "Available to hand over",
@@ -884,6 +900,23 @@
         "total": "Total debts",
         "riders": "Riders with debts",
         "pending": "Pending deposits"
+      },
+      "subtitle": "What each rider owes the company: where it came from and how it is paid off",
+      "explain": {
+        "title": "What is a debt?",
+        "lead": "A debt is an amount a rider owes the company and has to pay back. It is separate from the wallet balance: the wallet is cash the rider still holds and is expected to hand over, while a debt is an amount recorded against them.",
+        "walletTitle": "1. Cash in the wallet",
+        "walletBody": "Every order where the rider collects cash adds it to their wallet. When they hand the cash over with a receipt photo, the amount stays \"awaiting approval\" and leaves the wallet only once the accountant approves it.",
+        "debtTitle": "2. How a debt starts",
+        "debtBody": "In two ways: the accountant converts cash left in the wallet that was never handed over into a debt (\"Convert remaining to debt\"), which takes it out of the wallet and records it against the rider; or a manual debit notice is issued for any other amount they owe, such as a shortage or a penalty. Either way a debit notice with a reference number is issued.",
+        "settleTitle": "3. How it is paid off",
+        "settleBody": "By issuing a \"Credit notice\" for the amount paid, which settles the oldest open debt first. If the rider pays in cash, pick the treasury that received it and a receipt voucher is recorded automatically.",
+        "note": "A withdrawal from the balance shows among the rider’s notices but does not add to the debt. The \"Details\" action on each row lists the rider’s debts, notices, withdrawals and deposits."
+      },
+      "cols": {
+        "wallet": "Cash the rider holds now",
+        "pending": "Handovers awaiting approval",
+        "debt": "Debt owed"
       }
     },
     "filters": {
@@ -896,6 +929,36 @@
       "hasReceipt": "Receipt attached",
       "noReceipt": "No receipt",
       "searchWithdrawals": "Search by rider, reason or voucher no.…"
+    },
+    "mine": {
+      "subtitle": "Your current wallet balance and all its past movements",
+      "balance": "Cash you hold now",
+      "balanceHint": "Available to hand over {v} · wallet limit {limit}",
+      "pending": "Handovers awaiting approval",
+      "pendingHint": "Amounts you handed over that the accountant has not approved yet",
+      "debt": "Debt you owe",
+      "debtHint": "{n} open debt(s)",
+      "noDebt": "No open debt",
+      "collected": "Cash collected",
+      "handedOver": "Cash handed over (approved)",
+      "withdrawals": "Withdrawals from your balance",
+      "inPeriod": "In the selected period",
+      "allTime": "Since the start",
+      "overLimit": "Over the wallet limit ({limit}) — hand the cash over",
+      "history": "Movement history",
+      "searchPh": "Search by description or reference…",
+      "empty": "No movements in this period",
+      "balanceAfter": "Balance after",
+      "legend": "Collected cash raises your balance; a handover lowers it only once the accountant approves it. Withdrawals and notices do not change your cash balance, so they show no balance after.",
+      "noRider": "This account is not linked to a rider, so there is no wallet to show.",
+      "kinds": {
+        "collected": "Cash collected",
+        "handover": "Cash handover",
+        "toDebt": "Converted to debt",
+        "withdrawal": "Withdrawal",
+        "debit": "Debit notice",
+        "credit": "Credit notice"
+      }
     }
   },
   "commissions": {
@@ -1020,7 +1083,8 @@
         "avgKm": "Average {v} km per order"
       },
       "source": "Manual",
-      "searchPh": "Search by order no., rider name or code…"
+      "searchPh": "Search by order no., rider name or code…",
+      "riderSelf": "The order is recorded under your name"
     },
     "filters": {
       "volume": "Order volume",
@@ -1035,7 +1099,8 @@
       "journal": "Journal",
       "trial": "Trial Balance",
       "pnl": "Profit & Loss",
-      "costCenters": "Cost Centers"
+      "costCenters": "Cost Centers",
+      "voided": "Voided entries"
     },
     "newEntry": "New entry",
     "ref": "Ref",
@@ -1121,6 +1186,20 @@
       "accounts": "Accounts with activity",
       "code": "Account no.",
       "searchPh": "Search by account name or number…"
+    },
+    "voided": {
+      "searchPh": "Search by entry no., statement, void reason or who voided it…",
+      "count": "Voided entries",
+      "amount": "Voided amount",
+      "amountHint": "Excluded from every balance",
+      "thisMonth": "Voided this month",
+      "backToJournal": "View active entries",
+      "open": "View voided entries",
+      "empty": "No voided entries",
+      "emptyHint": "Entries voided from the entry screen show up here with the reason.",
+      "by": "Voided by",
+      "at": "Voided on",
+      "noReason": "No reason given"
     }
   },
   "settings": {
@@ -1214,7 +1293,29 @@
       "saved": "Voucher {ref} posted",
       "empty": "No vouchers",
       "errTreasury": "Pick a treasury",
-      "errAmount": "Enter a valid amount"
+      "errAmount": "Enter a valid amount",
+      "partyType": "Party type",
+      "partyTypes": {
+        "customer": "Customer",
+        "supplier": "Supplier",
+        "account": "Account"
+      },
+      "payTo": "Pay to",
+      "receiveFrom": "Receive from",
+      "customer": "Customer",
+      "customerPh": "Pick a customer",
+      "supplier": "Supplier",
+      "supplierPh": "Pick a supplier",
+      "accountPh": "Pick an account",
+      "noExpenseItem": "No expense item",
+      "invoiceNo": "Purchase invoice no.",
+      "invoiceNoPh": "e.g. S-1201",
+      "supplierInvoices": "Purchase invoices recorded for this supplier (click to use the number):",
+      "postsDebit": "The voucher debits “{account}” and credits the treasury.",
+      "postsCredit": "The voucher debits the treasury and credits “{account}”.",
+      "errCustomer": "Pick a customer",
+      "errSupplier": "Pick a supplier",
+      "errAccount": "Pick an account"
     },
     "transfer": {
       "title": "Transfer between treasuries",
@@ -1259,7 +1360,16 @@
     "searchVouchers": "Search by reference, party or description…",
     "searchTransfers": "Search by reference, description or rider…",
     "searchBoxes": "Search by box name or IBAN…",
-    "searchStatement": "Search by reference, description or party…"
+    "searchStatement": "Search by reference, description or party…",
+    "access": {
+      "title": "Who can use this treasury",
+      "hint": "Roles that see this treasury in receipt and payment vouchers and in transfers between treasuries.",
+      "always": "always",
+      "column": "Allowed",
+      "everyone": "Everyone",
+      "transferHint": "Only the treasuries you have permission on are shown.",
+      "transferTooFew": "You have permission on fewer than two treasuries, so you cannot transfer. Ask the manager to give you access to another one."
+    }
   },
   "sales": {
     "title": "Sales Invoices",
@@ -1308,7 +1418,33 @@
       "vat": "Output VAT",
       "due": "Outstanding"
     },
-    "searchPh": "Search by invoice no., client or sheet file…"
+    "searchPh": "Search by invoice no., client or sheet file…",
+    "amountPreTax": "Amount before VAT",
+    "errPreTax": "Enter the invoice amount before VAT",
+    "vatSubtitle": "The VAT we added to sales invoices, which is owed to ZATCA",
+    "vatExplain": {
+      "title": "What is output VAT?",
+      "lead": "Every sales invoice adds {rate}% VAT that the customer pays. That money is not company revenue: we collect it on behalf of ZATCA and pay it over in the VAT return.",
+      "outTitle": "Output VAT (this screen)",
+      "outBody": "The {rate}% added to sales invoices: an amount we owe ZATCA.",
+      "inTitle": "Input VAT",
+      "inBody": "The {rate}% we paid suppliers on purchases: an amount we can deduct from what we owe.",
+      "inLink": "View input VAT",
+      "netTitle": "Net payable",
+      "netBody": "Output minus input. If positive we pay it to ZATCA; if negative it is a credit in our favour.",
+      "posting": "Each sales invoice posts automatically: debit receivables with the total, credit delivery revenue with the pre-VAT amount and credit the output VAT account with the VAT.",
+      "periodHint": "Pick the return period (a month or a quarter) to compare both sides over the same dates."
+    },
+    "vatSummary": {
+      "output": "Output VAT (sales)",
+      "outputHint": "From {n} sales invoices",
+      "input": "Input VAT (purchases)",
+      "inputHint": "From {n} taxable purchase invoices",
+      "netDue": "Net payable to ZATCA",
+      "netDueHint": "Output − input",
+      "netCredit": "Credit in our favour",
+      "netCreditHint": "Input exceeds output"
+    }
   },
   "journal": {
     "title": "General Journal Entry",
@@ -1476,7 +1612,8 @@
       "incomeByItems": "Income statement by items",
       "balanceSheet": "Balance sheet",
       "balanceSheetByItems": "Balance sheet by items",
-      "analysisSettings": "Financial analysis settings"
+      "analysisSettings": "Financial analysis settings",
+      "journalVoided": "Voided entries"
     },
     "common": {
       "opening": "Opening balance",

@@ -14,6 +14,7 @@ import { useToast } from '@/composables/useToast'
 import { computeSalesTotals, createSalesInvoice, parseSalesSheet } from '@/api/sales'
 
 /* Register a partner sheet (Hunger Station …) as a sales invoice (#7).
+   The invoice is entered as one amount before tax (the sheet prefills it);
    VAT is computed and added automatically — never typed by hand. */
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -27,7 +28,7 @@ const toast = useToast()
 
 const today = new Date().toISOString().slice(0, 10)
 const thisMonth = today.slice(0, 7)
-const blank = () => ({ contract: '', period: thisMonth, date: today, orders: '', unitPrice: '', extra: '', notes: '' })
+const blank = () => ({ contract: '', period: thisMonth, date: today, amount: '', notes: '' })
 const form = reactive(blank())
 const sheet = ref(null)
 const parsing = ref(false)
@@ -51,7 +52,7 @@ watch(sheet, async (f) => {
   if (!f) return
   parsing.value = true
   const parsed = await parseSalesSheet(f)
-  Object.assign(form, { contract: parsed.contract, period: parsed.period, orders: parsed.orders, unitPrice: parsed.unitPrice })
+  Object.assign(form, { contract: parsed.contract, period: parsed.period, amount: parsed.amount })
   parsedCount.value = parsed.rows
   parsing.value = false
 })
@@ -63,7 +64,7 @@ async function submit() {
   if (saving.value) return
   Object.keys(errors).forEach((k) => delete errors[k])
   if (!form.contract) errors.contract = t('sales.errContract')
-  if (totals.value.preTax <= 0) errors.orders = t('sales.errAmount')
+  if (totals.value.preTax <= 0) errors.amount = t('sales.errPreTax')
   if (Object.keys(errors).length) return
   saving.value = true
   try {
@@ -73,7 +74,7 @@ async function submit() {
     emit('update:open', false)
   } catch (e) {
     if (e.message === 'DUPLICATE_PERIOD') errors.contract = t('sales.errDuplicate')
-    else errors.orders = t('sales.errAmount')
+    else errors.amount = t('sales.errPreTax')
   } finally {
     saving.value = false
   }
@@ -105,17 +106,9 @@ async function submit() {
           <DatePicker v-model="form.date" :clearable="false" />
         </div>
         <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('sales.orders') }}</label>
-          <Input v-model="form.orders" type="number" min="0" dir="ltr" :invalid="!!errors.orders" />
-          <p v-if="errors.orders" class="text-danger text-xs">{{ errors.orders }}</p>
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('sales.unitPrice') }}</label>
-          <Input v-model="form.unitPrice" type="number" step="0.5" min="0" dir="ltr" />
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('sales.extra') }} <span class="text-muted-foreground text-xs font-normal">({{ t('common.optional') }})</span></label>
-          <Input v-model="form.extra" type="number" step="0.5" dir="ltr" placeholder="0" />
+          <label class="text-sm font-medium">{{ t('sales.amountPreTax') }}</label>
+          <Input v-model="form.amount" type="number" step="0.01" min="0" dir="ltr" placeholder="0.00" :invalid="!!errors.amount" />
+          <p v-if="errors.amount" class="text-danger text-xs">{{ errors.amount }}</p>
         </div>
       </div>
 

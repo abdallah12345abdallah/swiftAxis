@@ -210,6 +210,22 @@ export const JOURNAL = [
       { account: 'bank', costCenter: 'cc-internal', debit: 0, credit: 4000, description: '' },
     ],
   },
+  {
+    id: 'j6', serial: 6, ref: 'JV-2026-0006', docType: 'jv', fiscalYear: 'fy2026', date: '2026-06-18', source: 'manual',
+    description: 'صيانة سيارة — مبلغ خاطئ', createdBy: 'سارة الدوسري', status: 'voided', voidedAt: '2026-06-19T11:30', voidedBy: 'سارة الدوسري', voidReason: 'المبلغ مسجل خطأ — أعيد تسجيله بالمبلغ الصحيح',
+    lines: [
+      { account: 'vehicle_expense', costCenter: 'cc-fleet', debit: 1560, credit: 0, description: 'صيانة' },
+      { account: 'cash', costCenter: 'cc-fleet', debit: 0, credit: 1560, description: '' },
+    ],
+  },
+  {
+    id: 'j7', serial: 7, ref: 'JV-2026-0007', docType: 'jv', fiscalYear: 'fy2026', date: '2026-07-03', source: 'manual',
+    description: 'مصروفات عامة — مركز تكلفة خاطئ', createdBy: 'سارة الدوسري', status: 'voided', voidedAt: '2026-07-04T08:45', voidedBy: 'أحمد العتيبي', voidReason: 'حُمّل على مركز تكلفة غير صحيح',
+    lines: [
+      { account: 'general_expense', costCenter: 'cc-fleet', debit: 320, credit: 0, description: 'أدوات مكتبية' },
+      { account: 'cash', costCenter: 'cc-fleet', debit: 0, credit: 320, description: '' },
+    ],
+  },
 ]
 
 /** Audit log seed (US-027). action ∈ login|logout|create|update|delete */
@@ -326,6 +342,18 @@ export const SUPPLIERS = [
 export const PURCHASES = [
   { id: 'p1', supplierId: 's2', itemType: 'قطع غيار دراجات', qty: 4, unitPrice: 250, date: '2026-06-25', taxable: true, vehicleId: 'v1', costCenter: 'cc-veh-v1', invoiceNo: 'S-1201', ref: 'PO-2026-0001', preTax: 1000, vat: 150, total: 1150 },
   { id: 'p2', supplierId: 's1', itemType: 'وقود', qty: 1, unitPrice: 800, date: '2026-06-22', taxable: true, vehicleId: null, costCenter: 'cc-fleet', invoiceNo: 'S-0980', ref: 'PO-2026-0002', preTax: 800, vat: 120, total: 920 },
+  /* multi-item invoice: `lines` carry the items; preTax / vat / total stay on
+     the purchase (reports read those). Older single-item rows have no `lines`
+     — the API derives one from itemType / qty / unitPrice. */
+  {
+    id: 'p3', supplierId: 's3', itemType: 'صناديق توصيل', date: '2026-07-02', taxable: true, inclVat: false, vehicleId: null, costCenter: 'cc-fleet', invoiceNo: 'S-2210', ref: 'PO-2026-0003',
+    lines: [
+      { itemId: 'pi3', itemType: 'صناديق توصيل', qty: 10, unitPrice: 85, taxable: true, preTax: 850, vat: 127.5, total: 977.5 },
+      { itemId: 'pi4', itemType: 'زيوت محركات', qty: 6, unitPrice: 45, taxable: true, preTax: 270, vat: 40.5, total: 310.5 },
+      { itemId: null, itemType: 'تركيب حوامل صناديق', unit: 'SRV', qty: 1, unitPrice: 150, taxable: false, preTax: 150, vat: 0, total: 150 },
+    ],
+    preTax: 1270, vat: 168, total: 1438,
+  },
 ]
 
 /* ── Users (EP-08) ──────────────────────────────────────── */
@@ -358,11 +386,12 @@ export const TREASURY_KINDS = {
 /** Treasuries. `account` = the GL account the treasury maps to.
     kind 'rider' boxes hold cash still in riders' hands (عهدة). */
 export const TREASURIES = [
-  { id: 'tr-main', name: 'الخزنة الرئيسية', kind: 'cash', account: 'cash', opening: 25000, active: true, isMain: true },
-  { id: 'tr-bank', name: 'مصرف الراجحي — الحساب الجاري', kind: 'bank', account: 'bank', iban: 'SA0380000000608010167519', opening: 180000, active: true },
-  { id: 'tr-riders-jed', name: 'خزنة مناديب جدة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true },
-  { id: 'tr-riders-mak', name: 'خزنة مناديب مكة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true },
-  { id: 'tr-riders-taif', name: 'خزنة مناديب الطائف', kind: 'rider', account: 'rider_wallets', opening: 0, active: true },
+  // userRoles: roles allowed to work on the box (the manager always is)
+  { id: 'tr-main', name: 'الخزنة الرئيسية', kind: 'cash', account: 'cash', opening: 25000, active: true, isMain: true, userRoles: ['accountant', 'storekeeper'] },
+  { id: 'tr-bank', name: 'مصرف الراجحي — الحساب الجاري', kind: 'bank', account: 'bank', iban: 'SA0380000000608010167519', opening: 180000, active: true, userRoles: ['accountant'] },
+  { id: 'tr-riders-jed', name: 'خزنة مناديب جدة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userRoles: ['accountant', 'supervisor', 'storekeeper'] },
+  { id: 'tr-riders-mak', name: 'خزنة مناديب مكة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userRoles: ['accountant', 'supervisor'] },
+  { id: 'tr-riders-taif', name: 'خزنة مناديب الطائف', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userRoles: ['accountant', 'supervisor'] },
 ]
 
 /** Rider → treasury link (treasury settings screen). */
@@ -381,7 +410,7 @@ export const RIDER_TREASURY = {
     status ∈ posted|pending|rejected (transfers born from cash handovers wait
     for the accountant). amount is always positive. */
 export const TREASURY_MOVEMENTS = [
-  { id: 'tm1', ref: 'RV-2026-0001', type: 'receipt', treasuryId: 'tr-bank', date: '2026-06-05', amount: 43056, party: 'هانجر استيشن', description: 'سداد فاتورة مايو', account: 'receivables', costCenter: null, riderId: null, status: 'posted', source: 'sales' },
+  { id: 'tm1', ref: 'RV-2026-0001', type: 'receipt', treasuryId: 'tr-bank', date: '2026-06-05', amount: 43056, party: 'هانجر استيشن', partyType: 'customer', partyId: 'hunger', description: 'سداد فاتورة مايو', account: 'receivables', costCenter: null, riderId: null, status: 'posted', source: 'sales' },
   { id: 'tm2', ref: 'PV-2026-0001', type: 'payment', treasuryId: 'tr-main', date: '2026-06-28', amount: 650, party: 'ورشة النخبة', description: 'صيانة سيارة ABC-1234', account: 'vehicle_expense', costCenter: 'cc-veh-v1', expenseItem: 'maintenance', riderId: null, status: 'posted', source: 'vehicles' },
   { id: 'tm3', ref: 'TR-2026-0001', type: 'transfer_out', treasuryId: 'tr-bank', date: '2026-06-01', amount: 10000, party: 'الخزنة الرئيسية', description: 'تغذية الخزنة الرئيسية', transferId: 'tf1', status: 'posted', source: 'treasury' },
   { id: 'tm4', ref: 'TR-2026-0001', type: 'transfer_in', treasuryId: 'tr-main', date: '2026-06-01', amount: 10000, party: 'مصرف الراجحي — الحساب الجاري', description: 'تغذية الخزنة الرئيسية', transferId: 'tf1', status: 'posted', source: 'treasury' },
@@ -444,12 +473,25 @@ export const EXPENSE_ITEMS = [
   { id: 'other', name: 'أخرى', en: 'Other', account: 'general_expense', active: true },
 ]
 
-/** Purchase items catalog. */
+/** Units of measure — coded, so purchase items pick one instead of typing it. */
+export const UNITS = [
+  { code: 'PCS', name: 'قطعة', en: 'Piece', active: true },
+  { code: 'LTR', name: 'لتر', en: 'Liter', active: true },
+  { code: 'KG', name: 'كيلوجرام', en: 'Kilogram', active: true },
+  { code: 'BOX', name: 'كرتونة', en: 'Box', active: true },
+  { code: 'PKG', name: 'عبوة', en: 'Pack', active: true },
+  { code: 'SET', name: 'طقم', en: 'Set', active: true },
+  { code: 'MTR', name: 'متر', en: 'Meter', active: true },
+  { code: 'HR', name: 'ساعة', en: 'Hour', active: true },
+  { code: 'SRV', name: 'خدمة', en: 'Service', active: true },
+]
+
+/** Purchase items catalog. `unit` = a UNITS code. */
 export const PURCHASE_ITEMS = [
-  { id: 'pi1', name: 'قطع غيار دراجات', category: 'parts', unit: 'قطعة', active: true },
-  { id: 'pi2', name: 'وقود', category: 'fuel', unit: 'لتر', active: true },
-  { id: 'pi3', name: 'صناديق توصيل', category: 'equipment', unit: 'قطعة', active: true },
-  { id: 'pi4', name: 'زيوت محركات', category: 'parts', unit: 'عبوة', active: true },
+  { id: 'pi1', name: 'قطع غيار دراجات', category: 'parts', unit: 'PCS', active: true },
+  { id: 'pi2', name: 'وقود', category: 'fuel', unit: 'LTR', active: true },
+  { id: 'pi3', name: 'صناديق توصيل', category: 'equipment', unit: 'PCS', active: true },
+  { id: 'pi4', name: 'زيوت محركات', category: 'parts', unit: 'PKG', active: true },
 ]
 
 /* ── Sales invoices (#7) ────────────────────────────────── */

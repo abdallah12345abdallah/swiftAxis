@@ -10,9 +10,13 @@ import { Button } from '@/components/ui/button'
 import { useCurrency } from '@/composables/useCurrency'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { ROLES } from '@/lib/constants'
+import { RIDERS } from '@/api/fixtures'
 import { createManualOrder } from '@/api/orders'
 
-/* Manual single-order entry (#3): order no, time, km, price, collected, rider. */
+/* Manual single-order entry (#3): order no, time, km, price, collected, rider.
+   A rider enters orders for themselves only: the rider field is their own
+   account and can't be changed. */
 const props = defineProps({
   open: { type: Boolean, default: false },
   riderOptions: { type: Array, default: () => [] },
@@ -24,9 +28,17 @@ const { sar } = useCurrency()
 const toast = useToast()
 const auth = useAuthStore()
 
+const isRider = computed(() => auth.role === ROLES.RIDER)
+const ownRiderId = computed(() => (isRider.value ? auth.user?.riderId ?? '' : ''))
+const shownRiderOptions = computed(() => {
+  if (!isRider.value) return props.riderOptions
+  const me = RIDERS.find((r) => r.id === ownRiderId.value)
+  return [{ value: ownRiderId.value, label: me?.name ?? auth.user?.name ?? ownRiderId.value, hint: ownRiderId.value }]
+})
+
 const today = new Date().toISOString().slice(0, 10)
 const nowTime = () => new Date().toTimeString().slice(0, 5)
-const blank = () => ({ orderNo: '', riderId: '', date: today, time: nowTime(), km: '', price: '', collected: '' })
+const blank = () => ({ orderNo: '', riderId: ownRiderId.value, date: today, time: nowTime(), km: '', price: '', collected: '' })
 const form = reactive(blank())
 const errors = reactive({})
 const saving = ref(false)
@@ -55,7 +67,7 @@ async function submit() {
   if (saving.value || !validate()) return
   saving.value = true
   try {
-    await createManualOrder({ ...form, by: auth.user?.name })
+    await createManualOrder({ ...form, riderId: isRider.value ? ownRiderId.value : form.riderId, by: auth.user?.name })
     toast.success(t('orders.manual.saved'))
     emit('saved')
     emit('update:open', false)
@@ -85,8 +97,9 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('orders.manual.rider') }}</label>
-          <Dropdown v-model="form.riderId" :options="riderOptions" :placeholder="t('orders.manual.riderPh')" :invalid="!!errors.riderId" />
+          <Dropdown v-model="form.riderId" :options="shownRiderOptions" :placeholder="t('orders.manual.riderPh')" :invalid="!!errors.riderId" :disabled="isRider" />
           <p v-if="errors.riderId" class="text-danger text-xs">{{ errors.riderId }}</p>
+          <p v-else-if="isRider" class="text-muted-foreground text-xs">{{ t('orders.manual.riderSelf') }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('orders.fields.date') }}</label>

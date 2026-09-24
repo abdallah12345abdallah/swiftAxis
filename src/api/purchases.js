@@ -3,6 +3,7 @@ import { SUPPLIERS, PURCHASES, COST_CENTERS, VEHICLES, PURCHASE_ITEMS } from './
 import { VAT_RATE } from '@/lib/constants'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
+import { unitByCode, unitCode } from './catalogs'
 
 /* Purchases & VAT (EP-09). */
 
@@ -39,16 +40,58 @@ export function updateSupplier(id, payload) {
 /* ── Purchases (US-028/029) ─────────────────────────────── */
 const inRange = (d, from, to) => (!from || d >= from) && (!to || d <= to)
 
-/** Compute pre-tax / VAT / total from inputs. */
-export function computeTotals({ qty, unitPrice, inclVat, taxable }) {
-  const line = (Number(qty) || 0) * (Number(unitPrice) || 0)
-  if (!taxable) return { preTax: line, vat: 0, total: line }
+const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100
+
+/** Pre-tax / VAT / total of one line (qty × unit price). */
+export function computeLine({ qty, unitPrice, inclVat, taxable }) {
+  const amount = r2((Number(qty) || 0) * (Number(unitPrice) || 0))
+  if (!taxable) return { preTax: amount, vat: 0, total: amount }
   if (inclVat) {
-    const preTax = line / (1 + VAT_RATE)
-    return { preTax: Math.round(preTax * 100) / 100, vat: Math.round((line - preTax) * 100) / 100, total: line }
+    const preTax = r2(amount / (1 + VAT_RATE))
+    return { preTax, vat: r2(amount - preTax), total: amount }
   }
-  const vat = Math.round(line * VAT_RATE * 100) / 100
-  return { preTax: line, vat, total: line + vat }
+  const vat = r2(amount * VAT_RATE)
+  return { preTax: amount, vat, total: r2(amount + vat) }
+}
+
+/** Invoice totals. With `lines` (multi-item invoice) each line is computed
+    (taxable per line, "prices include VAT" for the whole invoice) and summed;
+    without, the legacy single-item fields are used. */
+export function computeTotals(payload) {
+  if (!Array.isArray(payload.lines)) return computeLine(payload)
+  return payload.lines.reduce(
+    (t, l) => {
+      const x = computeLine({ ...l, inclVat: payload.inclVat })
+      return { preTax: r2(t.preTax + x.preTax), vat: r2(t.vat + x.vat), total: r2(t.total + x.total) }
+    },
+    { preTax: 0, vat: 0, total: 0 },
+  )
+}
+
+/** The purchase's item lines — older single-item purchases get one derived
+    from itemType / qty / unitPrice. */
+export function linesOf(p) {
+  const raw = p.lines?.length
+    ? p.lines
+    : [{ itemId: p.itemId ?? null, itemType: p.itemType, qty: p.qty, unitPrice: p.unitPrice, taxable: p.taxable, preTax: p.preTax, vat: p.vat, total: p.total }]
+  return raw.map((l) => {
+    const item = l.itemId ? PURCHASE_ITEMS.find((i) => i.id === l.itemId) : PURCHASE_ITEMS.find((i) => i.name === l.itemType)
+    const code = unitCode(l.unit || item?.unit)
+    const u = unitByCode(code)
+    return { ...l, unit: code, unitName: u?.name ?? '', unitEn: u?.en ?? '' }
+  })
+}
+
+const decorate = (p) => {
+  const lines = linesOf(p)
+  return {
+    ...p,
+    lines,
+    itemsCount: lines.length,
+    supplierName: supplierById(p.supplierId)?.name ?? '—',
+    supplierTaxNo: p.supplierTaxNo || supplierById(p.supplierId)?.taxNo || '—',
+    vehiclePlate: VEHICLES.find((v) => v.id === p.vehicleId)?.plate ?? null,
+  }
 }
 
 export function fetchPurchases({ from, to, supplierId } = {}) {
@@ -57,58 +100,81 @@ export function fetchPurchases({ from, to, supplierId } = {}) {
     if (!inRange(p.date, from, to)) return false
     return true
   })
-    .map((p) => ({
-      ...p,
-      supplierName: supplierById(p.supplierId)?.name ?? '—',
-      supplierTaxNo: p.supplierTaxNo || supplierById(p.supplierId)?.taxNo || '—',
-      vehiclePlate: VEHICLES.find((v) => v.id === p.vehicleId)?.plate ?? null,
-    }))
+    .map(decorate)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
   return mockDelay(rows)
 }
 
 let pSeq = PURCHASES.length
+/**
+ * Register a purchase invoice. payload: header fields + `lines`:
+ * [{ itemId?, itemType?, unit?, qty, unitPrice, taxable }] — an item from the
+ * catalog (#6) or free text for one-offs. `inclVat` applies to every line.
+ * (A payload without `lines` is read as one line, as before.)
+ */
 export async function createPurchase(payload) {
-  const totals = computeTotals(payload)
+  const supplierTaxNo = String(payload.supplierTaxNo || '').trim()
+  if (supplierTaxNo && !validTaxNo(supplierTaxNo)) return Promise.reject(new Error('INVALID_TAX'))
+  const inclVat = !!payload.inclVat
+  const input = Array.isArray(payload.lines) ? payload.lines : [payload]
+  const lines = input
+    .map((l) => {
+      const item = l.itemId ? PURCHASE_ITEMS.find((i) => i.id === l.itemId) : null
+      const qty = Number(l.qty) || 0
+      const unitPrice = Number(l.unitPrice) || 0
+      const taxable = !!l.taxable
+      return {
+        itemId: item?.id ?? null,
+        itemType: item?.name ?? String(l.itemType || '').trim(),
+        unit: unitCode(item ? item.unit : l.unit),
+        qty,
+        unitPrice,
+        taxable,
+        ...computeLine({ qty, unitPrice, taxable, inclVat }),
+      }
+    })
+    .filter((l) => l.itemType && l.qty > 0 && l.unitPrice > 0)
+  if (!lines.length) return Promise.reject(new Error('NO_LINES'))
+  const totals = computeTotals({ lines, inclVat })
   pSeq += 1
   const ref = `PO-${new Date().getFullYear()}-${String(pSeq).padStart(4, '0')}`
   // a purchase linked to a vehicle is charged to that vehicle's cost center (#10)
   const vehicle = payload.vehicleId ? VEHICLES.find((v) => v.id === payload.vehicleId) : null
-  // item from the catalog (#6) — free text still accepted for one-offs
-  const item = payload.itemId ? PURCHASE_ITEMS.find((i) => i.id === payload.itemId) : null
-  const supplierTaxNo = String(payload.supplierTaxNo || '').trim()
-  if (supplierTaxNo && !validTaxNo(supplierTaxNo)) return Promise.reject(new Error('INVALID_TAX'))
+  const first = lines[0]
   const purchase = {
     id: `p${pSeq}`,
     supplierId: payload.supplierId,
     supplierTaxNo: supplierTaxNo || supplierById(payload.supplierId)?.taxNo || '',
-    itemId: item?.id ?? null,
-    itemType: item?.name ?? payload.itemType,
-    qty: Number(payload.qty) || 0,
-    unitPrice: Number(payload.unitPrice) || 0,
+    // first item kept on the purchase for older readers (search, VAT report)
+    itemId: first.itemId,
+    itemType: first.itemType,
+    qty: lines.length === 1 ? first.qty : undefined,
+    unitPrice: lines.length === 1 ? first.unitPrice : undefined,
     date: payload.date,
-    taxable: !!payload.taxable,
+    taxable: lines.some((l) => l.taxable),
+    inclVat,
     vehicleId: vehicle?.id ?? null,
     costCenter: vehicle ? vehicle.costCenter : payload.costCenter,
     invoiceNo: payload.invoiceNo || '—',
     ref,
+    lines,
     ...totals,
   }
   PURCHASES.push(purchase)
-  // Auto journal entry (US-029): 3 lines with VAT, 2 without.
-  const lines = [{ account: 'supplies_expense', costCenter: purchase.costCenter, debit: purchase.preTax, credit: 0 }]
-  if (purchase.vat > 0) lines.push({ account: 'input_vat', costCenter: purchase.costCenter, debit: purchase.vat, credit: 0 })
-  lines.push({ account: 'suppliers', costCenter: purchase.costCenter, debit: 0, credit: purchase.total })
-  await postEntry({ source: 'purchases', date: purchase.date, description: `مشتريات — ${purchase.ref}`, lines })
-  logAudit({ action: 'create', entity: 'purchases', detail: purchase.ref })
-  return mockDelay(purchase)
+  // Auto journal entry (US-029): one expense line per item, input VAT, and the supplier.
+  const cc = purchase.costCenter
+  const entry = lines.map((l) => ({ account: 'supplies_expense', costCenter: cc, debit: l.preTax, credit: 0, description: `${l.itemType} × ${l.qty}` }))
+  if (purchase.vat > 0) entry.push({ account: 'input_vat', costCenter: cc, debit: purchase.vat, credit: 0, description: 'ضريبة مدخلات' })
+  entry.push({ account: 'suppliers', costCenter: cc, debit: 0, credit: purchase.total, description: purchase.invoiceNo !== '—' ? `فاتورة ${purchase.invoiceNo}` : '' })
+  await postEntry({ source: 'purchases', date: purchase.date, description: `مشتريات — ${purchase.ref}`, lines: entry })
+  logAudit({ action: 'create', entity: 'purchases', detail: `${purchase.ref} (${lines.length})` })
+  return mockDelay(decorate(purchase))
 }
 
 /** Input VAT report (US-030). */
 export function vatReport({ from, to } = {}) {
   const rows = PURCHASES.filter((p) => inRange(p.date, from, to) && p.vat > 0).map((p) => ({
-    ...p,
-    supplierName: supplierById(p.supplierId)?.name ?? '—',
+    ...decorate(p),
     taxNo: p.supplierTaxNo || supplierById(p.supplierId)?.taxNo || '—',
   }))
   return mockDelay({ rows, totalVat: rows.reduce((s, r) => s + r.vat, 0), totalPreTax: rows.reduce((s, r) => s + r.preTax, 0) })

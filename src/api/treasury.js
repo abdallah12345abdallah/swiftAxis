@@ -1,5 +1,6 @@
 import { mockDelay } from '@/services/http'
-import { TREASURIES, TREASURY_MOVEMENTS, RIDER_TREASURY, RIDERS, EXPENSE_ITEMS, CITIES } from './fixtures'
+import { TREASURIES, TREASURY_MOVEMENTS, RIDER_TREASURY, RIDERS, EXPENSE_ITEMS, CITIES, SUPPLIERS, CONTRACT_LIST, CONTRACT_COST_CENTER } from './fixtures'
+import { ROLES } from '@/lib/constants'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
 
@@ -10,6 +11,22 @@ import { logAudit } from './audit'
 
 export const treasuryById = (id) => TREASURIES.find((t) => t.id === id)
 export const mainTreasury = () => TREASURIES.find((t) => t.isMain) ?? TREASURIES[0]
+/* Box permissions. Auth is mocked per role, so each box lists the roles
+   (`userRoles`) allowed to work on it; the manager always has every box.
+   A box without the field predates permissions and stays open to all. */
+export const canUseTreasury = (t, role) => !!t && (role === ROLES.MANAGER || !Array.isArray(t.userRoles) || t.userRoles.includes(role))
+const cleanRoles = (roles) => (Array.isArray(roles) ? [...new Set(roles.filter((r) => r !== ROLES.MANAGER && Object.values(ROLES).includes(r)))] : [])
+
+/* Voucher counterparty (سند قبض / صرف): a customer (contract company), a
+   supplier or a chart account. Customers and suppliers post to their control
+   accounts; an `account` party posts to the account picked on the voucher. */
+export const PARTY_TYPES = ['customer', 'supplier', 'account']
+const PARTY_ACCOUNT = { customer: 'receivables', supplier: 'suppliers' }
+const partyName = (type, id) =>
+  type === 'customer' ? CONTRACT_LIST.find((c) => c.id === id)?.company : type === 'supplier' ? SUPPLIERS.find((s) => s.id === id)?.name : null
+/** Older rows carry no party type: infer it from the account they posted to. */
+const inferPartyType = (m) => m.partyType ?? (m.account === 'receivables' ? 'customer' : m.account === 'suppliers' ? 'supplier' : 'account')
+
 /** The custody box a rider's collected cash sits in (settings → rider link). */
 export const treasuryOfRider = (riderId) =>
   treasuryById(RIDER_TREASURY[riderId]) ?? TREASURIES.find((t) => t.kind === 'rider') ?? mainTreasury()
@@ -69,6 +86,7 @@ export function createTreasury(payload) {
     iban: kind === 'bank' ? payload.iban || '' : undefined,
     opening: Number(payload.opening) || 0,
     active: payload.active ?? true,
+    userRoles: cleanRoles(payload.userRoles),
   }
   TREASURIES.push(t)
   logAudit({ action: 'create', entity: 'treasury', detail: t.name })
@@ -85,6 +103,7 @@ export function updateTreasury(id, payload) {
     iban: kind === 'bank' ? payload.iban ?? t.iban : undefined,
     opening: payload.opening !== undefined ? Number(payload.opening) || 0 : t.opening,
     active: payload.active ?? t.active,
+    userRoles: payload.userRoles !== undefined ? cleanRoles(payload.userRoles) : t.userRoles,
   })
   logAudit({ action: 'update', entity: 'treasury', detail: t.name })
   return mockDelay(decorate(t))
@@ -92,14 +111,36 @@ export function updateTreasury(id, payload) {
 
 /* ── Vouchers ────────────────────────────────────────────── */
 
-/** Receipt voucher (سند قبض): money in. Dr treasury account / Cr counter account. */
-export async function createReceipt({ treasuryId, date, amount, party = '', description = '', account = 'delivery_revenue', costCenter = null, riderId = null, source = 'treasury', status = 'posted' }) {
+/** Resolve a voucher's counterparty: customer / supplier pin the control
+    account and the party name; `account` keeps the given account. */
+function resolveParty({ partyType, partyId, party, account, costCenter }) {
+  if (!PARTY_TYPES.includes(partyType)) return { partyType: null, partyId: null, party, account, costCenter }
+  if (partyType === 'account') return { partyType, partyId: null, party, account, costCenter }
+  const name = partyName(partyType, partyId)
+  if (!name) return { error: 'PARTY_REQUIRED' }
+  return {
+    partyType,
+    partyId,
+    party: name,
+    account: PARTY_ACCOUNT[partyType],
+    // a customer's contract carries its own cost center when none is picked
+    costCenter: costCenter || (partyType === 'customer' ? CONTRACT_COST_CENTER[partyId] || null : null),
+  }
+}
+
+/** Receipt voucher (سند قبض): money in. Dr treasury account / Cr counter account
+    (the customer's receivable, the supplier's payable, or the picked account). */
+export async function createReceipt({ treasuryId, date, amount, party = '', description = '', account = 'delivery_revenue', costCenter = null, riderId = null, source = 'treasury', status = 'posted', partyType = null, partyId = null }) {
   const t = treasuryById(treasuryId)
   if (!t) return Promise.reject(new Error('NOT_FOUND'))
   const amt = Number(amount) || 0
   if (amt <= 0) return Promise.reject(new Error('INVALID_AMOUNT'))
+  const p = resolveParty({ partyType, partyId, party, account, costCenter })
+  if (p.error) return Promise.reject(new Error(p.error))
+  ;({ party, account, costCenter } = p)
+  if (!account) return Promise.reject(new Error('ACCOUNT_REQUIRED'))
   const ref = nextVoucherRef('RV')
-  const row = pushMovement({ ref, type: 'receipt', treasuryId, date, amount: amt, party, description, account, costCenter, riderId, source, status })
+  const row = pushMovement({ ref, type: 'receipt', treasuryId, date, amount: amt, party, partyType: p.partyType, partyId: p.partyId, description, account, costCenter, riderId, source, status })
   if (status === 'posted' && account !== t.account) {
     await postEntry({
       source,
@@ -117,21 +158,29 @@ export async function createReceipt({ treasuryId, date, amount, party = '', desc
 
 /** Payment voucher (سند صرف): money out. Dr expense / counter account, Cr treasury.
     With an expense item the account comes from the item, so the warehouse can
-    charge any cost center (#6). */
-export async function createPayment({ treasuryId, date, amount, party = '', description = '', account = null, expenseItem = null, costCenter = null, riderId = null, source = 'treasury' }) {
+    charge any cost center (#6). Paying a supplier debits its payable and may
+    carry the supplier's purchase invoice number; paying a customer debits
+    its receivable. */
+export async function createPayment({ treasuryId, date, amount, party = '', description = '', account = null, expenseItem = null, costCenter = null, riderId = null, source = 'treasury', partyType = null, partyId = null, invoiceNo = '' }) {
   const t = treasuryById(treasuryId)
   if (!t) return Promise.reject(new Error('NOT_FOUND'))
   const amt = Number(amount) || 0
   if (amt <= 0) return Promise.reject(new Error('INVALID_AMOUNT'))
   const item = expenseItem ? EXPENSE_ITEMS.find((i) => i.id === expenseItem) : null
-  const acc = account || item?.account || 'general_expense'
+  const p = resolveParty({ partyType, partyId, party, account: account || item?.account || 'general_expense', costCenter })
+  if (p.error) return Promise.reject(new Error(p.error))
+  const acc = p.account
+  ;({ party, costCenter } = p)
   const ref = nextVoucherRef('PV')
-  const row = pushMovement({ ref, type: 'payment', treasuryId, date, amount: amt, party, description, account: acc, expenseItem: item?.id ?? null, costCenter, riderId, source })
+  const row = pushMovement({
+    ref, type: 'payment', treasuryId, date, amount: amt, party, partyType: p.partyType, partyId: p.partyId, invoiceNo: String(invoiceNo || '').trim(),
+    description, account: acc, expenseItem: p.partyType === 'account' || !p.partyType ? item?.id ?? null : null, costCenter, riderId, source,
+  })
   if (acc !== t.account) {
     await postEntry({
       source,
       date,
-      description: `سند صرف ${ref} — ${description || party}`,
+      description: `سند صرف ${ref} — ${description || party}${row.invoiceNo ? ` (فاتورة ${row.invoiceNo})` : ''}`,
       lines: [
         { account: acc, costCenter, debit: amt, credit: 0 },
         { account: t.account, costCenter, debit: 0, credit: amt },
@@ -199,7 +248,7 @@ export function recordCustodyReceipt(riderId, amount, date, description) {
 const inRange = (d, from, to) => (!from || d >= from) && (!to || d <= to)
 
 function decorateMovement(m) {
-  return { ...m, treasuryName: treasuryById(m.treasuryId)?.name ?? m.treasuryId, riderName: m.riderId ? riderById(m.riderId)?.name ?? null : null }
+  return { ...m, partyType: m.type === 'receipt' || m.type === 'payment' ? inferPartyType(m) : null, treasuryName: treasuryById(m.treasuryId)?.name ?? m.treasuryId, riderName:m.riderId ? riderById(m.riderId)?.name ?? null : null }
 }
 
 export function fetchMovements({ treasuryId, type, from, to, status, riderId } = {}) {

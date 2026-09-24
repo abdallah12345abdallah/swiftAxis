@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { NAV_ITEMS } from '@/lib/constants'
-import { screensRoute } from '@/lib/subScreens'
+import { screensRoute, currentScreen, screenAllowed, allowedScreens, SUB_SCREENS } from '@/lib/subScreens'
 
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
@@ -101,6 +101,15 @@ router.beforeEach((to) => {
   const roles = to.matched.find((r) => r.meta?.roles)?.meta.roles
   if (roles && !roles.includes(auth.role)) {
     return { name: 'dashboard' }
+  }
+  // Screen gate: a module screen limited to some roles sends the others to
+  // the first screen of that module they may open (e.g. a rider on /wallets
+  // lands on /wallets/mine).
+  const screen = currentScreen(to)
+  if (screen && !screenAllowed(screen, auth.role)) {
+    const key = Object.keys(SUB_SCREENS).find((k) => SUB_SCREENS[k].items.includes(screen))
+    const first = allowedScreens(key, auth.role)[0]
+    return first ? { path: first.path } : { name: 'dashboard' }
   }
   return true
 })

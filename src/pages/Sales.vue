@@ -1,11 +1,12 @@
 <script setup>
 import MetricTile from '@/components/common/MetricTile.vue'
-import { Receipt as MtReceipt, Banknote as MtBanknote, Percent as MtPercent, Clock as MtClock } from 'lucide-vue-next'
-import { ref, reactive, computed, onMounted } from 'vue'
+import { Receipt as MtReceipt, Banknote as MtBanknote, Percent as MtPercent, Clock as MtClock, ShoppingCart as MtShoppingCart, Scale as MtScale } from 'lucide-vue-next'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Plus, Download, CheckCircle2, FileSpreadsheet } from 'lucide-vue-next'
+import { Plus, Download, CheckCircle2, FileSpreadsheet, Info, ArrowUpRight, ArrowDownLeft, Equal, Landmark } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import FilterBar from '@/components/common/FilterBar.vue'
 import { Card } from '@/components/ui/card'
@@ -22,12 +23,17 @@ import { exportCsv, todayStamp } from '@/lib/export'
 import { useToast } from '@/composables/useToast'
 import { fetchSalesInvoices, salesVatReport, markInvoicePaid } from '@/api/sales'
 import { fetchContracts } from '@/api/riders'
-import { fetchTreasuries } from '@/api/treasury'
+import { fetchTreasuries, canUseTreasury } from '@/api/treasury'
+import { vatReport as inputVatReport } from '@/api/purchases'
+import { useAuthStore } from '@/stores/auth'
+import { VAT_RATE } from '@/lib/constants'
 
 const { t } = useI18n()
 const { sar, num } = useCurrency()
 const { formatDate, formatMonth } = useDate()
 const toast = useToast()
+const auth = useAuthStore()
+const vatPct = Math.round(VAT_RATE * 100)
 
 const tab = useRouteTab('invoices')
 const tabs = computed(() => [
@@ -49,11 +55,12 @@ const paidError = ref('')
 const savingPaid = ref(false)
 
 const contractOptions = computed(() => contracts.value.filter((c) => c.active).map((c) => ({ value: c.id, label: c.company })))
-const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active && x.kind !== 'rider').map((x) => ({ value: x.id, label: x.name })))
+// only the boxes the signed-in role may work on (treasury permissions)
+const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active && x.kind !== 'rider' && canUseTreasury(x, auth.role)).map((x) => ({ value: x.id, label: x.name })))
 
 async function load() {
   loading.value = true
-  ;[invoices.value, vat.value, contracts.value, treasuries.value] = await Promise.all([fetchSalesInvoices(), salesVatReport(), fetchContracts(), fetchTreasuries()])
+  ;[invoices.value, contracts.value, treasuries.value] = await Promise.all([fetchSalesInvoices(), fetchContracts(), fetchTreasuries(), loadVat()])
   loading.value = false
 }
 onMounted(load)
@@ -89,7 +96,8 @@ const kpi = computed(() => ({
 function openPaid(inv) {
   paying.value = inv
   paidError.value = ''
-  Object.assign(paidForm, { treasuryId: treasuries.value.find((x) => x.kind === 'bank' && x.active)?.id ?? treasuryOptions.value[0]?.value ?? '', date: new Date().toISOString().slice(0, 10) })
+  const bank = treasuries.value.find((x) => x.kind === 'bank' && x.active && canUseTreasury(x, auth.role))
+  Object.assign(paidForm, { treasuryId: bank?.id ?? treasuryOptions.value[0]?.value ?? '', date: new Date().toISOString().slice(0, 10) })
   paidDialog.value = true
 }
 async function confirmPaid() {
@@ -109,6 +117,18 @@ async function confirmPaid() {
   }
 }
 
+/* output VAT screen: an optional period narrows both sides, so output VAT
+   (sales invoices) and input VAT (purchases) are compared for the same dates */
+const vatRange = ref(['', ''])
+const inputVat = ref({ totalVat: 0, rows: [] })
+async function loadVat() {
+  const [from, to] = vatRange.value
+  const q = { from: from || undefined, to: to || undefined }
+  ;[vat.value, inputVat.value] = await Promise.all([salesVatReport(q), inputVatReport(q)])
+}
+watch(vatRange, loadVat)
+const netVat = computed(() => (vat.value.totalVat || 0) - (inputVat.value.totalVat || 0))
+
 function exportVat() {
   exportCsv(
     `output-vat-${todayStamp()}`,
@@ -120,7 +140,7 @@ function exportVat() {
 
 <template>
   <div>
-    <PageHeader :title="t('sales.title')" :subtitle="t('sales.subtitle')">
+    <PageHeader :title="t('sales.title')" :subtitle="tab === 'vat' ? t('sales.vatSubtitle') : t('sales.subtitle')">
       <template #actions>
         <Button v-if="tab === 'invoices'" @click="invoiceDialog = true"><Plus /> {{ t('sales.add') }}</Button>
         <Button v-else variant="outline" @click="exportVat"><Download /> {{ t('common.export') }}</Button>
@@ -128,7 +148,7 @@ function exportVat() {
     </PageHeader>
 
 
-    <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div v-if="tab === 'invoices'" class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <MetricTile :label="t('sales.kpi.count')" :value="kpi.count" :format="(v) => num(Math.round(v))" :icon="MtReceipt" tone="brand" />
       <MetricTile :label="t('sales.kpi.preTax')" :value="kpi.preTax" :format="sar" :icon="MtBanknote" tone="success" />
       <MetricTile :label="t('sales.kpi.vat')" :value="kpi.vat" :format="sar" :icon="MtPercent" tone="orange" />
@@ -148,7 +168,6 @@ function exportVat() {
           { key: 'company', label: t('sales.contract'), sortable: true },
           { key: 'period', label: t('sales.period'), sortable: true },
           { key: 'date', label: t('sales.date'), hideBelow: 'md' },
-          { key: 'orders', label: t('sales.orders'), align: 'end', hideBelow: 'lg' },
           { key: 'preTax', label: t('sales.preTax'), align: 'end', hideBelow: 'lg' },
           { key: 'vat', label: t('sales.vat', { rate: 15 }), align: 'end', hideBelow: 'sm' },
           { key: 'total', label: t('sales.total'), align: 'end', sortable: true },
@@ -162,7 +181,6 @@ function exportVat() {
         </template>
         <template #cell-period="{ row }"><span class="tabular-nums">{{ formatMonth(row.period + '-01') }}</span></template>
         <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span></template>
-        <template #cell-orders="{ row }"><span class="tabular-nums">{{ num(row.orders) }} × {{ sar(row.unitPrice) }}</span></template>
         <template #cell-preTax="{ row }"><span class="tabular-nums">{{ sar(row.preTax, { decimals: 2 }) }}</span></template>
         <template #cell-vat="{ row }"><span class="text-orange tabular-nums">{{ sar(row.vat, { decimals: 2 }) }}</span></template>
         <template #cell-total="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.total, { decimals: 2 }) }}</span></template>
@@ -179,8 +197,50 @@ function exportVat() {
     </Card>
     </template>
 
-    <!-- output VAT -->
-    <Card v-else class="overflow-hidden">
+    <!-- output VAT: what it is, how it nets against input VAT, then the invoices -->
+    <template v-else>
+    <section class="bg-card mb-6 rounded-2xl border p-5" aria-labelledby="vat-explain-title">
+      <div class="flex items-start gap-3">
+        <span class="bg-orange/10 text-orange grid size-10 shrink-0 place-items-center rounded-xl"><Info class="size-5" /></span>
+        <div class="min-w-0">
+          <h2 id="vat-explain-title" class="font-semibold">{{ t('sales.vatExplain.title') }}</h2>
+          <p class="text-muted-foreground mt-1 text-sm leading-relaxed">{{ t('sales.vatExplain.lead', { rate: vatPct }) }}</p>
+        </div>
+      </div>
+      <ol class="mt-5 grid gap-3 md:grid-cols-3">
+        <li class="bg-muted/40 rounded-xl p-4">
+          <p class="flex items-center gap-2 text-sm font-semibold"><ArrowUpRight class="text-orange size-4" /> {{ t('sales.vatExplain.outTitle') }}</p>
+          <p class="text-muted-foreground mt-1.5 text-xs leading-relaxed">{{ t('sales.vatExplain.outBody', { rate: vatPct }) }}</p>
+        </li>
+        <li class="bg-muted/40 rounded-xl p-4">
+          <p class="flex items-center gap-2 text-sm font-semibold"><ArrowDownLeft class="text-brand size-4" /> {{ t('sales.vatExplain.inTitle') }}</p>
+          <p class="text-muted-foreground mt-1.5 text-xs leading-relaxed">{{ t('sales.vatExplain.inBody', { rate: vatPct }) }}</p>
+          <RouterLink to="/purchases/vat" class="text-brand mt-2 inline-block text-xs font-medium hover:underline">{{ t('sales.vatExplain.inLink') }}</RouterLink>
+        </li>
+        <li class="bg-muted/40 rounded-xl p-4">
+          <p class="flex items-center gap-2 text-sm font-semibold"><Equal class="text-primary size-4" /> {{ t('sales.vatExplain.netTitle') }}</p>
+          <p class="text-muted-foreground mt-1.5 text-xs leading-relaxed">{{ t('sales.vatExplain.netBody') }}</p>
+        </li>
+      </ol>
+      <p class="text-muted-foreground mt-4 flex items-start gap-2 text-xs"><Landmark class="mt-0.5 size-3.5 shrink-0" /> {{ t('sales.vatExplain.posting') }}</p>
+    </section>
+
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-muted-foreground text-sm">{{ t('sales.vatExplain.periodHint') }}</p>
+      <DateRangePicker v-model="vatRange" />
+    </div>
+    <div class="mb-6 grid gap-4 sm:grid-cols-3">
+      <MetricTile :label="t('sales.vatSummary.output')" :value="vat.totalVat" :format="(v) => sar(v, { decimals: 2 })" :icon="MtPercent" tone="orange" :hint="t('sales.vatSummary.outputHint', { n: num(vat.rows.length) })" />
+      <MetricTile :label="t('sales.vatSummary.input')" :value="inputVat.totalVat" :format="(v) => sar(v, { decimals: 2 })" :icon="MtShoppingCart" tone="brand" :hint="t('sales.vatSummary.inputHint', { n: num(inputVat.rows.length) })" />
+      <MetricTile
+        :label="netVat >= 0 ? t('sales.vatSummary.netDue') : t('sales.vatSummary.netCredit')"
+        :value="Math.abs(netVat)" :format="(v) => sar(v, { decimals: 2 })" :icon="MtScale"
+        :tone="netVat > 0 ? 'danger' : 'success'"
+        :hint="netVat >= 0 ? t('sales.vatSummary.netDueHint') : t('sales.vatSummary.netCreditHint')"
+      />
+    </div>
+
+    <Card class="overflow-hidden">
       <DataTable
         :loading="loading" :rows="vat.rows" :empty="t('sales.empty')"
         :columns="[
@@ -203,6 +263,7 @@ function exportVat() {
         <span class="text-orange tabular-nums">{{ sar(vat.totalVat, { decimals: 2 }) }}</span>
       </div>
     </Card>
+    </template>
 
     <SalesInvoiceDialog v-model:open="invoiceDialog" :contract-options="contractOptions" @saved="load" />
 

@@ -9,6 +9,7 @@ import { useRouteTab } from '@/composables/useRouteTab'
 import {
   Plus, Download, Pencil, BookOpen, Coins, PenLine, Ban, ChevronLeft,
   ArrowDownLeft, ArrowUpRight, AlertTriangle, Scale, ListTree, Check, Wallet, Percent,
+  CalendarX, UserX, Clock,
 } from 'lucide-vue-next'
 import { Skeleton } from '@/components/ui/skeleton'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -70,15 +71,18 @@ const ccName = (id) => centers.value.find((c) => c.id === id)?.name ?? '—'
 const accCode = (id) => accountById(id)?.code ?? ''
 const sourceLabel = (s) => (te(`ledger.sources.${s}`) ? t(`ledger.sources.${s}`) : s)
 
-/* journal: search by ref, serial, statement or account, then group by month */
+/* journal: search by ref, serial, statement or account, then group by month.
+   Voided entries live on their own screen (/ledger/voided), not in this list. */
 const query = ref('')
+const liveJournal = computed(() => journal.value.filter((e) => !e.voided))
+const voidedJournal = computed(() => journal.value.filter((e) => e.voided))
+const matches = (e, q, extra = []) =>
+  [e.ref, String(e.serial ?? ''), e.description, ...extra, ...e.lines.flatMap((l) => [accName(l.account), accCode(l.account), l.description])]
+    .some((v) => v && String(v).toLowerCase().includes(q))
 const shownJournal = computed(() => {
   const q = query.value.trim().toLowerCase()
-  if (!q) return journal.value
-  return journal.value.filter((e) =>
-    [e.ref, String(e.serial ?? ''), e.description, ...e.lines.flatMap((l) => [accName(l.account), accCode(l.account), l.description])]
-      .some((v) => v && String(v).toLowerCase().includes(q)),
-  )
+  if (!q) return liveJournal.value
+  return liveJournal.value.filter((e) => matches(e, q))
 })
 const journalGroups = computed(() => {
   const groups = []
@@ -87,10 +91,39 @@ const journalGroups = computed(() => {
     let g = groups.at(-1)
     if (!g || g.key !== key) groups.push((g = { key, label: formatDate(`${key}-01`, { year: 'numeric', month: 'long' }), entries: [], total: 0 }))
     g.entries.push(e)
-    if (!e.voided) g.total += e.total
+    g.total += e.total
   })
   return groups
 })
+
+/* voided entries: same search (plus reason and who voided), latest void first */
+const voidedAt = (e) => e.voidedAt || e.date
+const shownVoided = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return voidedJournal.value
+    .filter((e) => !q || matches(e, q, [e.voidReason, e.voidedBy, e.createdBy]))
+    .sort((a, b) => (voidedAt(a) < voidedAt(b) ? 1 : voidedAt(a) > voidedAt(b) ? -1 : 0))
+})
+const voidStats = computed(() => {
+  const month = new Date().toISOString().slice(0, 7)
+  return {
+    count: shownVoided.value.length,
+    amount: shownVoided.value.reduce((s, e) => s + e.total, 0),
+    thisMonth: shownVoided.value.filter((e) => String(voidedAt(e)).startsWith(month)).length,
+  }
+})
+const formatStamp = (s) => {
+  if (!s) return '—'
+  const [d, time] = String(s).split('T')
+  return time ? `${formatDate(d)} · ${time.slice(0, 5)}` : formatDate(d)
+}
+function exportVoided() {
+  exportCsv(
+    `voided-entries-${todayStamp()}`,
+    [t('ledger.ref'), t('common.date'), t('common.description'), t('ledger.voided.amount'), t('journal.voidReason'), t('ledger.voided.by'), t('ledger.voided.at')],
+    shownVoided.value.map((e) => [e.ref, e.date, e.description, e.total, e.voidReason ?? '', e.voidedBy ?? '', e.voidedAt ?? '']),
+  )
+}
 /* trial balance: search + one account type at a time, grouped by type */
 const TYPE_ORDER = ['asset', 'liability', 'equity', 'revenue', 'expense']
 const trialType = ref('')
@@ -142,21 +175,20 @@ const revenueSplit = computed(() => {
   return parts.map((p) => ({ ...p, pct: share(p.amount, base) }))
 })
 
-const stats = computed(() => {
-  const live = shownJournal.value.filter((e) => !e.voided)
-  return {
-    count: live.length,
-    amount: live.reduce((s, e) => s + e.total, 0),
-    manual: live.filter((e) => e.source === 'manual').length,
-    voided: shownJournal.value.length - live.length,
-  }
-})
+const stats = computed(() => ({
+  count: shownJournal.value.length,
+  amount: shownJournal.value.reduce((s, e) => s + e.total, 0),
+  manual: shownJournal.value.filter((e) => e.source === 'manual').length,
+  // all voided entries in the period — the tile opens their screen
+  voided: voidedJournal.value.length,
+}))
 
 const costCenterOptions = computed(() => centers.value.map((c) => ({ value: c.id, label: c.name })))
 const centerFilterOptions = computed(() => [{ value: '', label: t('ledger.allCenters') }, ...costCenterOptions.value])
 
 const tabs = computed(() => [
   { value: 'journal', label: t('ledger.tabs.journal') },
+  { value: 'voided', label: t('ledger.tabs.voided') },
   { value: 'trial', label: t('ledger.tabs.trial') },
   { value: 'pnl', label: t('ledger.tabs.pnl') },
   { value: 'costCenters', label: t('ledger.tabs.costCenters') },
@@ -201,6 +233,7 @@ function exportTrial() {
     <PageHeader :title="t('ledger.title')" :subtitle="t('ledger.subtitle')">
       <template #actions>
         <Button v-if="tab === 'journal'" as="RouterLink" to="/ledger/entry"><Plus /> {{ t('ledger.newEntry') }}</Button>
+        <Button v-else-if="tab === 'voided'" variant="outline" :disabled="!shownVoided.length" @click="exportVoided"><Download /> {{ t('common.export') }}</Button>
         <Button v-else-if="tab === 'trial'" variant="outline" @click="exportTrial"><Download /> {{ t('common.export') }}</Button>
         <Button v-else-if="tab === 'costCenters'" @click="openAddCenter"><Plus /> {{ t('ledger.cc.add') }}</Button>
       </template>
@@ -209,8 +242,8 @@ function exportTrial() {
     <div class="mb-6 space-y-3">
       <FilterBar
         v-model="ledgerFilters"
-        :search="tab === 'journal' || tab === 'trial' ? query : undefined"
-        :search-placeholder="tab === 'trial' ? t('ledger.trial.searchPh') : t('ledger.searchPh')"
+        :search="tab === 'journal' || tab === 'voided' || tab === 'trial' ? query : undefined"
+        :search-placeholder="tab === 'trial' ? t('ledger.trial.searchPh') : tab === 'voided' ? t('ledger.voided.searchPh') : t('ledger.searchPh')"
         :filters="[{ key: 'center', label: t('ledger.cc.name'), options: centerFilterOptions }]"
         @update:search="query = $event"
       >
@@ -224,7 +257,10 @@ function exportTrial() {
         <MetricTile :label="t('ledger.stats.entries')" :value="stats.count" :format="num" :icon="BookOpen" tone="primary" />
         <MetricTile :label="t('ledger.stats.amount')" :value="stats.amount" :format="sar" :icon="Coins" tone="brand" />
         <MetricTile :label="t('ledger.stats.manual')" :value="stats.manual" :format="num" :icon="PenLine" tone="success" />
-        <MetricTile :label="t('ledger.stats.voided')" :value="stats.voided" :format="num" :icon="Ban" tone="danger" />
+        <!-- voided entries have their own screen: this tile opens it -->
+        <RouterLink to="/ledger/voided" class="jl-tile-link" :aria-label="t('ledger.voided.open')">
+          <MetricTile :label="t('ledger.stats.voided')" :value="stats.voided" :format="num" :icon="Ban" tone="danger" :hint="t('ledger.voided.open')" />
+        </RouterLink>
       </div>
 
       <div v-if="loading" class="space-y-3">
@@ -290,6 +326,95 @@ function exportTrial() {
           </div>
         </RouterLink>
       </section>
+      </template>
+    </div>
+
+    <!-- Voided entries: kept for the audit trail, out of every balance -->
+    <div v-else-if="tab === 'voided'" class="space-y-6">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile :label="t('ledger.voided.count')" :value="voidStats.count" :format="num" :icon="Ban" tone="danger" />
+        <MetricTile :label="t('ledger.voided.amount')" :value="voidStats.amount" :format="sar" :icon="Coins" tone="warning" :hint="t('ledger.voided.amountHint')" />
+        <MetricTile :label="t('ledger.voided.thisMonth')" :value="voidStats.thisMonth" :format="num" :icon="CalendarX" tone="brand" />
+        <RouterLink to="/ledger" class="jl-tile-link" :aria-label="t('ledger.voided.backToJournal')">
+          <MetricTile :label="t('ledger.stats.entries')" :value="liveJournal.length" :format="num" :icon="BookOpen" tone="primary" :hint="t('ledger.voided.backToJournal')" />
+        </RouterLink>
+      </div>
+
+      <div v-if="loading" class="space-y-3">
+        <Skeleton v-for="i in 3" :key="i" class="h-40 rounded-2xl" />
+      </div>
+      <Card v-else-if="!shownVoided.length">
+        <EmptyState :title="t('ledger.voided.empty')" :hint="t('ledger.voided.emptyHint')" :icon="Ban" />
+      </Card>
+
+      <template v-else>
+        <RouterLink
+          v-for="(e, i) in shownVoided"
+          :key="e.id"
+          :to="`/ledger/entry/${e.id}`"
+          class="jl-card is-void"
+          :style="{ '--d': `${Math.min(i, 8) * 40}ms` }"
+        >
+          <div class="jl-top">
+            <div class="jl-date">
+              <b>{{ formatDate(e.date, { day: 'numeric' }) }}</b>
+              <span>{{ formatDate(e.date, { month: 'short' }) }}</span>
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="jl-ref" dir="ltr">{{ e.ref }}</span>
+                <span v-if="e.serial" class="text-muted-foreground text-xs tabular-nums">#{{ e.serial }}</span>
+                <span class="jl-tag">{{ e.docTypeName }}</span>
+                <span class="jl-tag" :class="e.source === 'manual' && 'is-manual'">{{ sourceLabel(e.source) }}</span>
+                <Badge variant="danger"><Ban class="size-3" /> {{ t('journal.voidedBadge') }}</Badge>
+              </div>
+              <p class="jl-desc">{{ e.description || '—' }}</p>
+            </div>
+
+            <div class="jl-amount">
+              <b dir="ltr">{{ sar(e.total) }}</b>
+              <span>{{ t('ledger.linesN', { n: num(e.lines.length) }) }}</span>
+            </div>
+            <span class="jl-go" :title="t('ledger.open')"><ChevronLeft class="size-4 ltr:rotate-180" /></span>
+          </div>
+
+          <!-- why, who and when -->
+          <div class="jv-why">
+            <div class="jv-reason">
+              <span class="jv-label">{{ t('journal.voidReason') }}</span>
+              <p>{{ e.voidReason || t('ledger.voided.noReason') }}</p>
+            </div>
+            <dl class="jv-meta">
+              <div>
+                <dt><UserX class="size-3.5" /> {{ t('ledger.voided.by') }}</dt>
+                <dd>{{ e.voidedBy || '—' }}</dd>
+              </div>
+              <div>
+                <dt><Clock class="size-3.5" /> {{ t('ledger.voided.at') }}</dt>
+                <dd class="tabular-nums">{{ formatStamp(e.voidedAt) }}</dd>
+              </div>
+              <div v-if="e.createdBy">
+                <dt><PenLine class="size-3.5" /> {{ t('journal.createdBy') }}</dt>
+                <dd>{{ e.createdBy }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="jl-lines">
+            <div v-for="(l, li) in e.lines" :key="li" class="jl-line">
+              <i class="jl-side" :class="l.debit ? 'is-dr' : 'is-cr'" />
+              <span class="min-w-0 truncate">
+                <b class="jl-code" dir="ltr">{{ accCode(l.account) }}</b>
+                {{ accName(l.account) }}
+                <small v-if="l.description" class="text-muted-foreground ms-1">— {{ l.description }}</small>
+              </span>
+              <span class="text-muted-foreground truncate text-xs">{{ l.costCenter ? ccName(l.costCenter) : '' }}</span>
+              <span class="jl-num is-dr" dir="ltr">{{ l.debit ? sar(l.debit) : '' }}</span>
+              <span class="jl-num is-cr" dir="ltr">{{ l.credit ? sar(l.credit) : '' }}</span>
+            </div>
+          </div>
+        </RouterLink>
       </template>
     </div>
 
@@ -563,6 +688,30 @@ function exportTrial() {
   .jl-line > :nth-child(3) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .jl-card { animation: none; transition: none; } }
+
+/* a metric tile that opens another screen */
+.jl-tile-link { display: block; border-radius: 1rem; transition: transform 0.2s; }
+.jl-tile-link:hover { transform: translateY(-2px); }
+.jl-tile-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* voided entry card: the amount is struck through, the reason leads */
+.jl-card.is-void .jl-date { background: color-mix(in srgb, var(--danger) 10%, var(--card)); color: var(--danger); }
+.jl-card.is-void .jl-amount b { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--danger) 70%, transparent); color: var(--muted-foreground); }
+.jl-card.is-void:hover { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+.jl-card.is-void:hover .jl-ref { color: var(--danger); }
+.jl-card.is-void .jl-lines { opacity: 0.7; }
+.jv-why {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: start;
+  margin: 0 1.25rem 0.75rem; padding: 0.75rem 0.9rem; border-radius: 0.9rem;
+  border-inline-start: 3px solid var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--card));
+}
+.jv-label { font-size: 11px; font-weight: 800; color: var(--danger); }
+.jv-reason p { margin-top: 0.15rem; font-size: 14px; font-weight: 700; }
+.jv-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; }
+.jv-meta dt { display: flex; align-items: center; gap: 0.3rem; font-size: 11px; font-weight: 700; color: var(--muted-foreground); }
+.jv-meta dd { margin-top: 0.1rem; font-size: 13px; font-weight: 700; }
+@media (max-width: 48rem) { .jv-why { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .jl-tile-link { transition: none; } .jl-tile-link:hover { transform: none; } }
 
 /* ── trial balance ── */
 .tb-types { display: flex; flex-wrap: wrap; gap: 0.4rem; }

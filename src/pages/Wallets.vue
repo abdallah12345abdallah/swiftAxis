@@ -7,7 +7,7 @@ import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import {
   HandCoins, FileText, AlertTriangle, Plus, ClipboardCheck, Landmark,
-  Eye, ListChecks, FileWarning, ExternalLink,
+  Eye, ListChecks, FileWarning, ExternalLink, Info, ArrowDownLeft, CheckCircle2,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/common/PageHeader.vue'
 import FilterBar from '@/components/common/FilterBar.vue'
@@ -25,6 +25,7 @@ import DepositDecisionDialog from '@/components/wallets/DepositDecisionDialog.vu
 import WithdrawalDialog from '@/components/wallets/WithdrawalDialog.vue'
 import DebtActionDialog from '@/components/wallets/DebtActionDialog.vue'
 import RiderDebtsDialog from '@/components/wallets/RiderDebtsDialog.vue'
+import MyWallet from '@/components/wallets/MyWallet.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
@@ -47,6 +48,12 @@ const tabs = computed(() => [
   { value: 'withdrawals', label: t('wallets.tabs.withdrawals') },
   { value: 'debts', label: t('wallets.tabs.debts') },
 ])
+/* the rider's own screen ("my wallet") loads only their data (MyWallet.vue);
+   the staff screens below load every rider's */
+const isMine = computed(() => tab.value === 'mine')
+const pageSubtitle = computed(() =>
+  isMine.value ? t('wallets.mine.subtitle') : tab.value === 'debts' ? t('wallets.debts.subtitle') : t('wallets.subtitle'),
+)
 
 const loading = ref(true)
 const wallets = ref([])
@@ -69,6 +76,7 @@ const selectedDeposit = ref(null)
 const selectedDebtRider = ref(null)
 
 async function load() {
+  if (isMine.value) return
   loading.value = true
   ;[wallets.value, deposits.value, withdrawals.value, debts.value, treasuries.value] = await Promise.all([
     fetchWallets(), fetchDeposits(), fetchWithdrawals(), fetchDebtsOverview(), fetchTreasuries(),
@@ -203,15 +211,18 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
 
 <template>
   <div>
-    <PageHeader :title="t('wallets.title')" :subtitle="t('wallets.subtitle')">
+    <PageHeader :title="t('wallets.title')" :subtitle="pageSubtitle">
       <template #actions>
         <Button v-if="tab === 'withdrawals' && canAct" @click="withdrawalDialog = true"><Plus /> {{ t('wallets.withdrawals.add') }}</Button>
       </template>
     </PageHeader>
 
 
+    <!-- ── My wallet (the rider's own) ─────────────────────── -->
+    <MyWallet v-if="isMine" />
+
     <!-- ── Wallets ─────────────────────────────────────────── -->
-    <template v-if="tab === 'wallets'">
+    <template v-else-if="tab === 'wallets'">
       <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile :label="t('wallets.balance')" :value="totalCash" :format="sar" :icon="MtWallet" tone="brand" />
         <MetricTile :label="t('wallets.pending')" :value="totalPending" :format="sar" :icon="MtHourglass" tone="warning" />
@@ -355,7 +366,33 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
     </template>
 
     <!-- ── Debts (#4b) ─────────────────────────────────────── -->
-    <template v-else>
+    <template v-else-if="tab === 'debts'">
+      <!-- what a debt is here, how it starts and how it is paid off -->
+      <section class="bg-card mb-6 rounded-2xl border p-5" aria-labelledby="debts-explain-title">
+        <div class="flex items-start gap-3">
+          <span class="bg-orange/10 text-orange grid size-10 shrink-0 place-items-center rounded-xl"><Info class="size-5" /></span>
+          <div class="min-w-0">
+            <h2 id="debts-explain-title" class="font-semibold">{{ t('wallets.debts.explain.title') }}</h2>
+            <p class="text-muted-foreground mt-1 text-sm leading-relaxed">{{ t('wallets.debts.explain.lead') }}</p>
+          </div>
+        </div>
+        <ol class="mt-5 grid gap-3 md:grid-cols-3">
+          <li class="bg-muted/40 rounded-xl p-4">
+            <p class="flex items-center gap-2 text-sm font-semibold"><ArrowDownLeft class="text-brand size-4" /> {{ t('wallets.debts.explain.walletTitle') }}</p>
+            <p class="text-muted-foreground mt-1.5 text-xs leading-relaxed">{{ t('wallets.debts.explain.walletBody') }}</p>
+          </li>
+          <li class="bg-muted/40 rounded-xl p-4">
+            <p class="flex items-center gap-2 text-sm font-semibold"><FileWarning class="text-danger size-4" /> {{ t('wallets.debts.explain.debtTitle') }}</p>
+            <p class="text-muted-foreground mt-1.5 text-xs leading-relaxed">{{ t('wallets.debts.explain.debtBody') }}</p>
+          </li>
+          <li class="bg-muted/40 rounded-xl p-4">
+            <p class="flex items-center gap-2 text-sm font-semibold"><CheckCircle2 class="text-success size-4" /> {{ t('wallets.debts.explain.settleTitle') }}</p>
+            <p class="text-muted-foreground mt-1.5 text-xs leading-relaxed">{{ t('wallets.debts.explain.settleBody') }}</p>
+          </li>
+        </ol>
+        <p class="text-muted-foreground mt-4 flex items-start gap-2 text-xs"><Info class="mt-0.5 size-3.5 shrink-0" /> {{ t('wallets.debts.explain.note') }}</p>
+      </section>
+
       <div class="mb-6 grid gap-4 sm:grid-cols-3">
         <MetricTile :label="t('wallets.debts.kpi.total')" :value="totalDebt" :format="sar" :icon="MtFileWarning" tone="danger" />
         <MetricTile :label="t('wallets.debts.kpi.riders')" :value="ridersWithDebt" :format="(v) => num(Math.round(v))" :icon="MtUsers" tone="brand" />
@@ -369,9 +406,9 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
           :empty="t('common.noData')"
           :columns="[
             { key: 'name', label: t('dashboard.table.rider'), sortable: true },
-            { key: 'wallet', label: t('wallets.debts.wallet'), align: 'end', hideBelow: 'md' },
-            { key: 'pending', label: t('wallets.pending'), align: 'end', hideBelow: 'lg' },
-            { key: 'debt', label: t('wallets.debts.totalDebt'), align: 'end', sortable: true },
+            { key: 'wallet', label: t('wallets.debts.cols.wallet'), align: 'end', hideBelow: 'md' },
+            { key: 'pending', label: t('wallets.debts.cols.pending'), align: 'end', hideBelow: 'lg' },
+            { key: 'debt', label: t('wallets.debts.cols.debt'), align: 'end', sortable: true },
             { key: 'lastNotice', label: t('wallets.debts.lastNotice'), hideBelow: 'xl' },
             { key: 'actions', label: t('common.actions'), align: 'end' },
           ]"
@@ -400,11 +437,13 @@ const statusVariant = { pending: 'warning', approved: 'success', rejected: 'dang
       </Card>
     </template>
 
+    <template v-if="!isMine">
     <HandoverDialog v-model:open="handoverDialog" :rider="selected" @saved="load" />
     <WalletStatementDialog v-model:open="statementDialog" :rider="selected" />
     <DepositDecisionDialog v-model:open="decisionDialog" :deposit="selectedDeposit" @saved="load" />
     <WithdrawalDialog v-model:open="withdrawalDialog" :rider-options="riderOptions" :treasury-options="treasuryOptions" :default-treasury="mainTreasuryId" @saved="load" />
     <DebtActionDialog v-model:open="debtActionDialog" :mode="debtActionMode" :rider="selectedDebtRider" :treasury-options="treasuryOptions" @saved="load" />
     <RiderDebtsDialog v-model:open="debtsDialog" :rider-id="selectedDebtRider?.id ?? ''" :treasury-options="treasuryOptions" :can-act="canAct" @changed="load" />
+    </template>
   </div>
 </template>
