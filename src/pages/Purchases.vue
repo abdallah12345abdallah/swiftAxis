@@ -3,7 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Plus, Pencil, Download } from 'lucide-vue-next'
+import { Plus, Pencil, Download, Receipt, ShoppingCart, FileText, AlertTriangle, ShieldCheck } from 'lucide-vue-next'
+import MetricTile from '@/components/common/MetricTile.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import { Skeleton } from '@/components/ui/skeleton'
 import PageHeader from '@/components/common/PageHeader.vue'
 import FilterBar from '@/components/common/FilterBar.vue'
 import { DateRangePicker } from '@/components/ui/datepicker'
@@ -55,6 +58,37 @@ function openEditItem(i) {
 const purchaseDialog = ref(false)
 const supplierDialog = ref(false)
 const editingSupplier = ref(null)
+
+/* VAT report: search, date range and supplier filter, then totals and per-supplier shares */
+const vatQuery = ref('')
+const vatRange = ref(['', ''])
+const vatFilters = ref({ supplier: '' })
+const vatFilterDefs = computed(() => [
+  { key: 'supplier', label: t('purchases.fields.supplier'), options: [{ value: '', label: t('common.all') }, ...[...new Set(vat.value.rows.map((r) => r.supplierName))].map((n) => ({ value: n, label: n }))] },
+])
+const hasTaxNo = (r) => r.taxNo && r.taxNo !== '—'
+const rate = (r) => (r.preTax ? Math.round((r.vat / r.preTax) * 100) : 0)
+const initials = (name = '') => name.replace(/^(شركة|مؤسسة)\s+/, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('')
+const vatRows = computed(() => {
+  const q = vatQuery.value.trim().toLowerCase()
+  const [from, to] = vatRange.value
+  return vat.value.rows
+    .filter((r) => (!from || r.date >= from) && (!to || r.date <= to))
+    .filter((r) => !vatFilters.value.supplier || r.supplierName === vatFilters.value.supplier)
+    .filter((r) => !q || [r.invoiceNo, r.supplierName, r.taxNo, r.itemType, r.ref].some((v) => v && String(v).toLowerCase().includes(q)))
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+})
+const vatTotals = computed(() => ({
+  vat: vatRows.value.reduce((s, r) => s + r.vat, 0),
+  preTax: vatRows.value.reduce((s, r) => s + r.preTax, 0),
+  missing: vatRows.value.filter((r) => !hasTaxNo(r)).length,
+}))
+const vatBySupplier = computed(() => {
+  const m = new Map()
+  vatRows.value.forEach((r) => m.set(r.supplierName, (m.get(r.supplierName) ?? 0) + r.vat))
+  const total = vatTotals.value.vat || 1
+  return [...m].map(([name, v]) => ({ name, vat: v, pct: Math.round((v / total) * 1000) / 10 })).sort((a, b) => b.vat - a.vat)
+})
 
 const loc = (map, k) => map[k]?.[locale.value] ?? map[k]?.ar ?? k
 const categoryOptions = computed(() => Object.keys(SUPPLIER_CATEGORIES).map((k) => ({ value: k, label: loc(SUPPLIER_CATEGORIES, k) })))
@@ -154,7 +188,7 @@ function exportVat() {
   exportCsv(
     `input-vat-${todayStamp()}`,
     [t('purchases.vat.invoice'), t('purchases.fields.supplier'), t('purchases.vat.taxNo'), t('purchases.vat.preTax'), t('purchases.vat.amount')],
-    vat.value.rows.map((r) => [r.invoiceNo, r.supplierName, r.taxNo, r.preTax, r.vat]),
+    vatRows.value.map((r) => [r.invoiceNo, r.supplierName, r.taxNo, r.preTax, r.vat]),
   )
 }
 </script>
@@ -263,27 +297,103 @@ function exportVat() {
     </template>
 
     <!-- VAT report -->
-    <Card v-else-if="tab === 'vat'" class="overflow-hidden">
-      <DataTable
-        :loading="loading" :rows="vat.rows" :empty="t('purchases.empty')"
-        :columns="[
-          { key: 'invoiceNo', label: t('purchases.vat.invoice'), sortable: true },
-          { key: 'supplierName', label: t('purchases.fields.supplier'), sortable: true },
-          { key: 'taxNo', label: t('purchases.vat.taxNo'), hideBelow: 'md' },
-          { key: 'preTax', label: t('purchases.vat.preTax'), align: 'end' },
-          { key: 'vat', label: t('purchases.vat.amount'), align: 'end', sortable: true },
-        ]"
-      >
-        <template #cell-invoiceNo="{ row }"><span dir="ltr">{{ row.invoiceNo }}</span></template>
-        <template #cell-taxNo="{ row }"><span dir="ltr" class="text-muted-foreground tabular-nums">{{ row.taxNo }}</span></template>
-        <template #cell-preTax="{ row }"><span class="tabular-nums">{{ sar(row.preTax) }}</span></template>
-        <template #cell-vat="{ row }"><span class="text-orange font-semibold tabular-nums">{{ sar(row.vat) }}</span></template>
-      </DataTable>
-      <div class="bg-muted/40 flex items-center justify-between border-t px-5 py-3 text-sm font-semibold">
-        <span>{{ t('purchases.vat.total') }}</span>
-        <span class="text-orange tabular-nums">{{ sar(vat.totalVat) }}</span>
+    <div v-else-if="tab === 'vat'" class="space-y-6">
+      <FilterBar v-model:search="vatQuery" v-model="vatFilters" :filters="vatFilterDefs" :search-placeholder="t('purchases.vat.searchPh')">
+        <template #extra><DateRangePicker v-model="vatRange" /></template>
+      </FilterBar>
+
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile :label="t('purchases.vat.total')" :value="vatTotals.vat" :format="sar" :icon="Receipt" tone="orange" />
+        <MetricTile :label="t('purchases.vat.preTaxTotal')" :value="vatTotals.preTax" :format="sar" :icon="ShoppingCart" tone="brand" />
+        <MetricTile :label="t('purchases.vat.invoices')" :value="vatRows.length" :format="num" :icon="FileText" tone="primary" />
+        <MetricTile
+          :label="t('purchases.vat.missingTaxNo')"
+          :value="vatTotals.missing"
+          :format="num"
+          :icon="vatTotals.missing ? AlertTriangle : ShieldCheck"
+          :tone="vatTotals.missing ? 'warning' : 'success'"
+          :hint="vatTotals.missing ? t('purchases.vat.missingHint') : t('purchases.vat.allHaveTaxNo')"
+        />
       </div>
-    </Card>
+
+      <div v-if="loading" class="grid gap-6 lg:grid-cols-3">
+        <Skeleton class="h-80 rounded-2xl lg:col-span-2" />
+        <Skeleton class="h-80 rounded-2xl" />
+      </div>
+      <Card v-else-if="!vatRows.length"><EmptyState :title="t('purchases.empty')" /></Card>
+
+      <div v-else class="grid items-start gap-6 lg:grid-cols-3">
+        <div class="soft-table overflow-x-auto lg:col-span-2">
+          <table class="w-full text-sm">
+            <thead>
+              <tr>
+                <th class="px-4 text-start">{{ t('purchases.vat.invoice') }}</th>
+                <th class="min-w-[180px] px-4 text-start">{{ t('purchases.fields.supplier') }}</th>
+                <th class="px-4 text-start">{{ t('purchases.vat.taxNo') }}</th>
+                <th class="px-4 text-end">{{ t('purchases.vat.preTax') }}</th>
+                <th class="px-4 text-end">{{ t('purchases.vat.amount') }}</th>
+                <th class="px-4 text-end">{{ t('purchases.fields.total') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in vatRows" :key="r.id">
+                <td class="px-4 py-3">
+                  <span class="vt-inv" dir="ltr">{{ r.invoiceNo }}</span>
+                  <span class="text-muted-foreground mt-1 block text-xs tabular-nums">{{ formatDate(r.date) }}</span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2.5">
+                    <span class="vt-av">{{ initials(r.supplierName) }}</span>
+                    <div class="min-w-0">
+                      <p class="truncate font-semibold">{{ r.supplierName }}</p>
+                      <p class="text-muted-foreground truncate text-xs">{{ r.itemType }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <span v-if="hasTaxNo(r)" class="vt-tax" dir="ltr">{{ r.taxNo }}</span>
+                  <span v-else class="vt-missing"><AlertTriangle class="size-3" /> {{ t('purchases.vat.noTaxNo') }}</span>
+                </td>
+                <td class="px-4 py-3 text-end tabular-nums" dir="ltr">{{ sar(r.preTax) }}</td>
+                <td class="px-4 py-3 text-end">
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="vt-rate">{{ num(rate(r)) }}%</span>
+                    <b class="text-orange tabular-nums" dir="ltr">{{ sar(r.vat) }}</b>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-end font-bold tabular-nums" dir="ltr">{{ sar(r.total ?? r.preTax + r.vat) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="px-4 py-3.5">{{ t('common.total') }}</td>
+                <td class="px-4 py-3.5 text-end tabular-nums" dir="ltr">{{ sar(vatTotals.preTax) }}</td>
+                <td class="text-orange px-4 py-3.5 text-end tabular-nums" dir="ltr">{{ sar(vatTotals.vat) }}</td>
+                <td class="px-4 py-3.5 text-end tabular-nums" dir="ltr">{{ sar(vatTotals.preTax + vatTotals.vat) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- input VAT per supplier -->
+        <Card class="p-5">
+          <h3 class="font-bold">{{ t('purchases.vat.bySupplier') }}</h3>
+          <p class="text-muted-foreground mt-0.5 text-xs">{{ t('purchases.vat.bySupplierHint') }}</p>
+          <ul class="mt-4 space-y-3.5">
+            <li v-for="s in vatBySupplier" :key="s.name">
+              <div class="flex items-center justify-between gap-3 text-sm">
+                <span class="min-w-0 truncate font-semibold">{{ s.name }}</span>
+                <b class="text-orange shrink-0 tabular-nums" dir="ltr">{{ sar(s.vat) }}</b>
+              </div>
+              <div class="mt-1.5 flex items-center gap-2">
+                <span class="vt-bar"><i :style="{ width: `${s.pct}%` }" /></span>
+                <span class="text-muted-foreground w-12 shrink-0 text-end text-[11px] font-bold tabular-nums">{{ num(s.pct, { decimals: 1 }) }}%</span>
+              </div>
+            </li>
+          </ul>
+        </Card>
+      </div>
+    </div>
 
     <!-- By cost center -->
     <Card v-else class="overflow-hidden">
@@ -312,3 +422,21 @@ function exportVat() {
     <SupplierDialog v-model:open="supplierDialog" :supplier="editingSupplier" :category-options="categoryOptions" @saved="load" />
   </div>
 </template>
+
+<style scoped>
+/* VAT report */
+.vt-inv { font: 700 12.5px ui-monospace, 'IBM Plex Mono', monospace; padding: 0.1rem 0.5rem; border-radius: 0.4rem; background: var(--muted); }
+.vt-av {
+  display: grid; place-items: center; width: 2.1rem; height: 2.1rem; flex: none; border-radius: 0.7rem;
+  font-size: 12px; font-weight: 800; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--card));
+}
+.vt-tax { font: 600 12px ui-monospace, 'IBM Plex Mono', monospace; color: var(--muted-foreground); letter-spacing: 0.02em; }
+.vt-missing {
+  display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.1rem 0.55rem; border-radius: 9999px; white-space: nowrap;
+  font-size: 11px; font-weight: 800; color: var(--warning-foreground); background: color-mix(in srgb, var(--warning) 18%, transparent);
+}
+.vt-rate { font-size: 10.5px; font-weight: 800; padding: 0.05rem 0.4rem; border-radius: 0.35rem; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.vt-bar { flex: 1; height: 0.45rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vt-bar i { display: block; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 65%, var(--card)), var(--primary)); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .vt-bar i { transition: none; } }
+</style>

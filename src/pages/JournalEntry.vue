@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } 
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLeft, Save, Printer, Search, FilePlus2, Copy, RefreshCw, Plus, Trash2, Check, AlertTriangle, Lock, X, Ban,
+  ArrowRight, Save, Printer, Search, FilePlus2, Copy, RefreshCw, Plus, Trash2, Check, AlertTriangle, Lock, X, Ban,
   Keyboard, CornerDownLeft, Equal, Hash, Sparkles,
   FileText, CalendarDays, CalendarRange, AlignRight, ListOrdered, Repeat2, Calculator,
 } from 'lucide-vue-next'
@@ -573,16 +573,12 @@ const SHORTCUTS = [
 
 <template>
   <div>
-    <div class="no-print mb-4">
-      <Button variant="ghost" size="sm" as="RouterLink" to="/ledger">
-        <ArrowLeft class="size-4 rtl:rotate-180" /> {{ t('journal.back') }}
-      </Button>
-    </div>
-
     <PageHeader :title="t('journal.title')" :subtitle="t('journal.subtitle')" class="no-print">
       <template #actions>
         <!-- one joined toolbar: create / find, then what applies to the open entry -->
         <div class="je-tools">
+          <RouterLink to="/ledger" class="je-tool"><ArrowRight class="size-4 ltr:rotate-180" /> {{ t('journal.back') }}</RouterLink>
+          <i class="je-sep" />
           <button type="button" class="je-tool is-icon" :title="t('journal.refresh')" @click="askRefresh"><RefreshCw class="size-4" :class="refreshing && 'animate-spin'" /></button>
           <i class="je-sep" />
           <button type="button" class="je-tool is-main" :title="'Alt + N'" @click="startNew"><FilePlus2 class="size-4" /> {{ t('journal.new') }}</button>

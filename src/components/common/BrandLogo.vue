@@ -15,8 +15,10 @@ const props = defineProps({
   // wordmark text colour: 'auto' follows theme; 'light' forces white (navy bg)
   tone: { type: String, default: 'auto' },
   markSize: { type: Number, default: 36 },
-  // when the draw plays: 'mount' | 'hover' | 'both' | 'none'
+  // when the draw plays: 'mount' | 'hover' | 'both' | 'none' | 'loop' (repeats forever)
   animate: { type: String, default: 'mount' },
+  // wordmark size (Tailwind text size class)
+  wordSize: { type: String, default: 'text-lg' },
 })
 
 const uid = useId()
@@ -50,7 +52,7 @@ const wordClass = computed(() => (props.tone === 'light' ? 'text-white' : 'text-
     ref="root"
     dir="ltr"
     class="brand flex items-center gap-2.5 select-none"
-    :class="playing && 'is-playing'"
+    :class="[animate === 'loop' ? 'is-looping' : playing && 'is-playing']"
     @mouseenter="onEnter"
   >
     <!-- Mark -->
@@ -99,8 +101,8 @@ const wordClass = computed(() => (props.tone === 'light' ? 'text-white' : 'text-
 
     <!-- Wordmark -->
     <div v-if="!markOnly" class="flex items-baseline leading-none">
-      <span :class="wordClass" class="word word-swift text-lg font-extrabold tracking-tight">Swift</span>
-      <span class="word word-axis text-orange text-lg font-extrabold tracking-tight">Axis</span>
+      <span :class="[wordClass, wordSize]" class="word word-swift font-extrabold tracking-tight">Swift</span>
+      <span :class="wordSize" class="word word-axis text-orange font-extrabold tracking-tight">Axis</span>
     </div>
   </div>
 </template>
@@ -144,7 +146,51 @@ const wordClass = computed(() => (props.tone === 'light' ? 'text-white' : 'text-
   }
 }
 
+/* ── loop: a 7s cycle that keeps replaying ──
+   the ring draws itself, the arrow cuts through and the mark gives a small kick,
+   a light sweeps across the wordmark, then the route erases forward and starts over.
+   Most of the cycle is the logo at rest, fully drawn. */
+.brand.is-looping svg { overflow: visible; transform-origin: center; animation: sa-kick 7s cubic-bezier(0.34, 1.4, 0.64, 1) infinite; }
+.brand.is-looping .ring { animation: sa-loop-ring 7s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.brand.is-looping .arrow { animation: sa-loop-arrow 7s cubic-bezier(0.34, 1.3, 0.64, 1) infinite; }
+@keyframes sa-loop-ring {
+  0% { stroke-dashoffset: 1; }
+  11%, 86% { stroke-dashoffset: 0; }
+  96%, 100% { stroke-dashoffset: -1; }
+}
+@keyframes sa-loop-arrow {
+  0%, 8% { stroke-dashoffset: 1; }
+  16%, 84% { stroke-dashoffset: 0; }
+  93%, 100% { stroke-dashoffset: -1; }
+}
+@keyframes sa-kick {
+  0%, 15% { transform: scale(1) rotate(0); }
+  19% { transform: scale(1.12) rotate(-8deg); }
+  25%, 100% { transform: scale(1) rotate(0); }
+}
+/* the wordmark: a soft light passes over it after the arrow lands */
+.brand.is-looping .word {
+  --shine: white;
+  background-image: linear-gradient(100deg, currentColor 38%, var(--shine) 50%, currentColor 62%);
+  background-size: 300% 100%; background-position: 100% 0; background-repeat: no-repeat;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: sa-shine 7s ease-in-out infinite;
+}
+/* white text catches an orange glint, the orange text a white one */
+.brand.is-looping .word-swift.text-white { --shine: color-mix(in srgb, var(--primary) 70%, white); }
+.brand.is-looping .word-axis { animation-delay: 0.12s; }
+@keyframes sa-shine {
+  /* 3× wide gradient: at 100% the glint sits off the left edge, at 0% off the right;
+     either way the text is fully covered by its own colour */
+  0%, 22% { background-position: 100% 0; }
+  40%, 100% { background-position: 0% 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .brand.is-looping svg,
+  .brand.is-looping .ring,
+  .brand.is-looping .arrow,
+  .brand.is-looping .word,
   .brand.is-playing .ring,
   .brand.is-playing .arrow,
   .brand.is-playing .word {

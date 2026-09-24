@@ -298,6 +298,17 @@
 .bg-card:has(> .overflow-x-auto:only-child > .soft-table) {
   background: transparent; border-color: transparent; box-shadow: none;
 }
+/* …and so does a Card that holds a table plus a hint line or a totals strip:
+   no card around it, the extra lines sit on the page just above / below the well */
+.bg-card:has(> .soft-host, > .soft-table, > .overflow-x-auto > .soft-table) {
+  background: transparent; border-color: transparent; box-shadow: none; overflow: visible;
+}
+.bg-card:has(> .soft-host, > .soft-table, > .overflow-x-auto > .soft-table) > :not(.soft-host):not(.soft-table):not(.overflow-x-auto) {
+  border-color: transparent; padding-inline: 0.5rem;
+}
+.bg-card:has(> .soft-host, > .soft-table, > .overflow-x-auto > .soft-table) > [class*='bg-muted'] {
+  margin-top: 0.5rem; padding-inline: 1.25rem; border-radius: 0.9rem;
+}
 
 /* short values (codes, amounts, plates) never break across lines */
 .soft-table td.tabular-nums, .soft-table td .tabular-nums, .soft-table td [dir='ltr'] { white-space: nowrap; }

@@ -356,7 +356,43 @@
       "done": "Role converted to {role}",
       "converted": "Converted from {role}"
     },
-    "searchPh": "Search by name, email or mobile…"
+    "searchPh": "Search by name, email or mobile…",
+    "rolesTab": {
+      "stats": {
+        "roles": "Roles",
+        "users": "Users",
+        "screens": "Screens",
+        "coverage": "Average coverage"
+      },
+      "fullAccess": "{n} with full access",
+      "activeUsers": "{n} active",
+      "groups": "Across {n} groups",
+      "coverageHint": "{granted} of {total} permissions granted",
+      "rolesTitle": "Roles",
+      "rolesHint": "Pick a role to highlight it in the access matrix",
+      "members": "Members",
+      "noMembers": "No users in this role",
+      "access": "Access",
+      "screensOf": "{n} of {total} screens",
+      "fullBadge": "Full access",
+      "viewUsers": "View users",
+      "focus": "Highlight in matrix",
+      "matrixTitle": "Access matrix",
+      "searchPh": "Search a page…",
+      "allRoles": "All roles",
+      "rolesAllowed": "Roles with access",
+      "total": "Total",
+      "noMatch": "No matching pages",
+      "allowed": "Allowed",
+      "denied": "No access",
+      "desc": {
+        "manager": "Full control of every screen, including users and settings",
+        "supervisor": "Oversees riders, contracts, daily orders and cash wallets",
+        "accountant": "Handles commissions, accounts, treasury, sales and purchases",
+        "storekeeper": "Looks after vehicles, treasury and purchases",
+        "rider": "Sees only their own dashboard and daily orders"
+      }
+    }
   },
   "reports": {
     "title": "Reports",
@@ -478,7 +514,16 @@
       "taxNo": "Tax no.",
       "preTax": "Pre-tax",
       "amount": "VAT",
-      "total": "Total VAT"
+      "total": "Total VAT",
+      "searchPh": "Search by invoice, supplier or tax number…",
+      "preTaxTotal": "Purchases before VAT",
+      "invoices": "Taxable invoices",
+      "missingTaxNo": "Invoices without tax no.",
+      "missingHint": "Their VAT cannot be reclaimed without the supplier tax number",
+      "allHaveTaxNo": "Every invoice has a tax number",
+      "noTaxNo": "No tax no.",
+      "bySupplier": "VAT by supplier",
+      "bySupplierHint": "Each supplier's share of input VAT in the period"
     },
     "center": {
       "name": "Cost center",
@@ -615,7 +660,34 @@
       "handovers": "Handovers",
       "saved": "Saved",
       "errName": "Name is required",
-      "hint": "A shift links the vehicle and the rider together on the handover screen."
+      "hint": "A shift links the vehicle and the rider together on the handover screen.",
+      "searchPh": "Search by shift name or time…",
+      "empty": "No work shifts",
+      "hoursN": "{n} h",
+      "overnight": "Overnight",
+      "riders": "Assigned riders",
+      "noRiders": "No riders assigned",
+      "lastHandover": "Last handover",
+      "noHandover": "No handovers yet",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "confirmOn": {
+        "title": "Activate this shift?",
+        "message": "The shift will be available again when recording a vehicle handover."
+      },
+      "confirmOff": {
+        "title": "Deactivate this shift?",
+        "message": "The shift won't be offered when recording a vehicle handover until it's reactivated."
+      },
+      "stats": {
+        "total": "Work shifts",
+        "activeN": "{n} active",
+        "coverage": "Daily coverage",
+        "coverageHint": "Out of 24 hours",
+        "staffed": "Staffed vehicles",
+        "staffedHint": "{n} of {total} vehicles",
+        "handovers": "Handovers"
+      }
     },
     "fuel": {
       "title": "Fuel expense sheet",
@@ -635,7 +707,11 @@
       "allRiders": "All riders",
       "errVehicle": "Pick a vehicle",
       "errAmount": "Enter the amount",
-      "searchPh": "Search by station, plate or rider…"
+      "searchPh": "Search by station, plate or rider…",
+      "avgPrice": "Avg price / liter",
+      "tankShare": "{pct} of the tank",
+      "idleN": "{n} vehicles with no fill-ups",
+      "fillsN": "{n} fill-ups"
     },
     "expenseItems": {
       "title": "Expense items",
@@ -648,7 +724,30 @@
       "usage": "Times used",
       "saved": "Saved",
       "errName": "Name is required",
-      "hint": "Items are used by vehicle expenses and treasury payment vouchers."
+      "hint": "Items are used by vehicle expenses and treasury payment vouchers.",
+      "searchPh": "Search by item name or account…",
+      "empty": "No expense items",
+      "usesN": "{n} uses",
+      "unused": "Not used yet",
+      "booked": "Booked on vehicles",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "confirmOn": {
+        "title": "Activate this item?",
+        "message": "The item will be available again on expenses and payment vouchers."
+      },
+      "confirmOff": {
+        "title": "Deactivate this item?",
+        "message": "The item won't be offered on new expenses or payment vouchers. Past records stay as they are."
+      },
+      "stats": {
+        "total": "Expense items",
+        "active": "Active items",
+        "activeHint": "{n} of {total}",
+        "used": "Items in use",
+        "unusedN": "{n} not used yet",
+        "amount": "Vehicle expenses booked"
+      }
     },
     "searchExpenses": "Search by plate, invoice no. or note…",
     "searchPh": "Search by plate, model, chassis or rider…",
@@ -658,6 +757,19 @@
       "dir_toCompany": "Back to the company",
       "dir_fromCompany": "From the company",
       "searchHandovers": "Search by plate, rider or notes…"
+    },
+    "exp": {
+      "total": "Total expenses",
+      "count": "Expense records",
+      "vehiclesN": "Across {n} vehicles",
+      "average": "Average expense",
+      "largest": "Largest: {amount}",
+      "top": "Top item",
+      "topHint": "{name} · {pct} of total",
+      "byItem": "Share per item",
+      "byItemHint": "Click an item to filter the list",
+      "byVehicle": "Top vehicles by spend",
+      "recordsN": "{n} records"
     }
   },
   "wallets": {
@@ -950,7 +1062,14 @@
       "expenses": "Expenses",
       "net": "Net profit",
       "totalRevenue": "Total revenue",
-      "totalExpense": "Total expenses"
+      "totalExpense": "Total expenses",
+      "loss": "Net loss",
+      "margin": "Profit margin",
+      "accountsN": "{n} accounts",
+      "splitTitle": "Where does revenue go?",
+      "splitHint": "Share of each expense and the profit out of every 100 SAR of revenue",
+      "otherExpenses": "Other expenses",
+      "lossHint": "Expenses exceed revenue by {amount} in this period"
     },
     "cc": {
       "name": "Cost center",
@@ -970,6 +1089,38 @@
       "addTitle": "New journal entry",
       "save": "Post entry",
       "descriptionPh": "e.g. June commissions"
+    },
+    "searchPh": "Search by entry no., statement or account…",
+    "stats": {
+      "entries": "Entries",
+      "amount": "Total amount",
+      "manual": "Manual entries",
+      "voided": "Voided entries"
+    },
+    "monthSummary": "{n} entries · {amount}",
+    "linesN": "{n} lines",
+    "open": "Open entry",
+    "sources": {
+      "manual": "Manual",
+      "opening": "Opening",
+      "closing": "Closing",
+      "commissions": "Commissions",
+      "debt": "Debts",
+      "orders": "Orders",
+      "purchases": "Purchases",
+      "sales": "Sales",
+      "treasury": "Treasury",
+      "vehicles": "Vehicles",
+      "wallets": "Wallets",
+      "withdrawal": "Withdrawals"
+    },
+    "trial": {
+      "difference": "Difference",
+      "balanced": "Balanced",
+      "unbalanced": "Not balanced",
+      "accounts": "Accounts with activity",
+      "code": "Account no.",
+      "searchPh": "Search by account name or number…"
     }
   },
   "settings": {

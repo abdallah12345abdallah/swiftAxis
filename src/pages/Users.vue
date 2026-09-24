@@ -3,7 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Plus, Pencil, Power, PowerOff, Check, Warehouse } from 'lucide-vue-next'
+import { useRouter, useRoute } from 'vue-router'
+import { Plus, Pencil, Power, PowerOff, Warehouse } from 'lucide-vue-next'
 import { useConfirm } from '@/composables/useConfirm'
 import FilterBar from '@/components/common/FilterBar.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -14,7 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import UserDialog from '@/components/users/UserDialog.vue'
-import { NAV_ITEMS, ALL_ROLES, ROLE_CONVERSIONS } from '@/lib/constants'
+import RolesPanel from '@/components/users/RolesPanel.vue'
+import { ALL_ROLES, ROLE_CONVERSIONS } from '@/lib/constants'
 import { useToast } from '@/composables/useToast'
 import { useDate } from '@/lib/format'
 import { fetchUsers, toggleUser, convertRole } from '@/api/users'
@@ -24,6 +26,8 @@ const { t } = useI18n()
 const confirm = useConfirm()
 const { formatDate } = useDate()
 const toast = useToast()
+const router = useRouter()
+const route = useRoute()
 
 // role conversion (#8): supervisor → warehouse keeper
 const convertDialog = ref(false)
@@ -70,7 +74,9 @@ const roleOptions = computed(() => ALL_ROLES.map((r) => ({ value: r, label: t(`r
 
 /* users list: search by name / email / mobile; role and status in the tray */
 const userQuery = ref('')
-const userFilters = ref({ role: '', status: '' })
+// ?role= (from a role card on the roles screen) opens the list already filtered
+const initialRole = ALL_ROLES.includes(String(route.query.role)) ? String(route.query.role) : ''
+const userFilters = ref({ role: initialRole, status: '' })
 const userFilterDefs = computed(() => [
   { key: 'role', label: t('users.role'), options: roleOptions.value },
   { key: 'status', label: t('common.status'), options: [{ value: 'active', label: t('common.active') }, { value: 'inactive', label: t('common.inactive') }] },
@@ -127,8 +133,8 @@ async function toggle(u) {
   })
 }
 
-// Access matrix from the single source of truth (NAV_ITEMS)
-const matrix = computed(() => NAV_ITEMS.map((i) => ({ key: i.key, roles: i.roles })))
+// roles screen → users screen, filtered to one role
+const viewRoleUsers = (role) => router.push({ name: 'users', query: { role } })
 const actionVariant = { login: 'success', logout: 'secondary', create: 'default', update: 'warning', delete: 'danger' }
 </script>
 
@@ -179,28 +185,7 @@ const actionVariant = { login: 'success', logout: 'secondary', create: 'default'
     </template>
 
     <!-- Roles & access matrix -->
-    <Card v-else-if="tab === 'roles'" class="overflow-hidden">
-      <div class="text-muted-foreground border-b p-5 text-sm">{{ t('users.matrix.hint') }}</div>
-      <div class="overflow-x-auto">
-        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
-          <thead>
-            <tr class="text-muted-foreground border-b">
-              <th class="px-5 py-3 text-start font-medium">{{ t('users.matrix.page') }}</th>
-              <th v-for="r in ALL_ROLES" :key="r" class="px-5 py-3 text-center font-medium">{{ t(`roles.${r}`) }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="m in matrix" :key="m.key" class="border-b last:border-0">
-              <td class="px-5 py-3 font-medium">{{ t(`nav.${m.key}`) }}</td>
-              <td v-for="r in ALL_ROLES" :key="r" class="px-5 py-3 text-center">
-                <Check v-if="m.roles.includes(r)" class="text-success mx-auto size-4" />
-                <span v-else class="text-muted-foreground/40">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table></div>
-      </div>
-    </Card>
+    <RolesPanel v-else-if="tab === 'roles'" :users="users" :loading="loading" @view-users="viewRoleUsers" />
 
     <!-- Audit log -->
     <template v-else>

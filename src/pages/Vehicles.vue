@@ -1,11 +1,19 @@
 <script setup>
 import MetricTile from '@/components/common/MetricTile.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { Fuel as MtFuel, Droplets as MtDroplets, Banknote as MtBanknote } from 'lucide-vue-next'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
+import { useConfirm } from '@/composables/useConfirm'
 import { Plus, Pencil, Bike, Car, Download, ArrowLeftRight, Building2, Fuel, Clock, Tags, Camera } from 'lucide-vue-next'
+import {
+  Sun, Moon, Timer, Truck, Receipt, Coins, Calculator, Trophy, Power, PowerOff, Gauge,
+  Layers, BadgeCheck, ListChecks, StickyNote, Users,
+} from 'lucide-vue-next'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import PageHeader from '@/components/common/PageHeader.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import { Card } from '@/components/ui/card'
@@ -29,9 +37,9 @@ import { exportCsv, todayStamp } from '@/lib/export'
 import { VEHICLE_TYPES, EXPENSE_TYPES, RIDERS, VEHICLE_STATUS } from '@/api/fixtures'
 import {
   fetchVehicles, fetchExpenses, profitability, expenseBreakdown,
-  fetchShifts, fetchHandovers, fetchFuelSheet,
+  fetchShifts, fetchHandovers, fetchFuelSheet, updateShift,
 } from '@/api/vehicles'
-import { fetchExpenseItems } from '@/api/catalogs'
+import { fetchExpenseItems, updateExpenseItem } from '@/api/catalogs'
 import { fetchAccounts } from '@/api/ledger'
 
 const { t, locale } = useI18n()
@@ -147,25 +155,26 @@ const shownHandovers = computed(() => {
   )
 })
 
-/* expenses list: search, date range, vehicle + type in the tray */
+/* expenses list: search, date range and vehicle (tray); the expense type is
+   picked with the item pills above the list */
 const expQuery = ref('')
 const expRange = ref(['', ''])
 const expFilters = ref({ vehicle: '', type: '' })
 const expFilterDefs = computed(() => [
   { key: 'vehicle', label: t('vehicles.fields.vehicle'), options: vehicles.value.map((v) => ({ value: v.id, label: v.plate })) },
-  { key: 'type', label: t('vehicles.fields.type'), options: Object.keys(EXPENSE_TYPES).map((k) => ({ value: k, label: loc(EXPENSE_TYPES, k) })) },
 ])
-const shownExpenses = computed(() => {
+// everything but the type, so the pills and the share card can count per type
+const expBase = computed(() => {
   const q = expQuery.value.trim().toLowerCase()
   const [a, b] = expRange.value
   const f = expFilters.value
   return expenses.value.filter((e) =>
-    (!q || [e.plate, e.invoiceNo, e.note].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!q || [e.plate, e.invoiceNo, e.note, loc(EXPENSE_TYPES, e.type)].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
     (!a || e.date >= a) && (!b || e.date <= b) &&
-    (!f.vehicle || e.vehicleId === f.vehicle) &&
-    (!f.type || e.type === f.type),
+    (!f.vehicle || e.vehicleId === f.vehicle),
   )
 })
+const shownExpenses = computed(() => expBase.value.filter((e) => !expFilters.value.type || e.type === expFilters.value.type))
 
 /* fuel sheet: vehicle / rider / dates go to the API (the per-vehicle summary
    follows them); the search narrows the rows, and the cards count what is shown */
@@ -193,6 +202,225 @@ const fuelTotals = computed(() => ({
   liters: shownFuel.value.reduce((s, r) => s + r.liters, 0),
   amount: shownFuel.value.reduce((s, r) => s + r.amount, 0),
 }))
+
+/* ── shared helpers for the shifts / expenses / fuel / items tabs ── */
+const confirm = useConfirm()
+const share = (a, total) => (total > 0 ? Math.max(0, Math.round((a / total) * 1000) / 10) : 0)
+const pct = (v) => `${num(v, { decimals: 1 })}%`
+const initials = (name) => String(name ?? '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('')
+const accCode = (id) => accounts.value.find((a) => a.id === id)?.code ?? ''
+// one color per expense item, used by the pills, chips, bars and item cards
+const TYPE_TONES = {
+  fuel: 'var(--primary)', maintenance: 'var(--brand)', insurance: 'var(--success)', registration: 'var(--navy)',
+  fines: 'var(--danger)', rent: 'var(--warning)', salaries: 'var(--orange)', other: 'var(--muted-foreground)',
+}
+const EXTRA_TONES = ['var(--brand)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--navy)', 'var(--primary)']
+const typeTone = (k) => TYPE_TONES[k] ?? EXTRA_TONES[[...String(k)].reduce((s, c) => s + c.charCodeAt(0), 0) % EXTRA_TONES.length]
+
+/* ── work shifts: status pills, and each shift drawn on a 24-hour track ── */
+const toMin = (hm) => {
+  const [h, m] = String(hm ?? '').split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
+function shiftSpan(s) {
+  const start = toMin(s.from)
+  let mins = toMin(s.to) - start
+  if (mins <= 0) mins += 1440
+  // a shift that runs past midnight is drawn as two pieces
+  const parts = start + mins <= 1440 ? [[start, mins]] : [[start, 1440 - start], [0, start + mins - 1440]]
+  return { start, mins, overnight: start + mins > 1440, segs: parts.map(([a, d]) => ({ start: (a / 1440) * 100, width: (d / 1440) * 100 })) }
+}
+const hoursText = (h) => {
+  const r = Math.round(h * 10) / 10
+  return t('vehicles.shifts.hoursN', { n: num(r, { decimals: Number.isInteger(r) ? 0 : 1 }) })
+}
+const shiftIcon = (s) => {
+  const h = Math.floor(toMin(s.from) / 60)
+  return h >= 5 && h < 14 ? Sun : Moon
+}
+const shiftQuery = ref('')
+const shiftStatus = ref('')
+const searchedShifts = computed(() => {
+  const q = shiftQuery.value.trim().toLowerCase()
+  return shifts.value.filter((s) => !q || [s.name, s.en, s.from, s.to].some((v) => String(v ?? '').toLowerCase().includes(q)))
+})
+const shiftPills = computed(() => [
+  { value: '', label: t('common.all'), count: searchedShifts.value.length },
+  { value: 'active', label: t('common.active'), count: searchedShifts.value.filter((s) => s.active).length, color: 'var(--success)' },
+  { value: 'inactive', label: t('common.inactive'), count: searchedShifts.value.filter((s) => !s.active).length, color: 'var(--muted-foreground)' },
+])
+const shiftCards = computed(() =>
+  searchedShifts.value
+    .filter((s) => !shiftStatus.value || (shiftStatus.value === 'active') === !!s.active)
+    .map((s) => {
+      const key = `${s.id}RiderId`
+      const riders = vehicles.value
+        .filter((v) => v[key])
+        .map((v) => ({ id: v[key], name: RIDERS.find((r) => r.id === v[key])?.name ?? v[key], plate: v.plate }))
+      // handovers come newest first
+      const last = handovers.value.find((h) => h.shiftId === s.id) ?? null
+      return { ...s, span: shiftSpan(s), riders, last }
+    }),
+)
+const shiftStats = computed(() => {
+  const active = shifts.value.filter((s) => s.active)
+  // hours of the day covered by at least one active shift (15-minute slots)
+  const slots = new Set()
+  active.forEach((s) => {
+    const { start, mins } = shiftSpan(s)
+    for (let m = 0; m < mins; m += 15) slots.add(Math.floor(((start + m) % 1440) / 15))
+  })
+  return {
+    total: shifts.value.length,
+    active: active.length,
+    hours: slots.size / 4,
+    staffed: vehicles.value.filter((v) => active.some((s) => v[`${s.id}RiderId`])).length,
+    vehicles: vehicles.value.length,
+    handovers: handovers.value.length,
+  }
+})
+function toggleShift(s) {
+  const off = !!s.active
+  confirm({
+    tone: off ? 'danger' : 'success',
+    icon: off ? PowerOff : Power,
+    title: t(off ? 'vehicles.shifts.confirmOff.title' : 'vehicles.shifts.confirmOn.title'),
+    message: t(off ? 'vehicles.shifts.confirmOff.message' : 'vehicles.shifts.confirmOn.message'),
+    subject: `${shiftName(s.id)} · ${s.from}–${s.to}`,
+    confirmText: t(off ? 'vehicles.shifts.deactivate' : 'vehicles.shifts.activate'),
+    onConfirm: async () => {
+      await updateShift(s.id, { active: !off })
+      shifts.value = await fetchShifts()
+    },
+  })
+}
+
+/* ── expenses: tiles, item pills, the share per item and per vehicle ── */
+const expPills = computed(() => {
+  const by = {}
+  expBase.value.forEach((e) => {
+    by[e.type] ??= { count: 0, amount: 0 }
+    by[e.type].count += 1
+    by[e.type].amount += e.amount
+  })
+  const sel = expFilters.value.type
+  if (sel && !by[sel]) by[sel] = { count: 0, amount: 0 }
+  return [
+    { value: '', label: t('common.all'), count: expBase.value.length },
+    ...Object.entries(by)
+      .sort((a, b) => b[1].amount - a[1].amount)
+      .map(([k, v]) => ({ value: k, label: loc(EXPENSE_TYPES, k), count: v.count, color: typeTone(k) })),
+  ]
+})
+const expBaseTotal = computed(() => expBase.value.reduce((s, e) => s + e.amount, 0))
+const expByItem = computed(() =>
+  expPills.value
+    .filter((p) => p.value && p.count)
+    .map((p) => {
+      const amount = expBase.value.filter((e) => e.type === p.value).reduce((s, e) => s + e.amount, 0)
+      return { ...p, amount, pct: share(amount, expBaseTotal.value) }
+    }),
+)
+const expByVehicle = computed(() => {
+  const by = {}
+  shownExpenses.value.forEach((e) => {
+    by[e.vehicleId] ??= { id: e.vehicleId, plate: e.plate, amount: 0, count: 0 }
+    by[e.vehicleId].amount += e.amount
+    by[e.vehicleId].count += 1
+  })
+  const rows = Object.values(by).sort((a, b) => b.amount - a.amount).slice(0, 5)
+  const max = Math.max(1, ...rows.map((r) => r.amount))
+  return rows.map((r) => ({ ...r, width: Math.max(4, share(r.amount, max)) }))
+})
+const expStats = computed(() => {
+  const rows = shownExpenses.value
+  const amount = rows.reduce((s, e) => s + e.amount, 0)
+  const byType = {}
+  rows.forEach((e) => (byType[e.type] = (byType[e.type] ?? 0) + e.amount))
+  const [topType, topAmount] = Object.entries(byType).sort((a, b) => b[1] - a[1])[0] ?? ['', 0]
+  return {
+    amount,
+    count: rows.length,
+    vehicles: new Set(rows.map((e) => e.vehicleId)).size,
+    average: rows.length ? amount / rows.length : 0,
+    largest: Math.max(0, ...rows.map((e) => e.amount)),
+    topType,
+    topAmount,
+    topPct: share(topAmount, amount),
+  }
+})
+const expRowShare = (a) => Math.max(3, share(a, Math.max(1, ...shownExpenses.value.map((e) => e.amount))))
+const setExpType = (v) => (expFilters.value = { ...expFilters.value, type: expFilters.value.type === v ? '' : v })
+
+/* ── fuel: average price, tank fill per row, spend per vehicle ── */
+const fuelAvgPrice = computed(() => (fuelTotals.value.liters ? fuelTotals.value.amount / fuelTotals.value.liters : 0))
+const fuelVehicleCount = computed(() => new Set(shownFuel.value.map((r) => r.vehicleId)).size)
+const tankOf = (vehicleId) => vehicles.value.find((v) => v.id === vehicleId)?.tankCapacity ?? 0
+const tankFill = (r) => {
+  const tank = tankOf(r.vehicleId)
+  return tank ? Math.min(100, Math.round((r.liters / tank) * 100)) : null
+}
+const fuelBars = computed(() => {
+  const rows = fuel.value.byVehicle.filter((r) => r.fills).sort((a, b) => b.amount - a.amount)
+  const max = Math.max(1, ...rows.map((r) => r.amount))
+  return rows.map((r) => ({ ...r, width: Math.max(4, share(r.amount, max)) }))
+})
+const fuelIdle = computed(() => fuel.value.byVehicle.filter((r) => !r.fills).length)
+
+/* ── expense items: a catalog of cards with an on/off switch ── */
+const itemQuery = ref('')
+const itemStatus = ref('')
+const itemFilters = ref({ account: '' })
+const itemFilterDefs = computed(() => [
+  {
+    key: 'account',
+    label: t('vehicles.expenseItems.account'),
+    options: [...new Set(expenseItems.value.map((i) => i.account))].map((id) => ({ value: id, label: accName(id), hint: accCode(id) })),
+  },
+])
+const itemRows = computed(() => {
+  const rows = expenseItems.value.map((i) => {
+    const mine = expenses.value.filter((e) => e.type === i.id)
+    return { ...i, amount: mine.reduce((s, e) => s + e.amount, 0) }
+  })
+  const max = Math.max(1, ...rows.map((r) => r.amount))
+  return rows.map((r) => ({ ...r, width: r.amount ? Math.max(4, share(r.amount, max)) : 0 }))
+})
+const searchedItems = computed(() => {
+  const q = itemQuery.value.trim().toLowerCase()
+  const acc = itemFilters.value.account
+  return itemRows.value.filter((i) =>
+    (!q || [i.name, i.en, i.id, accName(i.account), accCode(i.account)].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!acc || i.account === acc),
+  )
+})
+const itemPills = computed(() => [
+  { value: '', label: t('common.all'), count: searchedItems.value.length },
+  { value: 'active', label: t('common.active'), count: searchedItems.value.filter((i) => i.active).length, color: 'var(--success)' },
+  { value: 'inactive', label: t('common.inactive'), count: searchedItems.value.filter((i) => !i.active).length, color: 'var(--muted-foreground)' },
+])
+const shownItems = computed(() => searchedItems.value.filter((i) => !itemStatus.value || (itemStatus.value === 'active') === !!i.active))
+const itemStats = computed(() => {
+  const all = itemRows.value
+  const active = all.filter((i) => i.active).length
+  const used = all.filter((i) => i.usage > 0).length
+  return { total: all.length, active, used, unused: all.length - used, amount: all.reduce((s, i) => s + i.amount, 0) }
+})
+function toggleItem(i) {
+  const off = !!i.active
+  confirm({
+    tone: off ? 'danger' : 'success',
+    icon: off ? PowerOff : Power,
+    title: t(off ? 'vehicles.expenseItems.confirmOff.title' : 'vehicles.expenseItems.confirmOn.title'),
+    message: t(off ? 'vehicles.expenseItems.confirmOff.message' : 'vehicles.expenseItems.confirmOn.message'),
+    subject: locale.value === 'ar' ? i.name : i.en,
+    confirmText: t(off ? 'vehicles.expenseItems.deactivate' : 'vehicles.expenseItems.activate'),
+    onConfirm: async () => {
+      await updateExpenseItem(i.id, { active: !off })
+      expenseItems.value = await fetchExpenseItems()
+    },
+  })
+}
 
 async function loadBreakdown() {
   breakdown.value = await expenseBreakdown({ granularity: granularity.value, vehicleId: chartVehicle.value || undefined })
@@ -374,34 +602,255 @@ function exportFuel() {
     </template>
 
     <!-- Shifts (#5) -->
-    <Card v-else-if="tab === 'shifts'" class="overflow-hidden">
-      <div class="text-muted-foreground flex items-start gap-2 border-b p-5 text-sm"><Clock class="mt-0.5 size-4 shrink-0" /> {{ t('vehicles.shifts.hint') }}</div>
-      <DataTable
-        :loading="loading" :rows="shifts" :empty="t('common.noData')"
-        :columns="[
-          { key: 'name', label: t('vehicles.shifts.name'), sortable: true },
-          { key: 'hours', label: t('common.time') },
-          { key: 'vehicles', label: t('vehicles.shifts.vehicles'), align: 'end', hideBelow: 'sm' },
-          { key: 'handovers', label: t('vehicles.shifts.handovers'), align: 'end', hideBelow: 'md' },
-          { key: 'active', label: t('common.status') },
-          { key: 'actions', label: t('common.actions'), align: 'end' },
-        ]"
-      >
-        <template #cell-name="{ row }"><span class="font-medium">{{ locale === 'ar' ? row.name : row.en }}</span> <span class="text-muted-foreground text-xs">{{ locale === 'ar' ? row.en : row.name }}</span></template>
-        <template #cell-hours="{ row }"><span dir="ltr" class="tabular-nums">{{ row.from }} – {{ row.to }}</span></template>
-        <template #cell-vehicles="{ row }"><span class="tabular-nums">{{ num(row.vehicles) }}</span></template>
-        <template #cell-handovers="{ row }"><span class="tabular-nums">{{ num(row.handovers) }}</span></template>
-        <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
-        <template #cell-actions="{ row }">
-          <ActionMenu :items="[
-                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditShift(row) },
-                  ]" />
-        </template>
-      </DataTable>
-    </Card>
+    <div v-else-if="tab === 'shifts'" class="space-y-6">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile :label="t('vehicles.shifts.stats.total')" :value="shiftStats.total" :format="(v) => num(Math.round(v))" :icon="Clock" tone="primary" :hint="t('vehicles.shifts.stats.activeN', { n: num(shiftStats.active) })" />
+        <MetricTile
+          :label="t('vehicles.shifts.stats.coverage')"
+          :value="shiftStats.hours"
+          :format="(v) => hoursText(Number.isInteger(shiftStats.hours) ? Math.round(v) : v)"
+          :icon="Timer"
+          tone="brand"
+          :progress="share(shiftStats.hours, 24)"
+          :hint="t('vehicles.shifts.stats.coverageHint')"
+        />
+        <MetricTile
+          :label="t('vehicles.shifts.stats.staffed')"
+          :value="shiftStats.staffed"
+          :format="(v) => num(Math.round(v))"
+          :icon="Truck"
+          tone="success"
+          :progress="share(shiftStats.staffed, shiftStats.vehicles)"
+          :hint="t('vehicles.shifts.stats.staffedHint', { n: num(shiftStats.staffed), total: num(shiftStats.vehicles) })"
+        />
+        <MetricTile :label="t('vehicles.shifts.stats.handovers')" :value="shiftStats.handovers" :format="(v) => num(Math.round(v))" :icon="ArrowLeftRight" tone="orange" />
+      </div>
+
+      <FilterBar v-model:search="shiftQuery" :search-placeholder="t('vehicles.shifts.searchPh')" />
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="vh-pills" role="tablist">
+          <button
+            v-for="p in shiftPills"
+            :key="p.value"
+            type="button"
+            role="tab"
+            class="vh-pill"
+            :class="shiftStatus === p.value && 'is-on'"
+            :aria-selected="shiftStatus === p.value"
+            @click="shiftStatus = p.value"
+          >
+            <i v-if="p.color" class="vh-dot" :style="{ background: p.color }" />
+            {{ p.label }}
+            <span class="vh-count">{{ num(p.count) }}</span>
+          </button>
+        </div>
+        <p class="text-muted-foreground flex items-start gap-1.5 text-xs"><Clock class="mt-px size-3.5 shrink-0" /> {{ t('vehicles.shifts.hint') }}</p>
+      </div>
+
+      <div v-if="loading" class="grid gap-4 lg:grid-cols-2">
+        <Skeleton v-for="i in 2" :key="i" class="h-72 rounded-2xl" />
+      </div>
+      <Card v-else-if="!shiftCards.length"><EmptyState :title="t('vehicles.shifts.empty')" :icon="Clock" /></Card>
+
+      <div v-else class="grid items-start gap-4 lg:grid-cols-2">
+        <article v-for="(s, i) in shiftCards" :key="s.id" class="vs-card" :class="!s.active && 'is-off'" :style="{ '--d': `${Math.min(i, 8) * 50}ms` }">
+          <header class="vs-head">
+            <span class="vs-ic"><component :is="shiftIcon(s)" class="size-5" /></span>
+            <div class="min-w-0 flex-1">
+              <h3 class="vs-name truncate">{{ locale === 'ar' ? s.name : s.en }}</h3>
+              <p class="text-muted-foreground truncate text-xs">{{ locale === 'ar' ? s.en : s.name }}</p>
+            </div>
+            <Badge :variant="s.active ? 'success' : 'secondary'">{{ s.active ? t('common.active') : t('common.inactive') }}</Badge>
+            <Switch :model-value="!!s.active" :aria-label="s.active ? t('vehicles.shifts.deactivate') : t('vehicles.shifts.activate')" @update:model-value="toggleShift(s)" />
+            <ActionMenu :items="[
+              { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditShift(shifts.find((x) => x.id === s.id)) },
+            ]" />
+          </header>
+
+          <!-- hours, then the window on a 24-hour day -->
+          <div class="vs-time">
+            <div class="vs-range" dir="ltr">
+              <b>{{ s.from }}</b>
+              <span class="vs-arrow" aria-hidden="true" />
+              <b>{{ s.to }}</b>
+            </div>
+            <span class="vs-chip"><Timer class="size-3.5" /> {{ hoursText(s.span.mins / 60) }}</span>
+            <span v-if="s.span.overnight" class="vs-chip is-night"><Moon class="size-3.5" /> {{ t('vehicles.shifts.overnight') }}</span>
+          </div>
+          <div class="vs-track" dir="ltr" aria-hidden="true">
+            <span v-for="h in [6, 12, 18]" :key="h" class="vs-tick" :style="{ insetInlineStart: `${(h / 24) * 100}%` }" />
+            <i v-for="(g, gi) in s.span.segs" :key="gi" class="vs-seg" :style="{ insetInlineStart: `${g.start}%`, width: `${g.width}%` }" />
+          </div>
+          <div class="vs-scale" dir="ltr" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+
+          <div class="vs-stats">
+            <div>
+              <Truck class="size-4" />
+              <b>{{ num(s.vehicles) }}</b>
+              <span>{{ t('vehicles.shifts.vehicles') }}</span>
+            </div>
+            <div>
+              <ArrowLeftRight class="size-4" />
+              <b>{{ num(s.handovers) }}</b>
+              <span>{{ t('vehicles.shifts.handovers') }}</span>
+            </div>
+            <div class="min-w-0">
+              <Clock class="size-4" />
+              <b v-if="s.last" class="truncate tabular-nums">{{ formatDate(s.last.date) }} <small dir="ltr">{{ s.last.time }}</small></b>
+              <b v-else class="text-muted-foreground">—</b>
+              <span>{{ s.last ? t('vehicles.shifts.lastHandover') : t('vehicles.shifts.noHandover') }}</span>
+            </div>
+          </div>
+
+          <div class="vs-riders">
+            <p class="vs-sub"><Users class="size-3.5" /> {{ t('vehicles.shifts.riders') }}</p>
+            <div v-if="s.riders.length" class="flex flex-wrap gap-1.5">
+              <span v-for="r in s.riders.slice(0, 6)" :key="r.id" class="vs-rider" :title="`${r.name} · ${r.id} · ${r.plate}`">
+                <span class="vh-av">{{ initials(r.name) }}</span>
+                <span class="max-w-[9rem] truncate">{{ r.name }}</span>
+                <span class="vh-plate is-sm" dir="ltr">{{ r.plate }}</span>
+              </span>
+              <span v-if="s.riders.length > 6" class="vs-rider is-more">+{{ num(s.riders.length - 6) }}</span>
+            </div>
+            <p v-else class="text-muted-foreground text-xs">{{ t('vehicles.shifts.noRiders') }}</p>
+          </div>
+        </article>
+      </div>
+    </div>
 
     <!-- Expenses -->
     <div v-else-if="tab === 'expenses'" class="space-y-6">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile :label="t('vehicles.exp.total')" :value="expStats.amount" :format="sar" :icon="MtBanknote" tone="primary" :hint="t('vehicles.exp.vehiclesN', { n: num(expStats.vehicles) })" />
+        <MetricTile :label="t('vehicles.exp.count')" :value="expStats.count" :format="(v) => num(Math.round(v))" :icon="Receipt" tone="brand" :hint="t('vehicles.exp.largest', { amount: sar(expStats.largest) })" />
+        <MetricTile :label="t('vehicles.exp.average')" :value="expStats.average" :format="sar" :icon="Calculator" tone="success" />
+        <MetricTile
+          :label="t('vehicles.exp.top')"
+          :value="expStats.topAmount"
+          :format="sar"
+          :icon="Trophy"
+          tone="orange"
+          :progress="expStats.topPct"
+          :hint="expStats.topType ? t('vehicles.exp.topHint', { name: loc(EXPENSE_TYPES, expStats.topType), pct: pct(expStats.topPct) }) : ''"
+        />
+      </div>
+
+      <div class="space-y-3">
+        <FilterBar v-model:search="expQuery" v-model="expFilters" :filters="expFilterDefs" :search-placeholder="t('vehicles.searchExpenses')">
+          <template #extra><DateRangePicker v-model="expRange" /></template>
+        </FilterBar>
+        <!-- expense item switch: all, or one item at a time -->
+        <div class="vh-pills" role="tablist">
+          <button
+            v-for="p in expPills"
+            :key="p.value"
+            type="button"
+            role="tab"
+            class="vh-pill"
+            :class="expFilters.type === p.value && 'is-on'"
+            :aria-selected="expFilters.type === p.value"
+            @click="expFilters = { ...expFilters, type: p.value }"
+          >
+            <i v-if="p.color" class="vh-dot" :style="{ background: p.color }" />
+            {{ p.label }}
+            <span class="vh-count">{{ num(p.count) }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid items-start gap-6 xl:grid-cols-3">
+        <Card class="overflow-hidden xl:col-span-2">
+          <DataTable
+            :loading="loading"
+            :rows="shownExpenses"
+            :empty="t('vehicles.empty')"
+            :page-size="10"
+            :columns="[
+              { key: 'date', label: t('vehicles.fields.date'), sortable: true },
+              { key: 'plate', label: t('vehicles.fields.vehicle'), sortable: true },
+              { key: 'type', label: t('vehicles.fields.type') },
+              { key: 'invoiceNo', label: t('vehicles.fields.invoiceNo'), hideBelow: 'md' },
+              { key: 'amount', label: t('vehicles.fields.amount'), align: 'end', sortable: true },
+            ]"
+          >
+            <template #cell-date="{ row }">
+              <div class="vh-date" :title="formatDate(row.date)">
+                <b>{{ formatDate(row.date, { day: 'numeric' }) }}</b>
+                <span>{{ formatDate(row.date, { month: 'short' }) }}</span>
+              </div>
+            </template>
+            <template #cell-plate="{ row }"><span class="vh-plate" dir="ltr">{{ row.plate }}</span></template>
+            <template #cell-type="{ row }">
+              <span class="vx-type" :style="{ '--c': typeTone(row.type) }"><i class="vh-dot" />{{ loc(EXPENSE_TYPES, row.type) }}</span>
+            </template>
+            <template #cell-invoiceNo="{ row }">
+              <span dir="ltr" class="vx-inv" :class="(!row.invoiceNo || row.invoiceNo === '—') && 'is-none'">{{ row.invoiceNo || '—' }}</span>
+              <p v-if="row.note" class="text-muted-foreground mt-1 flex max-w-[16rem] items-center gap-1 text-xs" :title="row.note">
+                <StickyNote class="size-3 shrink-0" /><span class="truncate">{{ row.note }}</span>
+              </p>
+            </template>
+            <template #cell-amount="{ row }">
+              <div class="vx-amt">
+                <b dir="ltr">{{ sar(row.amount) }}</b>
+                <span class="vx-amt-bar"><i :style="{ width: `${expRowShare(row.amount)}%`, background: typeTone(row.type) }" /></span>
+              </div>
+            </template>
+          </DataTable>
+        </Card>
+
+        <div class="space-y-6">
+          <!-- share of each expense item; a row filters the list -->
+          <Card class="p-5">
+            <h3 class="font-bold">{{ t('vehicles.exp.byItem') }}</h3>
+            <p class="text-muted-foreground mt-0.5 text-xs">{{ t('vehicles.exp.byItemHint') }}</p>
+            <div v-if="loading" class="mt-4 space-y-3"><Skeleton v-for="i in 4" :key="i" class="h-10 rounded-xl" /></div>
+            <EmptyState v-else-if="!expByItem.length" compact :icon="Layers" />
+            <template v-else>
+              <div class="vx-stack">
+                <i v-for="r in expByItem" :key="r.value" :style="{ width: `${r.pct}%`, background: r.color }" :title="`${r.label} · ${pct(r.pct)}`" />
+              </div>
+              <ul class="vx-items">
+                <li v-for="r in expByItem" :key="r.value">
+                  <button
+                    type="button"
+                    class="vx-item"
+                    :class="{ 'is-on': expFilters.type === r.value, 'is-dim': expFilters.type && expFilters.type !== r.value }"
+                    :style="{ '--c': r.color }"
+                    :aria-pressed="expFilters.type === r.value"
+                    @click="setExpType(r.value)"
+                  >
+                    <span class="vx-item-top">
+                      <i class="vh-dot" />
+                      <span class="min-w-0 flex-1 truncate font-semibold">{{ r.label }}</span>
+                      <b dir="ltr">{{ sar(r.amount) }}</b>
+                    </span>
+                    <span class="vx-item-bottom">
+                      <span class="vx-bar"><i :style="{ width: `${r.pct}%` }" /></span>
+                      <span class="vx-item-meta">{{ t('vehicles.exp.recordsN', { n: num(r.count) }) }} · {{ pct(r.pct) }}</span>
+                    </span>
+                  </button>
+                </li>
+              </ul>
+            </template>
+          </Card>
+
+          <!-- where the money went, per vehicle -->
+          <Card class="p-5">
+            <h3 class="flex items-center gap-2 font-bold"><Truck class="text-muted-foreground size-4" /> {{ t('vehicles.exp.byVehicle') }}</h3>
+            <div v-if="loading" class="mt-4 space-y-3"><Skeleton v-for="i in 3" :key="i" class="h-8 rounded-xl" /></div>
+            <EmptyState v-else-if="!expByVehicle.length" compact :icon="Truck" />
+            <ul v-else class="vx-vehs">
+              <li v-for="r in expByVehicle" :key="r.id">
+                <span class="vh-plate" dir="ltr">{{ r.plate }}</span>
+                <span class="vx-bar is-brand"><i :style="{ width: `${r.width}%` }" /></span>
+                <b dir="ltr">{{ sar(r.amount) }}</b>
+              </li>
+            </ul>
+          </Card>
+        </div>
+      </div>
+
       <Card>
         <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
           <div>
@@ -424,32 +873,6 @@ function exportFuel() {
           </span>
         </div>
       </Card>
-
-      <div>
-      <FilterBar v-model:search="expQuery" v-model="expFilters" :filters="expFilterDefs" :search-placeholder="t('vehicles.searchExpenses')" class="mb-4">
-        <template #extra><DateRangePicker v-model="expRange" /></template>
-      </FilterBar>
-      <Card class="overflow-hidden">
-        <DataTable
-          :loading="loading"
-          :rows="shownExpenses"
-          :empty="t('vehicles.empty')"
-          :columns="[
-            { key: 'date', label: t('vehicles.fields.date'), sortable: true },
-            { key: 'plate', label: t('vehicles.fields.vehicle'), sortable: true },
-            { key: 'type', label: t('vehicles.fields.type') },
-            { key: 'invoiceNo', label: t('vehicles.fields.invoiceNo'), hideBelow: 'md' },
-            { key: 'amount', label: t('vehicles.fields.amount'), align: 'end', sortable: true },
-          ]"
-        >
-          <template #cell-date="{ row }">{{ formatDate(row.date) }}</template>
-          <template #cell-plate="{ row }"><span dir="ltr">{{ row.plate }}</span></template>
-          <template #cell-type="{ row }"><Badge variant="secondary">{{ loc(EXPENSE_TYPES, row.type) }}</Badge></template>
-          <template #cell-invoiceNo="{ row }"><span dir="ltr" class="text-muted-foreground">{{ row.invoiceNo }}</span></template>
-          <template #cell-amount="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.amount) }}</span></template>
-        </DataTable>
-      </Card>
-      </div>
     </div>
 
     <!-- Fuel sheet (#5/#6) -->
@@ -460,12 +883,13 @@ function exportFuel() {
         </FilterBar>
         <p class="text-muted-foreground text-xs">{{ t('vehicles.fuel.hint') }}</p>
       </div>
-      <div class="grid gap-4 sm:grid-cols-3">
-        <MetricTile :label="t('vehicles.fuel.fills')" :value="fuelTotals.fills" :format="(v) => num(Math.round(v))" :icon="MtFuel" tone="brand" />
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile :label="t('vehicles.fuel.fills')" :value="fuelTotals.fills" :format="(v) => num(Math.round(v))" :icon="MtFuel" tone="brand" :hint="t('vehicles.exp.vehiclesN', { n: num(fuelVehicleCount) })" />
         <MetricTile :label="t('vehicles.fuel.liters')" :value="fuelTotals.liters" :format="(v) => num(v, { decimals: 1 })" :icon="MtDroplets" tone="primary" />
         <MetricTile :label="t('vehicles.fuel.amount')" :value="fuelTotals.amount" :format="sar" :icon="MtBanknote" tone="orange" />
+        <MetricTile :label="t('vehicles.fuel.avgPrice')" :value="fuelAvgPrice" :format="(v) => sar(v, { decimals: 2 })" :icon="Gauge" tone="success" />
       </div>
-      <div class="grid gap-6 xl:grid-cols-3">
+      <div class="grid items-start gap-6 xl:grid-cols-3">
         <Card class="overflow-hidden xl:col-span-2">
           <DataTable
             :loading="loading" :rows="shownFuel" :empty="t('vehicles.fuel.empty')" :page-size="10"
@@ -479,57 +903,150 @@ function exportFuel() {
               { key: 'odometer', label: t('vehicles.fuel.odometer'), align: 'end', hideBelow: 'xl' },
             ]"
           >
-            <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span><p v-if="row.station" class="text-muted-foreground text-xs">{{ row.station }}</p></template>
-            <template #cell-plate="{ row }"><span dir="ltr" class="font-medium">{{ row.plate }}</span></template>
-            <template #cell-riderName="{ row }"><span class="flex items-center gap-1.5">{{ row.riderName }} <RiderCode :code="row.riderId" /></span></template>
-            <template #cell-liters="{ row }"><span class="tabular-nums">{{ num(row.liters, { decimals: 1 }) }}</span></template>
-            <template #cell-amount="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.amount) }}</span></template>
-            <template #cell-pricePerLiter="{ row }"><span class="text-muted-foreground tabular-nums">{{ sar(row.pricePerLiter, { decimals: 2 }) }}</span></template>
-            <template #cell-odometer="{ row }"><span class="tabular-nums">{{ num(row.odometer) }}</span></template>
+            <template #cell-date="{ row }">
+              <div class="flex items-center gap-2.5">
+                <div class="vh-date" :title="formatDate(row.date)">
+                  <b>{{ formatDate(row.date, { day: 'numeric' }) }}</b>
+                  <span>{{ formatDate(row.date, { month: 'short' }) }}</span>
+                </div>
+                <span v-if="row.station" class="text-muted-foreground max-w-[10rem] truncate text-xs" :title="row.station">{{ row.station }}</span>
+              </div>
+            </template>
+            <template #cell-plate="{ row }">
+              <span class="vh-plate" dir="ltr">{{ row.plate }}</span>
+              <p v-if="row.model" class="text-muted-foreground mt-1 text-xs">{{ row.model }}</p>
+            </template>
+            <template #cell-riderName="{ row }">
+              <span class="flex items-center gap-2">
+                <span class="vh-av">{{ initials(row.riderName) }}</span>
+                <span class="min-w-0 truncate">{{ row.riderName }}</span>
+                <RiderCode :code="row.riderId" />
+              </span>
+            </template>
+            <template #cell-liters="{ row }">
+              <div class="vf-lit" :title="tankFill(row) !== null ? t('vehicles.fuel.tankShare', { pct: `${num(tankFill(row))}%` }) : ''">
+                <span class="tabular-nums">{{ num(row.liters, { decimals: 1 }) }}</span>
+                <span v-if="tankFill(row) !== null" class="vf-tank"><i :style="{ width: `${tankFill(row)}%` }" /></span>
+              </div>
+            </template>
+            <template #cell-amount="{ row }"><span class="font-bold tabular-nums" dir="ltr">{{ sar(row.amount) }}</span></template>
+            <template #cell-pricePerLiter="{ row }"><span class="text-muted-foreground tabular-nums" dir="ltr">{{ sar(row.pricePerLiter, { decimals: 2 }) }}</span></template>
+            <template #cell-odometer="{ row }"><span class="vf-odo" dir="ltr">{{ num(row.odometer) }}</span></template>
           </DataTable>
         </Card>
-        <Card class="overflow-hidden">
-          <div class="border-b px-5 py-4 font-semibold">{{ t('vehicles.fuel.byVehicle') }}</div>
-          <DataTable
-            :loading="loading" :rows="fuel.byVehicle" :empty="t('common.noData')"
-            :columns="[
-              { key: 'plate', label: t('vehicles.fields.vehicle') },
-              { key: 'liters', label: t('vehicles.fuel.liters'), align: 'end' },
-              { key: 'amount', label: t('vehicles.fuel.amount'), align: 'end' },
-            ]"
-          >
-            <template #cell-plate="{ row }"><span dir="ltr" class="font-medium">{{ row.plate }}</span><p class="text-muted-foreground text-xs">{{ num(row.fills) }} × · {{ row.tankCapacity ? `${row.tankCapacity} L` : '' }}</p></template>
-            <template #cell-liters="{ row }"><span class="tabular-nums">{{ num(row.liters, { decimals: 1 }) }}</span></template>
-            <template #cell-amount="{ row }"><span class="font-semibold tabular-nums">{{ sar(row.amount) }}</span></template>
-          </DataTable>
+
+        <!-- spend per vehicle, largest first -->
+        <Card class="p-5">
+          <h3 class="flex items-center gap-2 font-bold"><Truck class="text-muted-foreground size-4" /> {{ t('vehicles.fuel.byVehicle') }}</h3>
+          <div v-if="loading" class="mt-4 space-y-3"><Skeleton v-for="i in 4" :key="i" class="h-14 rounded-xl" /></div>
+          <EmptyState v-else-if="!fuelBars.length" :title="t('vehicles.fuel.empty')" compact :icon="Fuel" />
+          <ul v-else class="vf-list">
+            <li v-for="r in fuelBars" :key="r.id" class="vf-row">
+              <div class="vf-row-top">
+                <span class="vh-plate" dir="ltr">{{ r.plate }}</span>
+                <span class="text-muted-foreground min-w-0 flex-1 truncate text-xs">{{ r.model }}</span>
+                <b dir="ltr">{{ sar(r.amount) }}</b>
+              </div>
+              <span class="vf-bar"><i :style="{ width: `${r.width}%` }" /></span>
+              <div class="vf-row-meta">
+                <span>{{ t('vehicles.fuel.fillsN', { n: num(r.fills) }) }}</span>
+                <span>{{ t('vehicles.fuel.liters') }} <b>{{ num(r.liters, { decimals: 1 }) }}</b></span>
+                <span>{{ t('vehicles.fuel.pricePerLiter') }} <b dir="ltr">{{ sar(r.avgPrice, { decimals: 2 }) }}</b></span>
+                <span v-if="r.tankCapacity">{{ t('vehicles.fuel.tank') }} <b>{{ num(r.tankCapacity) }}</b></span>
+              </div>
+            </li>
+          </ul>
+          <p v-if="!loading && fuelIdle" class="vf-idle">{{ t('vehicles.fuel.idleN', { n: num(fuelIdle) }) }}</p>
         </Card>
       </div>
     </div>
 
     <!-- Expense items (#6) -->
-    <Card v-else-if="tab === 'expenseItems'" class="overflow-hidden">
-      <div class="text-muted-foreground flex items-start gap-2 border-b p-5 text-sm"><Tags class="mt-0.5 size-4 shrink-0" /> {{ t('vehicles.expenseItems.hint') }}</div>
-      <DataTable
-        :loading="loading" :rows="expenseItems" :empty="t('common.noData')"
-        :columns="[
-          { key: 'name', label: t('vehicles.expenseItems.name'), sortable: true },
-          { key: 'account', label: t('vehicles.expenseItems.account'), hideBelow: 'md' },
-          { key: 'usage', label: t('vehicles.expenseItems.usage'), align: 'end', hideBelow: 'sm' },
-          { key: 'active', label: t('common.status') },
-          { key: 'actions', label: t('common.actions'), align: 'end' },
-        ]"
-      >
-        <template #cell-name="{ row }"><span class="font-medium">{{ locale === 'ar' ? row.name : row.en }}</span> <span class="text-muted-foreground text-xs">{{ locale === 'ar' ? row.en : row.name }}</span></template>
-        <template #cell-account="{ row }"><Badge variant="secondary">{{ accName(row.account) }}</Badge></template>
-        <template #cell-usage="{ row }"><span class="tabular-nums">{{ num(row.usage) }}</span></template>
-        <template #cell-active="{ row }"><Badge :variant="row.active ? 'success' : 'secondary'">{{ row.active ? t('common.active') : t('common.inactive') }}</Badge></template>
-        <template #cell-actions="{ row }">
-          <ActionMenu :items="[
-                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditItem(row) },
-                  ]" />
-        </template>
-      </DataTable>
-    </Card>
+    <div v-else-if="tab === 'expenseItems'" class="space-y-6">
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile :label="t('vehicles.expenseItems.stats.total')" :value="itemStats.total" :format="(v) => num(Math.round(v))" :icon="Tags" tone="primary" />
+        <MetricTile
+          :label="t('vehicles.expenseItems.stats.active')"
+          :value="itemStats.active"
+          :format="(v) => num(Math.round(v))"
+          :icon="BadgeCheck"
+          tone="success"
+          :progress="share(itemStats.active, itemStats.total)"
+          :hint="t('vehicles.expenseItems.stats.activeHint', { n: num(itemStats.active), total: num(itemStats.total) })"
+        />
+        <MetricTile :label="t('vehicles.expenseItems.stats.used')" :value="itemStats.used" :format="(v) => num(Math.round(v))" :icon="ListChecks" tone="brand" :hint="t('vehicles.expenseItems.stats.unusedN', { n: num(itemStats.unused) })" />
+        <MetricTile :label="t('vehicles.expenseItems.stats.amount')" :value="itemStats.amount" :format="sar" :icon="Coins" tone="orange" />
+      </div>
+
+      <FilterBar v-model:search="itemQuery" v-model="itemFilters" :filters="itemFilterDefs" :search-placeholder="t('vehicles.expenseItems.searchPh')" />
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="vh-pills" role="tablist">
+          <button
+            v-for="p in itemPills"
+            :key="p.value"
+            type="button"
+            role="tab"
+            class="vh-pill"
+            :class="itemStatus === p.value && 'is-on'"
+            :aria-selected="itemStatus === p.value"
+            @click="itemStatus = p.value"
+          >
+            <i v-if="p.color" class="vh-dot" :style="{ background: p.color }" />
+            {{ p.label }}
+            <span class="vh-count">{{ num(p.count) }}</span>
+          </button>
+        </div>
+        <p class="text-muted-foreground flex items-start gap-1.5 text-xs"><Tags class="mt-px size-3.5 shrink-0" /> {{ t('vehicles.expenseItems.hint') }}</p>
+      </div>
+
+      <div v-if="loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Skeleton v-for="i in 6" :key="i" class="h-44 rounded-2xl" />
+      </div>
+      <Card v-else-if="!shownItems.length"><EmptyState :title="t('vehicles.expenseItems.empty')" :icon="Tags" /></Card>
+
+      <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="(i, idx) in shownItems"
+          :key="i.id"
+          class="vi-card"
+          :class="!i.active && 'is-off'"
+          :style="{ '--c': typeTone(i.id), '--d': `${Math.min(idx, 8) * 40}ms` }"
+        >
+          <header class="vi-head">
+            <span class="vi-ic">{{ initials(locale === 'ar' ? i.name : i.en).slice(0, 1) }}</span>
+            <div class="min-w-0 flex-1">
+              <h3 class="vi-name truncate">{{ locale === 'ar' ? i.name : i.en }}</h3>
+              <p class="text-muted-foreground truncate text-xs">{{ locale === 'ar' ? i.en : i.name }}</p>
+            </div>
+            <Switch :model-value="!!i.active" :aria-label="i.active ? t('vehicles.expenseItems.deactivate') : t('vehicles.expenseItems.activate')" @update:model-value="toggleItem(i)" />
+            <ActionMenu :items="[
+              { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditItem(expenseItems.find((x) => x.id === i.id)) },
+            ]" />
+          </header>
+
+          <div class="vi-meta">
+            <span class="vi-code" dir="ltr">{{ i.id }}</span>
+            <span class="vi-acc" :title="t('vehicles.expenseItems.account')">
+              <b v-if="accCode(i.account)" dir="ltr">{{ accCode(i.account) }}</b>
+              <span class="truncate">{{ accName(i.account) }}</span>
+            </span>
+            <Badge v-if="!i.active" variant="secondary">{{ t('common.inactive') }}</Badge>
+          </div>
+
+          <div class="vi-foot">
+            <div class="flex items-end justify-between gap-2">
+              <span class="vi-uses" :class="!i.usage && 'is-none'">{{ i.usage ? t('vehicles.expenseItems.usesN', { n: num(i.usage) }) : t('vehicles.expenseItems.unused') }}</span>
+              <span class="vi-amt">
+                <small>{{ t('vehicles.expenseItems.booked') }}</small>
+                <b dir="ltr">{{ sar(i.amount) }}</b>
+              </span>
+            </div>
+            <span class="vi-bar"><i :style="{ width: `${i.width}%` }" /></span>
+          </div>
+        </article>
+      </div>
+    </div>
 
     <!-- Profitability -->
     <Card v-else class="overflow-hidden">

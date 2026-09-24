@@ -135,15 +135,10 @@ function logout() {
         class="island no-print fixed inset-y-3 z-50 flex w-[300px] flex-col rounded-2xl border border-white/15 p-3 text-white/90 shadow-2xl transition-transform duration-300 start-3 lg:sticky lg:inset-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh-2rem)] lg:w-auto lg:translate-x-0"
         :class="drawer ? 'translate-x-0' : '-translate-x-[110%] rtl:translate-x-[110%] lg:translate-x-0 lg:rtl:translate-x-0'"
       >
-        <!-- brand + language -->
-        <div class="mb-3 flex items-center justify-between px-1 pt-1">
-          <RouterLink to="/dashboard"><BrandLogo :mark-size="30" tone="light" /></RouterLink>
-          <div class="flex items-center gap-1">
-            <button type="button" class="lang inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold" :title="t('layout.language')" @click="ui.toggleLocale()">
-              <Languages class="size-4" /> {{ ui.locale === 'ar' ? 'EN' : 'ع' }}
-            </button>
-            <button type="button" class="hover:bg-white/10 inline-flex size-8 items-center justify-center rounded-lg lg:hidden" :aria-label="t('layout.closeMenu')" @click="drawer = false"><X class="size-4" /></button>
-          </div>
+        <!-- brand -->
+        <div class="relative mb-4 flex items-center justify-center px-1 pt-2 pb-1">
+          <RouterLink to="/dashboard"><BrandLogo :mark-size="44" word-size="text-2xl" tone="light" animate="loop" /></RouterLink>
+          <button type="button" class="hover:bg-white/10 absolute end-0 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-lg lg:hidden" :aria-label="t('layout.closeMenu')" @click="drawer = false"><X class="size-4" /></button>
         </div>
 
         <!-- groups: every link, always visible; the active module unfolds its screens -->
@@ -223,6 +218,12 @@ function logout() {
           </div>
           <RouterLink to="/profile" class="menu-item"><UserCircle class="text-muted-foreground size-4" /> {{ t('common.profile') }}</RouterLink>
           <RouterLink v-if="auth.role === ROLES.MANAGER" to="/settings" class="menu-item"><Settings class="text-muted-foreground size-4" /> {{ t('nav.settings') }}</RouterLink>
+          <!-- language: switches in place, the menu stays open -->
+          <button type="button" class="menu-item w-full" @click.stop="ui.toggleLocale()">
+            <Languages class="text-muted-foreground size-4" />
+            <span class="flex-1 text-start">{{ t('layout.language') }}</span>
+            <span class="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-[11px] font-bold">{{ ui.locale === 'ar' ? 'English' : 'العربية' }}</span>
+          </button>
 
           <!-- demo role switcher -->
           <div class="bg-border/70 -mx-1 my-1.5 h-px" />
@@ -393,9 +394,6 @@ function logout() {
 .island-nav { scrollbar-width: none; }
 .island-nav::-webkit-scrollbar { display: none; }
 /* language switch beside the brand */
-.lang { color: color-mix(in oklch, white 80%, transparent); background: color-mix(in oklch, black 22%, transparent); transition: background-color 0.15s, color 0.15s; }
-.lang:hover { background: color-mix(in oklch, white 14%, transparent); color: white; }
-.lang:focus-visible { outline: 2px solid color-mix(in oklch, white 50%, transparent); }
 .menu-item { display: flex; align-items: center; gap: 0.625rem; border-radius: var(--radius-md); padding: 0.5rem 0.625rem; font-size: 0.875rem; transition: background-color 0.15s ease; }
 .menu-item:hover { background: var(--accent); }
 </style>
