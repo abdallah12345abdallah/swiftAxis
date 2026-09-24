@@ -210,11 +210,12 @@ const pct = (v) => `${num(v, { decimals: 1 })}%`
 const initials = (name) => String(name ?? '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] ?? '').join('')
 const accCode = (id) => accounts.value.find((a) => a.id === id)?.code ?? ''
 // one color per expense item, used by the pills, chips, bars and item cards
+// (kept in step with the chart's TYPE_COLORS: fuel blue, maintenance orange …)
 const TYPE_TONES = {
-  fuel: 'var(--primary)', maintenance: 'var(--brand)', insurance: 'var(--success)', registration: 'var(--navy)',
+  fuel: 'var(--brand)', maintenance: 'var(--primary)', insurance: 'var(--success)', registration: 'color-mix(in srgb, var(--brand) 55%, var(--danger))',
   fines: 'var(--danger)', rent: 'var(--warning)', salaries: 'var(--orange)', other: 'var(--muted-foreground)',
 }
-const EXTRA_TONES = ['var(--brand)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--navy)', 'var(--primary)']
+const EXTRA_TONES = ['var(--brand)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'color-mix(in srgb, var(--brand) 55%, var(--danger))', 'var(--primary)']
 const typeTone = (k) => TYPE_TONES[k] ?? EXTRA_TONES[[...String(k)].reduce((s, c) => s + c.charCodeAt(0), 0) % EXTRA_TONES.length]
 
 /* ── work shifts: status pills, and each shift drawn on a 24-hour track ── */
@@ -864,12 +865,12 @@ function exportFuel() {
         </div>
         <div class="p-4">
           <ExpenseBreakdownChart v-if="breakdown?.categories?.length" :breakdown="breakdown" />
-          <p v-else class="text-muted-foreground py-12 text-center text-sm">{{ t('common.noData') }}</p>
+          <EmptyState v-else compact :icon="Layers" />
         </div>
-        <div v-if="breakdown?.totalsByType?.length" class="flex flex-wrap gap-4 border-t px-5 py-3 text-sm">
+        <div v-if="breakdown?.totalsByType?.length" class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-5 py-3 text-sm">
           <span class="text-muted-foreground">{{ t('vehicles.charts.byType') }}:</span>
-          <span v-for="tt in breakdown.totalsByType" :key="tt.type" class="tabular-nums">
-            {{ loc(EXPENSE_TYPES, tt.type) }} <b>{{ sar(tt.total) }}</b>
+          <span v-for="tt in breakdown.totalsByType" :key="tt.type" class="inline-flex items-center gap-1.5 tabular-nums" :style="{ '--c': typeTone(tt.type) }">
+            <i class="vh-dot" /> {{ loc(EXPENSE_TYPES, tt.type) }} <b dir="ltr">{{ sar(tt.total) }}</b>
           </span>
         </div>
       </Card>
@@ -1078,3 +1079,182 @@ function exportFuel() {
     <ExpenseItemDialog v-model:open="itemDialog" :item="editingItem" :account-options="expenseAccountOptions" @saved="load" />
   </div>
 </template>
+
+<style scoped>
+/* ── shared: pills, plate chip, avatar, date tile ── */
+.vh-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.vh-pill {
+  display: inline-flex; align-items: center; gap: 0.45rem; height: 2.25rem; padding-inline: 0.9rem 0.6rem; border-radius: 9999px; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: var(--muted-foreground); background: var(--card); border: 1px solid var(--border);
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+.vh-pill:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); color: var(--foreground); }
+.vh-pill:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.vh-pill.is-on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.vh-count {
+  display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding-inline: 0.35rem; border-radius: 9999px;
+  font-size: 11px; font-weight: 800; background: var(--muted); color: var(--foreground); font-variant-numeric: tabular-nums;
+}
+.vh-pill.is-on .vh-count { background: color-mix(in srgb, var(--primary-foreground) 25%, transparent); color: inherit; }
+.vh-dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 0.2rem; flex: none; background: var(--c, var(--muted-foreground)); }
+.vh-pill.is-on .vh-dot { outline: 2px solid color-mix(in srgb, var(--primary-foreground) 70%, transparent); }
+
+/* a licence-plate chip: mono, hairline frame, a blue band on its start edge */
+.vh-plate {
+  display: inline-flex; align-items: center; height: 1.6rem; padding-inline: 0.55rem 0.5rem; border-radius: 0.45rem; white-space: nowrap;
+  font: 800 12px ui-monospace, 'IBM Plex Mono', monospace; letter-spacing: 0.04em; color: var(--foreground);
+  background: var(--card); border: 1px solid color-mix(in srgb, var(--foreground) 22%, var(--border));
+  border-inline-start: 3px solid var(--brand);
+}
+.vh-plate.is-sm { height: 1.3rem; font-size: 10.5px; padding-inline: 0.45rem 0.4rem; }
+.vh-av {
+  display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; flex: none; border-radius: 9999px;
+  font-size: 11px; font-weight: 800; color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.vh-date {
+  display: grid; place-items: center; width: 2.6rem; height: 2.6rem; flex: none; border-radius: 0.8rem; line-height: 1.1;
+  background: color-mix(in srgb, var(--primary) 9%, var(--card)); color: var(--primary);
+}
+.vh-date b { font-size: 1rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.vh-date span { font-size: 10px; font-weight: 800; }
+
+/* ── work shifts ── */
+.vs-card {
+  display: grid; gap: 1rem; padding: 1.1rem 1.25rem 1.25rem; border-radius: 1.25rem; border: 1px solid var(--border); background: var(--card);
+  animation: vh-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: var(--d, 0ms); transition: border-color 0.2s;
+}
+.vs-card:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+.vs-card.is-off { background: color-mix(in srgb, var(--muted) 45%, var(--card)); }
+.vs-card.is-off .vs-ic, .vs-card.is-off .vs-seg { filter: grayscale(1); opacity: 0.55; }
+.vs-head { display: flex; align-items: center; gap: 0.75rem; }
+.vs-ic {
+  display: grid; place-items: center; width: 2.6rem; height: 2.6rem; flex: none; border-radius: 0.9rem;
+  color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--card));
+}
+.vs-name { font-size: 1.05rem; font-weight: 800; }
+.vs-time { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.vs-range { display: flex; align-items: center; gap: 0.6rem; margin-inline-end: auto; }
+.vs-range b { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.vs-arrow { position: relative; width: 2.5rem; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.vs-arrow::after { content: ''; position: absolute; inset-inline-end: -1px; top: 50%; width: 0.4rem; height: 0.4rem; border-radius: 9999px; background: var(--primary); transform: translateY(-50%); }
+.vs-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem; height: 1.6rem; padding-inline: 0.6rem; border-radius: 9999px;
+  font-size: 11.5px; font-weight: 700; color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, var(--card));
+}
+.vs-chip.is-night { color: var(--foreground); background: color-mix(in srgb, var(--navy) 10%, var(--card)); }
+.vs-track { position: relative; height: 0.7rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vs-seg {
+  position: absolute; inset-block: 0; border-radius: 9999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 65%, var(--card)), var(--primary));
+}
+.vs-tick { position: absolute; inset-block: 0; width: 1px; background: color-mix(in srgb, var(--foreground) 12%, transparent); }
+.vs-scale { display: flex; justify-content: space-between; margin-top: -0.6rem; font-size: 10.5px; font-weight: 700; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.vs-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.vs-stats > div {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 0.45rem; row-gap: 0.1rem;
+  padding: 0.6rem 0.7rem; border-radius: 0.9rem; background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+.vs-stats svg { grid-row: span 2; color: var(--muted-foreground); }
+.vs-stats b { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-stats b small { font-size: 11px; font-weight: 700; color: var(--muted-foreground); }
+.vs-stats span { font-size: 11px; font-weight: 600; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-riders { display: grid; gap: 0.5rem; padding-top: 0.9rem; border-top: 1px dashed var(--border); }
+.vs-sub { display: flex; align-items: center; gap: 0.35rem; font-size: 12px; font-weight: 700; color: var(--muted-foreground); }
+.vs-rider {
+  display: inline-flex; align-items: center; gap: 0.4rem; height: 2.1rem; padding-inline: 0.2rem 0.3rem; border-radius: 9999px;
+  font-size: 12.5px; font-weight: 600; border: 1px solid var(--border); background: var(--card);
+}
+.vs-rider .vh-av { width: 1.6rem; height: 1.6rem; font-size: 10.5px; }
+.vs-rider.is-more { padding-inline: 0.7rem; color: var(--muted-foreground); font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (max-width: 30rem) { .vs-stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── expenses ── */
+.vx-type {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.15rem 0.6rem; border-radius: 9999px; white-space: nowrap;
+  font-size: 12px; font-weight: 700; color: var(--foreground); background: color-mix(in srgb, var(--c) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--c) 22%, transparent);
+}
+.vx-inv { font: 700 12px ui-monospace, 'IBM Plex Mono', monospace; color: var(--foreground); }
+.vx-inv.is-none { color: var(--muted-foreground); }
+.vx-amt { display: inline-grid; justify-items: end; gap: 0.3rem; }
+.vx-amt b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.vx-amt-bar { display: flex; justify-content: flex-end; width: 4.5rem; height: 0.25rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vx-amt-bar i { display: block; height: 100%; border-radius: 9999px; transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+.vx-stack { display: flex; gap: 3px; height: 0.8rem; margin-top: 1rem; border-radius: 9999px; overflow: hidden; background: var(--muted); }
+.vx-stack i { display: block; height: 100%; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vx-items { display: grid; gap: 0.15rem; margin-top: 0.9rem; }
+.vx-item {
+  display: grid; gap: 0.4rem; width: 100%; padding: 0.55rem 0.6rem; border-radius: 0.8rem; text-align: start; cursor: pointer;
+  border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.vx-item:hover { background: color-mix(in srgb, var(--c) 7%, transparent); }
+.vx-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.vx-item.is-on { background: color-mix(in srgb, var(--c) 10%, var(--card)); border-color: color-mix(in srgb, var(--c) 35%, transparent); }
+.vx-item.is-dim { opacity: 0.55; }
+.vx-item-top { display: flex; align-items: center; gap: 0.55rem; font-size: 13px; }
+.vx-item-top b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.vx-item-bottom { display: flex; align-items: center; gap: 0.6rem; }
+.vx-item-meta { flex: none; font-size: 11px; font-weight: 700; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.vx-bar { flex: 1; height: 0.4rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vx-bar i { display: block; height: 100%; border-radius: 9999px; background: var(--c, var(--primary)); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vx-bar.is-brand i { background: var(--brand); }
+.vx-vehs { display: grid; gap: 0.7rem; margin-top: 1rem; }
+.vx-vehs li { display: grid; grid-template-columns: 7rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; font-size: 13px; }
+.vx-vehs b { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ── fuel ── */
+.vf-lit { display: inline-grid; justify-items: end; gap: 0.3rem; }
+.vf-tank { display: flex; width: 3.5rem; height: 0.3rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vf-tank i { display: block; height: 100%; border-radius: 9999px; background: var(--brand); transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vf-odo { font: 700 12px ui-monospace, 'IBM Plex Mono', monospace; color: var(--muted-foreground); }
+.vf-list { display: grid; gap: 0.35rem; margin-top: 1rem; }
+.vf-row { display: grid; gap: 0.45rem; padding: 0.65rem 0.6rem; border-radius: 0.9rem; transition: background-color 0.15s; }
+.vf-row:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+.vf-row + .vf-row { border-top: 1px dashed var(--border); }
+.vf-row-top { display: flex; align-items: center; gap: 0.6rem; }
+.vf-row-top b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.vf-bar { display: block; height: 0.4rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vf-bar i { display: block; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 65%, var(--card)), var(--primary)); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.vf-row-meta { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 11px; font-weight: 600; color: var(--muted-foreground); }
+.vf-row-meta b { color: var(--foreground); font-weight: 800; font-variant-numeric: tabular-nums; }
+.vf-idle { margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; font-size: 12px; font-weight: 600; color: var(--muted-foreground); background: color-mix(in srgb, var(--muted) 60%, transparent); }
+
+/* ── expense items ── */
+.vi-card {
+  display: grid; gap: 0.9rem; align-content: start; padding: 1rem 1.1rem 1.1rem; border-radius: 1.25rem; border: 1px solid var(--border); background: var(--card);
+  animation: vh-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: var(--d, 0ms); transition: border-color 0.2s;
+}
+.vi-card:hover { border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
+.vi-card.is-off { background: color-mix(in srgb, var(--muted) 45%, var(--card)); }
+.vi-card.is-off .vi-ic, .vi-card.is-off .vi-bar i { filter: grayscale(1); opacity: 0.55; }
+.vi-head { display: flex; align-items: center; gap: 0.7rem; }
+.vi-ic {
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; border-radius: 0.85rem;
+  font-size: 1.05rem; font-weight: 900; color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 20%, transparent);
+}
+.vi-name { font-weight: 800; }
+.vi-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.vi-code { font: 700 11.5px ui-monospace, 'IBM Plex Mono', monospace; color: var(--muted-foreground); background: var(--muted); padding: 0.1rem 0.5rem; border-radius: 0.4rem; }
+.vi-acc {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; max-width: 100%; padding: 0.1rem 0.55rem; border-radius: 9999px;
+  font-size: 12px; font-weight: 600; border: 1px solid var(--border);
+}
+.vi-acc b { font: 700 11px ui-monospace, 'IBM Plex Mono', monospace; color: var(--brand); }
+.vi-foot { display: grid; gap: 0.45rem; padding-top: 0.8rem; border-top: 1px dashed var(--border); }
+.vi-uses { font-size: 12px; font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.vi-uses.is-none { color: var(--muted-foreground); font-weight: 600; }
+.vi-amt { display: grid; justify-items: end; line-height: 1.2; }
+.vi-amt small { font-size: 10.5px; font-weight: 600; color: var(--muted-foreground); }
+.vi-amt b { font-weight: 900; font-variant-numeric: tabular-nums; }
+.vi-bar { display: block; height: 0.35rem; border-radius: 9999px; background: var(--muted); overflow: hidden; }
+.vi-bar i { display: block; height: 100%; border-radius: 9999px; background: var(--c); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@keyframes vh-rise { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .vs-card, .vi-card { animation: none; transition: none; }
+  .vx-amt-bar i, .vx-stack i, .vx-bar i, .vf-tank i, .vf-bar i, .vi-bar i, .vx-item, .vf-row, .vh-pill { transition: none; }
+}
+</style>
