@@ -1,5 +1,5 @@
 import { mockDelay } from '@/services/http'
-import { SUPPLIERS, PURCHASES, COST_CENTERS, VEHICLES, PURCHASE_ITEMS } from './fixtures'
+import { SUPPLIERS, PURCHASES, VEHICLES, PURCHASE_ITEMS } from './fixtures'
 import { VAT_RATE } from '@/lib/constants'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
@@ -161,14 +161,29 @@ export async function createPurchase(payload) {
     ...totals,
   }
   PURCHASES.push(purchase)
-  // Auto journal entry (US-029): one expense line per item, input VAT, and the supplier.
+  // Auto journal entry (US-029): one line per item, input VAT, and the supplier.
+  // Fuel is stocked (fuel_stock) and expensed per fill-up at its average cost.
   const cc = purchase.costCenter
-  const entry = lines.map((l) => ({ account: 'supplies_expense', costCenter: cc, debit: l.preTax, credit: 0, description: `${l.itemType} × ${l.qty}` }))
+  const entry = lines.map((l) => ({ account: isFuelLine(l) ? 'fuel_stock' : 'supplies_expense', costCenter: cc, debit: l.preTax, credit: 0, description: `${l.itemType} × ${l.qty}` }))
   if (purchase.vat > 0) entry.push({ account: 'input_vat', costCenter: cc, debit: purchase.vat, credit: 0, description: 'ضريبة مدخلات' })
   entry.push({ account: 'suppliers', costCenter: cc, debit: 0, credit: purchase.total, description: purchase.invoiceNo !== '—' ? `فاتورة ${purchase.invoiceNo}` : '' })
   await postEntry({ source: 'purchases', date: purchase.date, description: `مشتريات — ${purchase.ref}`, lines: entry })
   logAudit({ action: 'create', entity: 'purchases', detail: `${purchase.ref} (${lines.length})` })
   return mockDelay(decorate(purchase))
+}
+
+/* ── Fuel stock ────────────────────────────────────────────── */
+/** Is this purchase line fuel? (an item in the 'fuel' category) */
+export function isFuelLine(l) {
+  const item = l.itemId ? PURCHASE_ITEMS.find((i) => i.id === l.itemId) : PURCHASE_ITEMS.find((i) => i.name === l.itemType)
+  return item?.category === 'fuel'
+}
+/** Fuel bought: { date, liters, value (pre-tax) } per fuel line, oldest first.
+    Older single-item purchases have no `lines`: the purchase is its own line. */
+export function fuelPurchases() {
+  return PURCHASES.flatMap((p) => (p.lines ?? [p]).filter(isFuelLine).map((l) => ({ date: p.date, liters: Number(l.qty) || 0, value: Number(l.preTax ?? (l.qty || 0) * (l.unitPrice || 0)) || 0 })))
+    .filter((x) => x.liters > 0)
+    .sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0))
 }
 
 /** Input VAT report (US-030). */
@@ -178,13 +193,4 @@ export function vatReport({ from, to } = {}) {
     taxNo: p.supplierTaxNo || supplierById(p.supplierId)?.taxNo || '—',
   }))
   return mockDelay({ rows, totalVat: rows.reduce((s, r) => s + r.vat, 0), totalPreTax: rows.reduce((s, r) => s + r.preTax, 0) })
-}
-
-/** Purchases grouped by cost center vs budget (US-032). */
-export function purchasesByCostCenter({ from, to } = {}) {
-  const rows = COST_CENTERS.map((c) => {
-    const spent = PURCHASES.filter((p) => p.costCenter === c.id && inRange(p.date, from, to)).reduce((s, p) => s + p.total, 0)
-    return { id: c.id, name: c.name, budget: c.budget, spent, variance: c.budget - spent, over: c.budget > 0 && spent > c.budget }
-  })
-  return mockDelay(rows)
 }

@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
-import { Plus, Pencil, Download, Receipt, ShoppingCart, FileText, AlertTriangle, ShieldCheck } from 'lucide-vue-next'
+import { Plus, Pencil, Download, Receipt, AlertTriangle } from 'lucide-vue-next'
 import MetricTile from '@/components/common/MetricTile.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,21 +13,21 @@ import { DateRangePicker } from '@/components/ui/datepicker'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import PurchaseDialog from '@/components/purchases/PurchaseDialog.vue'
 import SupplierDialog from '@/components/purchases/SupplierDialog.vue'
 import PurchaseItemDialog from '@/components/purchases/PurchaseItemDialog.vue'
+import UnitDialog from '@/components/purchases/UnitDialog.vue'
 import { useCurrency } from '@/composables/useCurrency'
 import { useDate } from '@/lib/format'
 import { exportCsv, todayStamp } from '@/lib/export'
 import { SUPPLIER_CATEGORIES } from '@/api/fixtures'
 import {
-  fetchSuppliers, fetchPurchases, vatReport, purchasesByCostCenter,
+  fetchSuppliers, fetchPurchases, vatReport,
 } from '@/api/purchases'
 import { fetchCostCenters } from '@/api/ledger'
 import { fetchVehicles } from '@/api/vehicles'
-import { fetchPurchaseItems } from '@/api/catalogs'
+import { fetchPurchaseItems, fetchUnits } from '@/api/catalogs'
 
 const { t, locale } = useI18n()
 const { sar, num } = useCurrency()
@@ -38,7 +38,6 @@ const loading = ref(true)
 const purchases = ref([])
 const suppliers = ref([])
 const vat = ref({ rows: [], totalVat: 0, totalPreTax: 0 })
-const byCenter = ref([])
 const centers = ref([])
 const vehicles = ref([])
 const items = ref([])
@@ -57,6 +56,35 @@ function openAddItem() {
 function openEditItem(i) {
   editingItem.value = i
   itemDialog.value = true
+}
+
+/* units of measure: user-managed list the purchase items pick from */
+const units = ref([])
+const unitDialog = ref(false)
+const editingUnit = ref(null)
+const unitQuery = ref('')
+const unitFilters = ref({ status: '' })
+const unitFilterDefs = computed(() => [
+  { key: 'status', label: t('common.status'), options: [
+    { value: 'active', label: t('common.active') },
+    { value: 'inactive', label: t('common.inactive') },
+  ] },
+])
+const shownUnits = computed(() => {
+  const q = unitQuery.value.trim().toLowerCase()
+  const f = unitFilters.value
+  return units.value.filter((u) =>
+    (!q || [u.code, u.name, u.en].some((v) => String(v ?? '').toLowerCase().includes(q))) &&
+    (!f.status || (f.status === 'active') === (u.active !== false)),
+  )
+})
+function openAddUnit() {
+  editingUnit.value = null
+  unitDialog.value = true
+}
+function openEditUnit(u) {
+  editingUnit.value = u
+  unitDialog.value = true
 }
 
 const purchaseDialog = ref(false)
@@ -85,7 +113,6 @@ const vatRows = computed(() => {
 const vatTotals = computed(() => ({
   vat: vatRows.value.reduce((s, r) => s + r.vat, 0),
   preTax: vatRows.value.reduce((s, r) => s + r.preTax, 0),
-  missing: vatRows.value.filter((r) => !hasTaxNo(r)).length,
 }))
 const vatBySupplier = computed(() => {
   const m = new Map()
@@ -107,8 +134,8 @@ const tabs = computed(() => [
   { value: 'purchases', label: t('purchases.tabs.purchases') },
   { value: 'suppliers', label: t('purchases.tabs.suppliers') },
   { value: 'items', label: t('purchases.tabs.items') },
+  { value: 'units', label: t('purchases.tabs.units') },
   { value: 'vat', label: t('purchases.tabs.vat') },
-  { value: 'byCenter', label: t('purchases.tabs.byCenter') },
 ])
 
 /* purchases: search by ref / supplier invoice / supplier / item, a date range,
@@ -173,8 +200,8 @@ const shownItems = computed(() => {
 
 async function load() {
   loading.value = true
-  ;[purchases.value, suppliers.value, vat.value, byCenter.value, centers.value, vehicles.value, items.value] = await Promise.all([
-    fetchPurchases(), fetchSuppliers(), vatReport(), purchasesByCostCenter(), fetchCostCenters(), fetchVehicles(), fetchPurchaseItems(),
+  ;[purchases.value, suppliers.value, vat.value, centers.value, vehicles.value, items.value, units.value] = await Promise.all([
+    fetchPurchases(), fetchSuppliers(), vatReport(), fetchCostCenters(), fetchVehicles(), fetchPurchaseItems(), fetchUnits(),
   ])
   loading.value = false
 }
@@ -204,6 +231,7 @@ function exportVat() {
         <Button v-if="tab === 'purchases'" @click="purchaseDialog = true"><Plus /> {{ t('purchases.addPurchase') }}</Button>
         <Button v-else-if="tab === 'suppliers'" @click="openAddSupplier"><Plus /> {{ t('purchases.addSupplier') }}</Button>
         <Button v-else-if="tab === 'items'" @click="openAddItem"><Plus /> {{ t('purchases.items.add') }}</Button>
+        <Button v-else-if="tab === 'units'" @click="openAddUnit"><Plus /> {{ t('purchases.units.add') }}</Button>
         <Button v-else-if="tab === 'vat'" variant="outline" @click="exportVat"><Download /> {{ t('common.export') }}</Button>
       </template>
     </PageHeader>
@@ -309,6 +337,35 @@ function exportVat() {
     </Card>
     </template>
 
+    <!-- Units of measure -->
+    <template v-else-if="tab === 'units'">
+    <FilterBar v-model:search="unitQuery" v-model="unitFilters" :filters="unitFilterDefs" :search-placeholder="t('purchases.units.searchPh')" class="mb-4" />
+    <Card class="overflow-hidden">
+      <DataTable
+        :loading="loading" :rows="shownUnits" row-key="code" :empty="t('purchases.empty')"
+        :columns="[
+          { key: 'code', label: t('purchases.units.code'), sortable: true },
+          { key: 'name', label: t('purchases.units.name'), sortable: true },
+          { key: 'en', label: t('purchases.units.en'), hideBelow: 'sm' },
+          { key: 'usage', label: t('purchases.units.usage'), align: 'end', hideBelow: 'md' },
+          { key: 'active', label: t('common.status') },
+          { key: 'actions', label: t('common.actions'), align: 'end' },
+        ]"
+      >
+        <template #cell-code="{ row }"><span class="pu-unit" dir="ltr">{{ row.code }}</span></template>
+        <template #cell-name="{ row }"><span class="font-medium">{{ row.name }}</span></template>
+        <template #cell-en="{ row }"><span dir="ltr" class="text-muted-foreground">{{ row.en }}</span></template>
+        <template #cell-usage="{ row }"><span class="tabular-nums">{{ num(row.usage) }}</span></template>
+        <template #cell-active="{ row }"><Badge :variant="row.active !== false ? 'success' : 'secondary'">{{ row.active !== false ? t('common.active') : t('common.inactive') }}</Badge></template>
+        <template #cell-actions="{ row }">
+          <ActionMenu :items="[
+                    { label: t('common.edit'), icon: Pencil, tone: 'blue', onSelect: () => openEditUnit(row) },
+                  ]" />
+        </template>
+      </DataTable>
+    </Card>
+    </template>
+
     <!-- VAT report -->
     <div v-else-if="tab === 'vat'" class="space-y-6">
       <FilterBar v-model:search="vatQuery" v-model="vatFilters" :filters="vatFilterDefs" :search-placeholder="t('purchases.vat.searchPh')">
@@ -317,16 +374,6 @@ function exportVat() {
 
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile :label="t('purchases.vat.total')" :value="vatTotals.vat" :format="sar" :icon="Receipt" tone="orange" />
-        <MetricTile :label="t('purchases.vat.preTaxTotal')" :value="vatTotals.preTax" :format="sar" :icon="ShoppingCart" tone="brand" />
-        <MetricTile :label="t('purchases.vat.invoices')" :value="vatRows.length" :format="num" :icon="FileText" tone="primary" />
-        <MetricTile
-          :label="t('purchases.vat.missingTaxNo')"
-          :value="vatTotals.missing"
-          :format="num"
-          :icon="vatTotals.missing ? AlertTriangle : ShieldCheck"
-          :tone="vatTotals.missing ? 'warning' : 'success'"
-          :hint="vatTotals.missing ? t('purchases.vat.missingHint') : t('purchases.vat.allHaveTaxNo')"
-        />
       </div>
 
       <div v-if="loading" class="grid gap-6 lg:grid-cols-3">
@@ -408,30 +455,9 @@ function exportVat() {
       </div>
     </div>
 
-    <!-- By cost center -->
-    <Card v-else class="overflow-hidden">
-      <DataTable
-        :loading="loading" :rows="byCenter" :empty="t('common.noData')"
-        :columns="[
-          { key: 'name', label: t('purchases.center.name'), sortable: true },
-          { key: 'budget', label: t('purchases.center.budget'), align: 'end' },
-          { key: 'spent', label: t('purchases.center.spent'), align: 'end', sortable: true },
-          { key: 'variance', label: t('purchases.center.variance'), align: 'end' },
-        ]"
-      >
-        <template #cell-budget="{ row }"><span class="tabular-nums">{{ sar(row.budget) }}</span></template>
-        <template #cell-spent="{ row }">
-          <div class="flex items-center justify-end gap-2">
-            <Progress :value="row.budget ? (row.spent / row.budget) * 100 : 0" class="w-20" :indicator-class="row.over ? 'bg-danger' : 'bg-primary'" />
-            <span class="tabular-nums">{{ sar(row.spent) }}</span>
-          </div>
-        </template>
-        <template #cell-variance="{ row }"><span class="font-semibold tabular-nums" :class="row.over ? 'text-danger' : 'text-success'">{{ sar(row.variance) }}</span></template>
-      </DataTable>
-    </Card>
-
     <PurchaseDialog v-model:open="purchaseDialog" :supplier-options="supplierOptions" :cost-center-options="costCenterOptions" :vehicle-options="vehicleOptions" :suppliers="suppliers" :item-options="itemOptions" @saved="load" />
     <PurchaseItemDialog v-model:open="itemDialog" :item="editingItem" :category-options="categoryOptions" @saved="load" />
+    <UnitDialog v-model:open="unitDialog" :unit="editingUnit" @saved="load" />
     <SupplierDialog v-model:open="supplierDialog" :supplier="editingSupplier" :category-options="categoryOptions" @saved="load" />
   </div>
 </template>

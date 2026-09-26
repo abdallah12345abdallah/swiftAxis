@@ -11,7 +11,7 @@ import { computeCommission, updateFormula, tiersOf } from '@/api/commissions'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  row: { type: Object, default: null }, // { contract, company, formula }
+  row: { type: Object, default: null }, // { riderId, name, formula }
 })
 const emit = defineEmits(['update:open', 'saved'])
 
@@ -56,7 +56,7 @@ async function submit() {
   if (saving.value) return
   saving.value = true
   try {
-    await updateFormula(props.row.contract, form)
+    await updateFormula(props.row.riderId, form)
     toast.success(t('commissions.formula.saved'))
     emit('saved')
     emit('update:open', false)
@@ -67,7 +67,7 @@ async function submit() {
 </script>
 
 <template>
-  <Dialog :open="open" :title="t('commissions.formula.editTitle')" :description="row?.company" @update:open="emit('update:open', $event)">
+  <Dialog :open="open" :title="t('commissions.formula.editTitle')" :description="row ? `${row.name} · ${row.riderId}` : ''" @update:open="emit('update:open', $event)">
     <form class="space-y-4" @submit.prevent="submit">
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">

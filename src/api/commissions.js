@@ -1,18 +1,19 @@
 import { mockDelay } from '@/services/http'
 import {
-  COMMISSION_FORMULAS, RIDER_FORMULA_OVERRIDES, FORMULA_HISTORY,
+  RIDER_FORMULAS, FORMULA_HISTORY,
   COMMISSION_RUNS, CONTRACT_COST_CENTER, RIDERS, CONTRACT_LIST,
 } from './fixtures'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
 
-/* Flexible commission engine (EP-03). */
+/* Flexible commission engine (EP-03). The commission is the rider's: every
+   rider has their own formula; a rider without one uses the default. */
 
 const DEFAULT_FORMULA = { target: 480, base: 2000, tiers: [{ upTo: null, perOrder: 5 }] }
 
-/** Resolve the effective formula for a rider (override → contract → default). */
+/** The formula a rider is paid by (their own → default). */
 export function formulaFor(rider) {
-  return RIDER_FORMULA_OVERRIDES[rider.id] || COMMISSION_FORMULAS[rider.contract] || DEFAULT_FORMULA
+  return RIDER_FORMULAS[rider.id] || DEFAULT_FORMULA
 }
 
 /** Tiers of a formula, tolerating the legacy single-rate `{ perOrder }` shape. */
@@ -46,33 +47,38 @@ export function computeCommission(orders, formula) {
   return { base: f.base, target: f.target, perOrder: tiers[0].perOrder, tiers, extra, extraAmount, total: f.base + extraAmount, tierBreakdown }
 }
 
-/** Formulas per contract with linked-rider counts. */
+/** One row per rider with the formula they are paid by. */
 export function fetchFormulas() {
   return mockDelay(
-    CONTRACT_LIST.map((c) => ({
-      contract: c.id,
-      company: c.company,
-      formula: COMMISSION_FORMULAS[c.id] || DEFAULT_FORMULA,
-      riders: RIDERS.filter((r) => (r.contracts ?? [r.contract]).includes(c.id)).length,
+    RIDERS.map((r) => ({
+      riderId: r.id,
+      name: r.name,
+      active: r.active,
+      contract: r.contract,
+      company: CONTRACT_LIST.find((c) => c.id === r.contract)?.company ?? '—',
+      formula: formulaFor(r),
+      isDefault: !RIDER_FORMULAS[r.id],
     })),
   )
 }
 
-/** Update a contract's formula, keeping history (US-010). */
-export function updateFormula(contract, formula) {
-  const before = { ...(COMMISSION_FORMULAS[contract] || DEFAULT_FORMULA) }
+/** Update one rider's formula, keeping history (US-010). */
+export function updateFormula(riderId, formula) {
+  const rider = RIDERS.find((r) => r.id === riderId)
+  if (!rider) return Promise.reject(new Error('NOT_FOUND'))
+  const before = { ...formulaFor(rider) }
   const tiers = tiersOf(formula)
     .map((tier) => ({ upTo: tier.upTo === null || tier.upTo === '' ? null : Number(tier.upTo) || 0, perOrder: Number(tier.perOrder) || 0 }))
     .sort((a, b) => (a.upTo == null ? Infinity : a.upTo) - (b.upTo == null ? Infinity : b.upTo))
   if (tiers.length) tiers[tiers.length - 1].upTo = null
-  COMMISSION_FORMULAS[contract] = {
+  RIDER_FORMULAS[riderId] = {
     target: Number(formula.target) || 0,
     base: Number(formula.base) || 0,
     tiers,
   }
-  FORMULA_HISTORY.unshift({ contract, at: new Date().toISOString().slice(0, 10), before, after: { ...COMMISSION_FORMULAS[contract] } })
-  logAudit({ action: 'update', entity: 'commissions', detail: `تعديل معادلة ${contract}` })
-  return mockDelay(COMMISSION_FORMULAS[contract])
+  FORMULA_HISTORY.unshift({ riderId, at: new Date().toISOString().slice(0, 10), before, after: { ...RIDER_FORMULAS[riderId] } })
+  logAudit({ action: 'update', entity: 'commissions', detail: `تعديل معادلة عمولة ${rider.name} (${riderId})` })
+  return mockDelay(RIDER_FORMULAS[riderId])
 }
 
 export function fetchFormulaHistory() {

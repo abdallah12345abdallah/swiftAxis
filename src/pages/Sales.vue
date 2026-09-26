@@ -56,7 +56,7 @@ const savingPaid = ref(false)
 
 const contractOptions = computed(() => contracts.value.filter((c) => c.active).map((c) => ({ value: c.id, label: c.company })))
 // only the boxes the signed-in role may work on (treasury permissions)
-const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active && x.kind !== 'rider' && canUseTreasury(x, auth.role)).map((x) => ({ value: x.id, label: x.name })))
+const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active && x.kind !== 'rider' && canUseTreasury(x, auth.user)).map((x) => ({ value: x.id, label: x.name })))
 
 async function load() {
   loading.value = true
@@ -96,7 +96,7 @@ const kpi = computed(() => ({
 function openPaid(inv) {
   paying.value = inv
   paidError.value = ''
-  const bank = treasuries.value.find((x) => x.kind === 'bank' && x.active && canUseTreasury(x, auth.role))
+  const bank = treasuries.value.find((x) => x.kind === 'bank' && x.active && canUseTreasury(x, auth.user))
   Object.assign(paidForm, { treasuryId: bank?.id ?? treasuryOptions.value[0]?.value ?? '', date: new Date().toISOString().slice(0, 10) })
   paidDialog.value = true
 }

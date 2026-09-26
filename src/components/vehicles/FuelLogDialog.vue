@@ -8,30 +8,32 @@ import { DatePicker } from '@/components/ui/datepicker'
 import { Dropdown } from '@/components/ui/dropdown'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { useCurrency } from '@/composables/useCurrency'
 import { useToast } from '@/composables/useToast'
-import { createFuelLog } from '@/api/vehicles'
+import { useCurrency } from '@/composables/useCurrency'
+import { createFuelLog, fetchFuelCost } from '@/api/vehicles'
 
-/* Fuel sheet entry (#5/#6): a fill-up per vehicle + rider; books a fuel expense. */
+/* Fuel sheet entry (#5/#6): a fill-up per vehicle — liters and odometer.
+   No rider and no typed amount: the cost is liters × the fuel's moving average
+   cost, booked automatically on the vehicle's cost center. */
 const props = defineProps({
   open: { type: Boolean, default: false },
   vehicles: { type: Array, default: () => [] },
-  riderOptions: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['update:open', 'saved'])
 
 const { t } = useI18n()
-const { sar } = useCurrency()
 const toast = useToast()
+const { sar, num } = useCurrency()
+const cost = ref({ avgCost: 0, stockLiters: 0 })
+const fillCost = computed(() => Math.round((Number(form.liters) || 0) * cost.value.avgCost * 100) / 100)
 
 const today = new Date().toISOString().slice(0, 10)
-const blank = () => ({ vehicleId: '', riderId: '', date: today, liters: '', amount: '', odometer: '', station: '', invoiceNo: '', note: '' })
+const blank = () => ({ vehicleId: '', date: today, liters: '', odometer: '', station: '', invoiceNo: '', note: '' })
 const form = reactive(blank())
 const errors = reactive({})
 const saving = ref(false)
 
 const vehicleOptions = computed(() => props.vehicles.map((v) => ({ value: v.id, label: v.label ?? v.plate, hint: v.tankCapacity ? `${v.tankCapacity} L` : '' })))
-const pricePerLiter = computed(() => (Number(form.liters) ? Math.round((Number(form.amount) / Number(form.liters)) * 100) / 100 : 0))
 
 watch(
   () => props.open,
@@ -39,14 +41,7 @@ watch(
     if (!v) return
     Object.assign(form, blank())
     Object.keys(errors).forEach((k) => delete errors[k])
-  },
-)
-// default the rider to whoever drives the vehicle in the morning
-watch(
-  () => form.vehicleId,
-  (id) => {
-    const v = props.vehicles.find((x) => x.id === id)
-    if (v && !form.riderId) form.riderId = v.morningRiderId || v.eveningRiderId || ''
+    fetchFuelCost().then((c) => (cost.value = c))
   },
 )
 
@@ -54,7 +49,7 @@ async function submit() {
   if (saving.value) return
   Object.keys(errors).forEach((k) => delete errors[k])
   if (!form.vehicleId) errors.vehicleId = t('vehicles.fuel.errVehicle')
-  if (!(Number(form.amount) > 0)) errors.amount = t('vehicles.fuel.errAmount')
+  if (!(Number(form.liters) > 0)) errors.liters = t('vehicles.fuel.errLiters')
   if (Object.keys(errors).length) return
   saving.value = true
   try {
@@ -78,10 +73,6 @@ async function submit() {
           <p v-if="errors.vehicleId" class="text-danger text-xs">{{ errors.vehicleId }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('vehicles.fuel.rider') }}</label>
-          <Dropdown v-model="form.riderId" :options="riderOptions" :placeholder="t('orders.manual.riderPh')" clearable />
-        </div>
-        <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('common.date') }}</label>
           <DatePicker v-model="form.date" :max="today" :clearable="false" />
         </div>
@@ -91,12 +82,8 @@ async function submit() {
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.fuel.liters') }}</label>
-          <Input v-model="form.liters" type="number" step="0.1" min="0" dir="ltr" placeholder="0" />
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('vehicles.fuel.amount') }}</label>
-          <Input v-model="form.amount" type="number" step="0.5" min="0" dir="ltr" placeholder="0" :invalid="!!errors.amount" />
-          <p v-if="errors.amount" class="text-danger text-xs">{{ errors.amount }}</p>
+          <Input v-model="form.liters" type="number" step="0.1" min="0" dir="ltr" placeholder="0" :invalid="!!errors.liters" />
+          <p v-if="errors.liters" class="text-danger text-xs">{{ errors.liters }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium">{{ t('vehicles.fuel.station') }}</label>
@@ -108,9 +95,18 @@ async function submit() {
         </div>
       </div>
 
-      <div class="bg-muted/40 flex items-center justify-between rounded-xl px-4 py-3 text-sm">
-        <span class="text-muted-foreground">{{ t('vehicles.fuel.pricePerLiter') }}</span>
-        <span class="font-semibold tabular-nums">{{ sar(pricePerLiter, { decimals: 2 }) }}</span>
+      <!-- cost: automatic, from the moving average -->
+      <div class="bg-muted/40 space-y-1 rounded-xl px-4 py-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-muted-foreground">{{ t('vehicles.fuel.avgCost') }}</span>
+          <span class="tabular-nums" dir="ltr">{{ sar(cost.avgCost, { decimals: 2 }) }}</span>
+        </div>
+        <div class="flex items-center justify-between font-semibold">
+          <span>{{ t('vehicles.fuel.fillCost') }}</span>
+          <span class="tabular-nums" dir="ltr">{{ sar(fillCost, { decimals: 2 }) }}</span>
+        </div>
+        <p v-if="!cost.avgCost" class="text-warning-foreground text-xs">{{ t('vehicles.fuel.noAvgCost') }}</p>
+        <p v-else-if="Number(form.liters) > cost.stockLiters" class="text-warning-foreground text-xs">{{ t('vehicles.fuel.overStock', { n: num(cost.stockLiters, { decimals: 1 }) }) }}</p>
       </div>
 
       <div class="space-y-1.5">

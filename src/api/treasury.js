@@ -1,5 +1,5 @@
 import { mockDelay } from '@/services/http'
-import { TREASURIES, TREASURY_MOVEMENTS, RIDER_TREASURY, RIDERS, EXPENSE_ITEMS, CITIES, SUPPLIERS, CONTRACT_LIST, CONTRACT_COST_CENTER } from './fixtures'
+import { TREASURIES, TREASURY_MOVEMENTS, RIDER_TREASURY, RIDERS, EXPENSE_ITEMS, CITIES, SUPPLIERS, CONTRACT_LIST, CONTRACT_COST_CENTER, USERS, PURCHASES } from './fixtures'
 import { ROLES } from '@/lib/constants'
 import { postEntry } from './ledger'
 import { logAudit } from './audit'
@@ -11,11 +11,13 @@ import { logAudit } from './audit'
 
 export const treasuryById = (id) => TREASURIES.find((t) => t.id === id)
 export const mainTreasury = () => TREASURIES.find((t) => t.isMain) ?? TREASURIES[0]
-/* Box permissions. Auth is mocked per role, so each box lists the roles
-   (`userRoles`) allowed to work on it; the manager always has every box.
-   A box without the field predates permissions and stays open to all. */
-export const canUseTreasury = (t, role) => !!t && (role === ROLES.MANAGER || !Array.isArray(t.userRoles) || t.userRoles.includes(role))
-const cleanRoles = (roles) => (Array.isArray(roles) ? [...new Set(roles.filter((r) => r !== ROLES.MANAGER && Object.values(ROLES).includes(r)))] : [])
+/* Box permissions are per user: each box lists the users (`userIds`)
+   allowed to work on it; a manager always has every box. A box without the
+   field predates permissions and stays open to all. */
+export const canUseTreasury = (t, user) => !!t && !!user && (user.role === ROLES.MANAGER || !Array.isArray(t.userIds) || t.userIds.includes(user.id))
+/** Users that can be granted a box: active staff other than managers and riders. */
+export const treasuryUsers = () => USERS.filter((u) => u.active && u.role !== ROLES.MANAGER && u.role !== ROLES.RIDER)
+const cleanUsers = (ids) => (Array.isArray(ids) ? [...new Set(ids.filter((id) => treasuryUsers().some((u) => u.id === id)))] : [])
 
 /* Voucher counterparty (سند قبض / صرف): a customer (contract company), a
    supplier or a chart account. Customers and suppliers post to their control
@@ -68,6 +70,8 @@ function decorate(t) {
     pendingOut: pending.filter((m) => !IN_TYPES.has(m.type)).reduce((s, m) => s + m.amount, 0),
     riders: Object.values(RIDER_TREASURY).filter((id) => id === t.id).length,
     movements: TREASURY_MOVEMENTS.filter((m) => m.treasuryId === t.id).length,
+    // named users with access (null = open to everyone)
+    users: Array.isArray(t.userIds) ? t.userIds.map((id) => USERS.find((u) => u.id === id)).filter(Boolean).map(({ id, name, role }) => ({ id, name, role })) : null,
   }
 }
 
@@ -86,7 +90,7 @@ export function createTreasury(payload) {
     iban: kind === 'bank' ? payload.iban || '' : undefined,
     opening: Number(payload.opening) || 0,
     active: payload.active ?? true,
-    userRoles: cleanRoles(payload.userRoles),
+    userIds: cleanUsers(payload.userIds),
   }
   TREASURIES.push(t)
   logAudit({ action: 'create', entity: 'treasury', detail: t.name })
@@ -103,7 +107,7 @@ export function updateTreasury(id, payload) {
     iban: kind === 'bank' ? payload.iban ?? t.iban : undefined,
     opening: payload.opening !== undefined ? Number(payload.opening) || 0 : t.opening,
     active: payload.active ?? t.active,
-    userRoles: payload.userRoles !== undefined ? cleanRoles(payload.userRoles) : t.userRoles,
+    userIds: payload.userIds !== undefined ? cleanUsers(payload.userIds) : t.userIds,
   })
   logAudit({ action: 'update', entity: 'treasury', detail: t.name })
   return mockDelay(decorate(t))
@@ -156,35 +160,81 @@ export async function createReceipt({ treasuryId, date, amount, party = '', desc
   return mockDelay(row)
 }
 
-/** Payment voucher (سند صرف): money out. Dr expense / counter account, Cr treasury.
-    With an expense item the account comes from the item, so the warehouse can
-    charge any cost center (#6). Paying a supplier debits its payable and may
-    carry the supplier's purchase invoice number; paying a customer debits
-    its receivable. */
-export async function createPayment({ treasuryId, date, amount, party = '', description = '', account = null, expenseItem = null, costCenter = null, riderId = null, source = 'treasury', partyType = null, partyId = null, invoiceNo = '' }) {
+/* ── Purchase invoices a supplier payment settles ── */
+const paidOnPurchase = (pur) =>
+  TREASURY_MOVEMENTS.filter((m) => m.type === 'payment' && m.status !== 'rejected' && (m.purchaseId ? m.purchaseId === pur.id : m.partyId === pur.supplierId && m.invoiceNo && m.invoiceNo === pur.invoiceNo))
+    .reduce((sum, m) => sum + m.amount, 0)
+
+/** A supplier's purchase invoices that still have something to pay, oldest first. */
+export function fetchOpenPurchaseInvoices(supplierId) {
+  const rows = PURCHASES.filter((pur) => pur.supplierId === supplierId)
+    .map((pur) => {
+      const paid = paidOnPurchase(pur)
+      return { id: pur.id, ref: pur.ref, invoiceNo: pur.invoiceNo, date: pur.date, total: pur.total, paid, remaining: Math.max(0, Math.round((pur.total - paid) * 100) / 100) }
+    })
+    .filter((r) => r.remaining > 0)
+    .sort((x, y) => (x.date < y.date ? -1 : 1))
+  return mockDelay(rows)
+}
+
+/** Payment voucher (سند صرف): money out, Cr treasury.
+    - supplier: Dr the supplier's payable. A purchase invoice of that supplier
+      must be picked (`purchaseId`) and the amount can't exceed what is left on it.
+    - account (expenses): one or more expense lines `[{ expenseItem, amount,
+      costCenter, note }]` — each debits its item's account on its own cost
+      center (falls back to the voucher's), so the warehouse can charge any
+      center (#6). Internal callers may still pass a plain `account` + `amount`.
+    - customer: Dr the customer's receivable. */
+export async function createPayment({ treasuryId, date, amount, party = '', description = '', account = null, expenseItem = null, lines = null, costCenter = null, riderId = null, source = 'treasury', partyType = null, partyId = null, invoiceNo = '', purchaseId = null }) {
   const t = treasuryById(treasuryId)
   if (!t) return Promise.reject(new Error('NOT_FOUND'))
-  const amt = Number(amount) || 0
+
+  // expense lines (account payments from the voucher screen)
+  const expLines = Array.isArray(lines)
+    ? lines.map((l) => {
+        const item = EXPENSE_ITEMS.find((i) => i.id === l.expenseItem)
+        return { expenseItem: item?.id ?? null, account: item?.account ?? null, amount: Math.round((Number(l.amount) || 0) * 100) / 100, costCenter: l.costCenter || costCenter || null, note: String(l.note ?? '').trim() }
+      })
+    : null
+  if (expLines) {
+    if (!expLines.length) return Promise.reject(new Error('LINES_REQUIRED'))
+    if (expLines.some((l) => !l.expenseItem)) return Promise.reject(new Error('ITEM_REQUIRED'))
+    if (expLines.some((l) => l.amount <= 0)) return Promise.reject(new Error('INVALID_AMOUNT'))
+  }
+  const amt = expLines ? expLines.reduce((sum, l) => sum + l.amount, 0) : Number(amount) || 0
   if (amt <= 0) return Promise.reject(new Error('INVALID_AMOUNT'))
-  const item = expenseItem ? EXPENSE_ITEMS.find((i) => i.id === expenseItem) : null
-  const p = resolveParty({ partyType, partyId, party, account: account || item?.account || 'general_expense', costCenter })
+
+  const item = expLines ? EXPENSE_ITEMS.find((i) => i.id === expLines[0].expenseItem) : expenseItem ? EXPENSE_ITEMS.find((i) => i.id === expenseItem) : null
+  const p = resolveParty({ partyType, partyId, party, account: expLines ? expLines[0].account : account || item?.account || 'general_expense', costCenter })
   if (p.error) return Promise.reject(new Error(p.error))
   const acc = p.account
   ;({ party, costCenter } = p)
+
+  // a supplier payment settles one of that supplier's purchase invoices
+  let purchase = null
+  if (p.partyType === 'supplier' && source === 'treasury') {
+    purchase = PURCHASES.find((x) => x.id === purchaseId && x.supplierId === p.partyId)
+    if (!purchase) return Promise.reject(new Error('INVOICE_REQUIRED'))
+    if (amt > purchase.total - paidOnPurchase(purchase) + 0.001) return Promise.reject(new Error('EXCEEDS_INVOICE'))
+  }
+
   const ref = nextVoucherRef('PV')
   const row = pushMovement({
-    ref, type: 'payment', treasuryId, date, amount: amt, party, partyType: p.partyType, partyId: p.partyId, invoiceNo: String(invoiceNo || '').trim(),
-    description, account: acc, expenseItem: p.partyType === 'account' || !p.partyType ? item?.id ?? null : null, costCenter, riderId, source,
+    ref, type: 'payment', treasuryId, date, amount: amt, party, partyType: p.partyType, partyId: p.partyId,
+    purchaseId: purchase?.id ?? null, invoiceNo: purchase ? purchase.invoiceNo : String(invoiceNo || '').trim(),
+    description, account: acc, expenseItem: p.partyType === 'account' || !p.partyType ? item?.id ?? null : null,
+    ...(expLines && p.partyType === 'account' ? { lines: expLines } : {}),
+    costCenter, riderId, source,
   })
-  if (acc !== t.account) {
+  const debits = expLines && p.partyType === 'account'
+    ? expLines.map((l) => ({ account: l.account, costCenter: l.costCenter, debit: l.amount, credit: 0, description: l.note }))
+    : [{ account: acc, costCenter, debit: amt, credit: 0 }]
+  if (debits.some((d) => d.account !== t.account)) {
     await postEntry({
       source,
       date,
       description: `سند صرف ${ref} — ${description || party}${row.invoiceNo ? ` (فاتورة ${row.invoiceNo})` : ''}`,
-      lines: [
-        { account: acc, costCenter, debit: amt, credit: 0 },
-        { account: t.account, costCenter, debit: 0, credit: amt },
-      ],
+      lines: [...debits, { account: t.account, costCenter, debit: 0, credit: amt }],
     })
   }
   logAudit({ action: 'create', entity: 'treasury', detail: `سند صرف ${ref}` })

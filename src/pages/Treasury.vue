@@ -74,12 +74,11 @@ const loc = (map, k) => map[k]?.[locale.value] ?? map[k]?.ar ?? k
 const kindIcon = (k) => (k === 'bank' ? Banknote : k === 'rider' ? Wallet : Landmark)
 
 const treasuryOptions = computed(() => treasuries.value.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name, hint: loc(TREASURY_KINDS, x.kind) })))
-/* boxes the signed-in role has permission on (manager: all) — the only ones
+/* boxes the signed-in user has permission on (manager: all) — the only ones
    offered when moving money (vouchers, transfers) */
-const permittedTreasuryOptions = computed(() => treasuryOptions.value.filter((o) => canUseTreasury(treasuries.value.find((x) => x.id === o.value), auth.role)))
+const permittedTreasuryOptions = computed(() => treasuryOptions.value.filter((o) => canUseTreasury(treasuries.value.find((x) => x.id === o.value), auth.user)))
 const nonRiderTreasuryOptions = computed(() => permittedTreasuryOptions.value.filter((o) => treasuries.value.find((x) => x.id === o.value)?.kind !== 'rider'))
 const voucherDefaultTreasury = computed(() => (nonRiderTreasuryOptions.value.some((o) => o.value === mainId.value) ? mainId.value : nonRiderTreasuryOptions.value[0]?.value ?? ''))
-const accessRoles = (row) => (Array.isArray(row.userRoles) ? row.userRoles : null)
 const partyTypeTone = { customer: 'success', supplier: 'default', account: 'secondary' }
 const mainId = computed(() => treasuries.value.find((x) => x.isMain)?.id ?? '')
 const accountOptions = computed(() =>
@@ -244,8 +243,8 @@ const shownVouchers = computed(() => {
     (!f.treasury || r.treasuryId === f.treasury) &&
     (!f.status || r.status === f.status) &&
     (!f.partyType || r.partyType === f.partyType) &&
-    (!f.expenseItem || r.expenseItem === f.expenseItem) &&
-    (!f.costCenter || r.costCenter === f.costCenter),
+    (!f.expenseItem || r.expenseItem === f.expenseItem || (r.lines ?? []).some((l) => l.expenseItem === f.expenseItem)) &&
+    (!f.costCenter || r.costCenter === f.costCenter || (r.lines ?? []).some((l) => l.costCenter === f.costCenter)),
   )
 })
 const shownTransfers = computed(() => {
@@ -306,7 +305,7 @@ const voucherColumns = (isPayment) => [
             { key: 'kind', label: t('treasury.kind') },
             { key: 'riders', label: t('treasury.riders'), align: 'end', hideBelow: 'md' },
             { key: 'pendingIn', label: t('treasury.pendingIn'), align: 'end', hideBelow: 'lg' },
-            { key: 'userRoles', label: t('treasury.access.column'), hideBelow: 'xl' },
+            { key: 'users', label: t('treasury.access.column'), hideBelow: 'xl' },
             { key: 'balance', label: t('treasury.balance'), align: 'end', sortable: true },
             { key: 'active', label: t('common.status'), hideBelow: 'sm' },
             { key: 'actions', label: t('common.actions'), align: 'end' },
@@ -324,12 +323,12 @@ const voucherColumns = (isPayment) => [
           <template #cell-kind="{ row }"><Badge variant="secondary">{{ loc(TREASURY_KINDS, row.kind) }}</Badge></template>
           <template #cell-riders="{ row }"><span class="tabular-nums">{{ row.riders ? num(row.riders) : '—' }}</span></template>
           <template #cell-pendingIn="{ row }"><span class="tabular-nums" :class="row.pendingIn ? 'text-warning-foreground' : 'text-muted-foreground'">{{ row.pendingIn ? sar(row.pendingIn) : '—' }}</span></template>
-          <template #cell-userRoles="{ row }">
-            <span v-if="!accessRoles(row)" class="text-muted-foreground text-xs">{{ t('treasury.access.everyone') }}</span>
+          <template #cell-users="{ row }">
+            <span v-if="!row.users" class="text-muted-foreground text-xs">{{ t('treasury.access.everyone') }}</span>
             <span v-else class="flex flex-wrap items-center gap-1">
               <ShieldCheck class="text-primary size-3.5" :aria-label="t('treasury.access.column')" />
-              <Badge variant="secondary">{{ t('roles.manager') }}</Badge>
-              <Badge v-for="r in accessRoles(row)" :key="r" variant="secondary">{{ t(`roles.${r}`) }}</Badge>
+              <Badge variant="secondary">{{ t('treasury.access.managers') }}</Badge>
+              <Badge v-for="u in row.users" :key="u.id" variant="secondary" :title="t(`roles.${u.role}`)">{{ u.name }}</Badge>
             </span>
           </template>
           <template #cell-balance="{ row }"><span class="font-semibold tabular-nums" :class="row.balance < 0 ? 'text-danger' : ''">{{ sar(row.balance) }}</span></template>
@@ -366,9 +365,17 @@ const voucherColumns = (isPayment) => [
         <template #cell-description="{ row }"><span class="text-muted-foreground">{{ row.description || '—' }}</span></template>
         <template #cell-account="{ row }">
           <template v-if="tab === 'payments'">
-            <Badge v-if="row.expenseItem" variant="secondary">{{ expenseItemOptions.find((i) => i.value === row.expenseItem)?.label ?? row.expenseItem }}</Badge>
-            <span v-else class="text-muted-foreground text-xs">{{ accName(row.account) }}</span>
-            <span v-if="row.costCenter" class="text-muted-foreground ms-1 text-xs">· {{ ccName(row.costCenter) }}</span>
+            <!-- a voucher with several expense lines shows each item -->
+            <span v-if="row.lines?.length" class="flex flex-wrap gap-1">
+              <Badge v-for="(l, i) in row.lines" :key="i" variant="secondary" :title="[sar(l.amount), l.costCenter && ccName(l.costCenter), l.note].filter(Boolean).join(' · ')">
+                {{ expenseItemOptions.find((x) => x.value === l.expenseItem)?.label ?? l.expenseItem }}
+              </Badge>
+            </span>
+            <template v-else>
+              <Badge v-if="row.expenseItem" variant="secondary">{{ expenseItemOptions.find((i) => i.value === row.expenseItem)?.label ?? row.expenseItem }}</Badge>
+              <span v-else class="text-muted-foreground text-xs">{{ accName(row.account) }}</span>
+              <span v-if="row.costCenter" class="text-muted-foreground ms-1 text-xs">· {{ ccName(row.costCenter) }}</span>
+            </template>
           </template>
           <span v-else class="text-muted-foreground text-xs">{{ accName(row.account) }}</span>
         </template>

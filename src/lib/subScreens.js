@@ -40,8 +40,8 @@ export const SUB_SCREENS = {
       ...['journal', 'voided', 'trial', 'pnl', 'costCenters'].map((k) => ({ key: k, labelKey: `ledger.tabs.${k}`, path: screenPath('/ledger', k, 'journal'), tab: k })),
     ],
   },
-  purchases: tabs('/purchases', 'purchases.tabs', ['purchases', 'suppliers', 'items', 'vat', 'byCenter'], 'purchases'),
-  vehicles: tabs('/vehicles', 'vehicles.tabs', ['vehicles', 'handover', 'shifts', 'expenses', 'fuel', 'expenseItems', 'profitability'], 'vehicles'),
+  purchases: tabs('/purchases', 'purchases.tabs', ['purchases', 'suppliers', 'items', 'units', 'vat'], 'purchases'),
+  vehicles: tabs('/vehicles', 'vehicles.tabs', ['vehicles', 'handover', 'receive', 'shifts', 'expenses', 'fuel', 'expenseItems', 'profitability'], 'vehicles'),
   reports: tabs('/reports', 'reports.tabs', ['monthly', 'period', 'best'], 'monthly'),
   users: tabs('/users', 'users.tabs', ['users', 'roles', 'audit'], 'users'),
   accounting: {

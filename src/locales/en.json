@@ -470,8 +470,8 @@
       "purchases": "Purchases",
       "suppliers": "Suppliers",
       "vat": "VAT Report",
-      "byCenter": "By Cost Center",
-      "items": "Purchase items"
+      "items": "Purchase items",
+      "units": "Units"
     },
     "addPurchase": "Add purchase",
     "purchaseTitle": "Record purchase",
@@ -516,20 +516,9 @@
       "amount": "VAT",
       "total": "Total VAT",
       "searchPh": "Search by invoice, supplier or tax number…",
-      "preTaxTotal": "Purchases before VAT",
-      "invoices": "Taxable invoices",
-      "missingTaxNo": "Invoices without tax no.",
-      "missingHint": "Their VAT cannot be reclaimed without the supplier tax number",
-      "allHaveTaxNo": "Every invoice has a tax number",
       "noTaxNo": "No tax no.",
       "bySupplier": "VAT by supplier",
       "bySupplierHint": "Each supplier's share of input VAT in the period"
-    },
-    "center": {
-      "name": "Cost center",
-      "budget": "Budget",
-      "spent": "Spent",
-      "variance": "Variance"
     },
     "saved": "Saved",
     "empty": "No records",
@@ -569,6 +558,24 @@
       "invoiceTotal": "Invoice total",
       "errLines": "Complete the highlighted items: item, quantity and unit price.",
       "errSave": "Could not save the invoice"
+    },
+    "units": {
+      "title": "Units of measure",
+      "add": "Add unit",
+      "addTitle": "New unit",
+      "editTitle": "Edit unit",
+      "code": "Code",
+      "codePh": "e.g. CTN",
+      "codeHint": "Latin letters or digits (up to 8). Can’t be changed after saving.",
+      "name": "Arabic name",
+      "namePh": "e.g. كرتونة",
+      "en": "English name",
+      "usage": "Items using it",
+      "searchPh": "Search by code or name…",
+      "saved": "Unit saved",
+      "errCode": "Enter a code of Latin letters or digits (up to 8)",
+      "errName": "Name is required",
+      "errDuplicate": "This code is already used by another unit"
     }
   },
   "vehicles": {
@@ -578,7 +585,8 @@
       "vehicles": "Vehicles",
       "expenses": "Expenses",
       "profitability": "Profitability",
-      "handover": "Handover",
+      "handover": "Vehicle delivery",
+      "receive": "Vehicle receipt",
       "shifts": "Work shifts",
       "fuel": "Fuel sheet",
       "expenseItems": "Expense items"
@@ -586,14 +594,9 @@
     "plate": "Plate",
     "type": "Type",
     "rider": "Riders",
-    "riders": {
-      "morning": "Morning rider",
-      "evening": "Evening rider"
-    },
     "statusLabel": "Status",
     "statusFrom": "From",
     "statusTo": "To",
-    "errSameRider": "The same rider cannot take both shifts",
     "unassigned": "Unassigned",
     "addVehicle": "Add vehicle",
     "vehicleTitle": "Vehicle",
@@ -607,7 +610,6 @@
       "invoiceNo": "Invoice no.",
       "note": "Note",
       "receipt": "Receipt",
-      "value": "Vehicle value (SAR)",
       "chassis": "Chassis no.",
       "color": "Color",
       "model": "Model",
@@ -636,15 +638,9 @@
     "empty": "No records",
     "identity": "Vehicle details",
     "handover": {
-      "title": "Vehicle handover",
-      "add": "Record handover",
-      "hint": "The vehicle's shift rider is updated automatically from the receiving party.",
       "vehicle": "Vehicle",
       "shift": "Work shift",
-      "from": "Handing over",
-      "to": "Receiving",
       "rider": "Rider",
-      "company": "Company",
       "odometer": "Odometer (km)",
       "fuel": "Fuel level (%)",
       "condition": "Vehicle condition",
@@ -655,12 +651,43 @@
       "photo": "Photo",
       "time": "Time",
       "by": "Recorded by",
-      "saved": "Handover documented",
       "empty": "No handovers",
       "errVehicle": "Pick a vehicle",
       "errShift": "Pick a work shift",
-      "errParty": "Set both parties",
-      "errSame": "Both parties can't be the same"
+      "addDelivery": "New delivery voucher",
+      "addReceipt": "New receipt voucher",
+      "deliveryTitle": "Vehicle delivery voucher",
+      "receiptTitle": "Vehicle receipt voucher",
+      "ref": "Voucher no.",
+      "toRider": "Receiving rider",
+      "deliveryHint": "The voucher stays open until the vehicle is received back; the rider becomes the vehicle’s rider for this shift.",
+      "receiptHint": "Receiving closes the delivery voucher and frees the shift on the vehicle.",
+      "deliverySaved": "Delivery voucher saved",
+      "receiptSaved": "Receipt voucher saved",
+      "pickDelivery": "Delivery voucher",
+      "pickDeliveryPh": "Pick the delivery voucher to receive",
+      "noOpenDeliveries": "There are no open delivery vouchers.",
+      "deliveredOn": "Delivered on",
+      "odometerAtDelivery": "Odometer at delivery",
+      "odometerReading": "Odometer at receipt",
+      "kmDriven": "{n} km driven",
+      "km": "Distance (km)",
+      "fromReading": "from {n}",
+      "deliveryRef": "Delivery voucher",
+      "receiveThis": "Receive vehicle",
+      "emptyReceipts": "No receipt vouchers",
+      "states": {
+        "open": "With rider",
+        "received": "Received"
+      },
+      "errRider": "Pick the rider",
+      "errRiderBusy": "This rider already has a vehicle; receive it first",
+      "errShiftTaken": "This shift is taken on the vehicle; receive it first",
+      "errOdometer": "Enter the odometer reading",
+      "errOdometerBelow": "Reading is below the odometer at delivery ({n})",
+      "errDateBefore": "Date is before the delivery date",
+      "errDelivery": "Pick the delivery voucher",
+      "errAlreadyReceived": "This vehicle was already received"
     },
     "shifts": {
       "title": "Work shifts",
@@ -707,26 +734,28 @@
     "fuel": {
       "title": "Fuel expense sheet",
       "add": "Record fill-up",
-      "hint": "Each fill-up is booked as a fuel expense on the vehicle's cost center automatically.",
-      "rider": "Rider",
+      "hint": "The fill-up cost is automatic: liters × the average cost per liter from fuel purchases, booked as a fuel expense on the vehicle cost center.",
       "liters": "Liters",
-      "amount": "Amount",
-      "pricePerLiter": "Price / liter",
       "odometer": "Odometer",
       "station": "Station",
       "fills": "Fill-ups",
-      "byVehicle": "Totals per vehicle",
+      "byVehicle": "Liters per vehicle",
       "tank": "Tank capacity",
       "saved": "Fill-up recorded",
       "empty": "No fill-ups",
-      "allRiders": "All riders",
       "errVehicle": "Pick a vehicle",
-      "errAmount": "Enter the amount",
-      "searchPh": "Search by station, plate or rider…",
-      "avgPrice": "Avg price / liter",
+      "searchPh": "Search by station, plate or invoice no…",
       "tankShare": "{pct} of the tank",
       "idleN": "{n} vehicles with no fill-ups",
-      "fillsN": "{n} fill-ups"
+      "fillsN": "{n} fill-ups",
+      "errLiters": "Enter the liters",
+      "litersN": "{n} L",
+      "avgCost": "Average cost per liter",
+      "fillCost": "Fill-up cost (automatic)",
+      "cost": "Cost",
+      "noAvgCost": "No average cost yet — record a fuel purchase first, or the fill-up is saved without a cost.",
+      "overStock": "More liters than the fuel stock holds ({n} L).",
+      "stockHint": "{n} L in stock"
     },
     "expenseItems": {
       "title": "Expense items",
@@ -767,11 +796,7 @@
     "searchExpenses": "Search by plate, invoice no. or note…",
     "searchPh": "Search by plate, model, chassis or rider…",
     "filters": {
-      "direction": "Direction",
-      "dir_riders": "Between riders",
-      "dir_toCompany": "Back to the company",
-      "dir_fromCompany": "From the company",
-      "searchHandovers": "Search by plate, rider or notes…"
+      "searchHandovers": "Search by voucher no, plate or rider…"
     },
     "exp": {
       "total": "Total expenses",
@@ -785,7 +810,8 @@
       "byItemHint": "Click an item to filter the list",
       "byVehicle": "Top vehicles by spend",
       "recordsN": "{n} records"
-    }
+    },
+    "ridersViaDelivery": "A rider is put on the vehicle from “Vehicle delivery” with a delivery voucher, and taken off with a receipt voucher."
   },
   "wallets": {
     "title": "Cash Wallets",
@@ -984,7 +1010,10 @@
       "tierPerOrder": "Per order (SAR)",
       "tierUnlimited": "Unlimited",
       "addTier": "Add tier",
-      "removeTier": "Remove tier"
+      "removeTier": "Remove tier",
+      "rider": "Rider",
+      "default": "Default formula",
+      "perRiderHint": "The commission belongs to the rider, not the contract company: every rider has their own formula (target, base and tiers)."
     },
     "monthly": {
       "month": "Month",
@@ -1307,15 +1336,28 @@
       "supplier": "Supplier",
       "supplierPh": "Pick a supplier",
       "accountPh": "Pick an account",
-      "noExpenseItem": "No expense item",
       "invoiceNo": "Purchase invoice no.",
-      "invoiceNoPh": "e.g. S-1201",
-      "supplierInvoices": "Purchase invoices recorded for this supplier (click to use the number):",
       "postsDebit": "The voucher debits “{account}” and credits the treasury.",
       "postsCredit": "The voucher debits the treasury and credits “{account}”.",
       "errCustomer": "Pick a customer",
       "errSupplier": "Pick a supplier",
-      "errAccount": "Pick an account"
+      "errAccount": "Pick an account",
+      "remaining": "Remaining",
+      "invoiceTotal": "Invoice total",
+      "paidBefore": "Paid before",
+      "invoicePh": "Pick the purchase invoice",
+      "pickSupplierFirst": "Pick the supplier first",
+      "noOpenInvoices": "This supplier has no unpaid invoices",
+      "errInvoice": "Pick the purchase invoice",
+      "errExceeds": "Amount is more than what is left on the invoice ({v})",
+      "lines": "Expense lines",
+      "addLine": "Add line",
+      "removeLine": "Remove line",
+      "lineNote": "Line note (optional)",
+      "linesTotal": "Total ({n} lines)",
+      "linesTotalHint": "Sum of the expense lines",
+      "linePosts": "Charged to “{account}”",
+      "errItem": "Pick the expense item"
     },
     "transfer": {
       "title": "Transfer between treasuries",
@@ -1363,12 +1405,13 @@
     "searchStatement": "Search by reference, description or party…",
     "access": {
       "title": "Who can use this treasury",
-      "hint": "Roles that see this treasury in receipt and payment vouchers and in transfers between treasuries.",
+      "hint": "Users who see this treasury in receipt and payment vouchers and in transfers between treasuries. Pick each user by name.",
       "always": "always",
       "column": "Allowed",
       "everyone": "Everyone",
       "transferHint": "Only the treasuries you have permission on are shown.",
-      "transferTooFew": "You have permission on fewer than two treasuries, so you cannot transfer. Ask the manager to give you access to another one."
+      "transferTooFew": "You have permission on fewer than two treasuries, so you cannot transfer. Ask the manager to give you access to another one.",
+      "managers": "System manager"
     }
   },
   "sales": {

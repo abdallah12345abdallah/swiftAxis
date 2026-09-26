@@ -13,7 +13,7 @@ export function fetchExpenseItems() {
   return mockDelay(
     EXPENSE_ITEMS.map((i) => ({
       ...i,
-      usage: VEHICLE_EXPENSES.filter((e) => e.type === i.id).length + TREASURY_MOVEMENTS.filter((m) => m.expenseItem === i.id).length,
+      usage: VEHICLE_EXPENSES.filter((e) => e.type === i.id).length + TREASURY_MOVEMENTS.filter((m) => m.expenseItem === i.id || (m.lines ?? []).some((l) => l.expenseItem === i.id)).length,
     })),
   )
 }

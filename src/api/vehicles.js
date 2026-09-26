@@ -1,11 +1,13 @@
 import { mockDelay } from '@/services/http'
 import { VEHICLES, VEHICLE_EXPENSES, RIDERS, COST_CENTERS, WORK_SHIFTS, VEHICLE_HANDOVERS, FUEL_LOGS, EXPENSE_ITEMS } from './fixtures'
 import { postEntry } from './ledger'
+import { fuelPurchases } from './purchases'
 import { logAudit } from './audit'
 
 /* Vehicles & expenses (EP-05) + handover, shifts and the fuel sheet (#5).
    A vehicle carries up to two riders (one per shift) and owns a dedicated
-   cost center for its expenses. */
+   cost center for its expenses. Riders are put on a vehicle only through
+   delivery vouchers (تسليم) and taken off by receipt vouchers (استلام). */
 
 const riderById = (id) => RIDERS.find((r) => r.id === id)
 const todayISO = () => new Date().toISOString().slice(0, 10)
@@ -40,13 +42,11 @@ export function assignmentOf(riderId) {
   return null
 }
 
+/* No value and no riders here: riders come from delivery vouchers. */
 function normalizeVehiclePayload(payload) {
   return {
     plate: payload.plate,
     type: payload.type,
-    morningRiderId: payload.morningRiderId || null,
-    eveningRiderId: payload.eveningRiderId || null,
-    value: Number(payload.value) || 0,
     status: payload.status || 'active',
     statusFrom: payload.status && payload.status !== 'active' ? payload.statusFrom || null : null,
     statusTo: payload.status && payload.status !== 'active' ? payload.statusTo || null : null,
@@ -62,13 +62,12 @@ function normalizeVehiclePayload(payload) {
 let vSeq = VEHICLES.length
 export function createVehicle(payload) {
   const fields = normalizeVehiclePayload(payload)
-  if (fields.morningRiderId && fields.morningRiderId === fields.eveningRiderId) return Promise.reject(new Error('SAME_RIDER'))
   vSeq += 1
   const id = `v${vSeq}`
   // every vehicle gets its own cost center so its expenses can be traced
   const ccId = `cc-veh-${id}`
   COST_CENTERS.push({ id: ccId, code: `CC-4${String(vSeq).padStart(2, '0')}`, name: `مركبة ${fields.plate}`, budget: 0, active: true, vehicleId: id })
-  const v = { id, ...fields, costCenter: ccId }
+  const v = { id, ...fields, morningRiderId: null, eveningRiderId: null, costCenter: ccId }
   VEHICLES.push(v)
   logAudit({ action: 'create', entity: 'vehicles', detail: v.plate })
   return mockDelay(v)
@@ -77,9 +76,7 @@ export function createVehicle(payload) {
 export function updateVehicle(id, payload) {
   const v = VEHICLES.find((x) => x.id === id)
   if (!v) return Promise.reject(new Error('NOT_FOUND'))
-  const fields = normalizeVehiclePayload(payload)
-  if (fields.morningRiderId && fields.morningRiderId === fields.eveningRiderId) return Promise.reject(new Error('SAME_RIDER'))
-  Object.assign(v, fields)
+  Object.assign(v, normalizeVehiclePayload(payload))
   const cc = COST_CENTERS.find((c) => c.vehicleId === v.id)
   if (cc) cc.name = `مركبة ${v.plate}`
   logAudit({ action: 'update', entity: 'vehicles', detail: v.plate })
@@ -101,7 +98,8 @@ export function fetchExpenses({ vehicleId, from, to, type } = {}) {
 }
 
 let eSeq = VEHICLE_EXPENSES.length
-/** Create an expense and auto-post Dr expense account (from the item) / Cr Cash (US-018). */
+/** Create an expense and auto-post Dr expense account (from the item) / Cr Cash (US-018).
+    A fuel fill-up credits the fuel stock instead of cash (`creditAccount`). */
 export async function createExpense(payload) {
   eSeq += 1
   const exp = {
@@ -122,7 +120,7 @@ export async function createExpense(payload) {
     description: `مصروف سيارة — ${exp.invoiceNo}`,
     lines: [
       { account, costCenter: cc, debit: exp.amount, credit: 0 },
-      { account: 'cash', costCenter: cc, debit: 0, credit: exp.amount },
+      { account: payload.creditAccount || 'cash', costCenter: cc, debit: 0, credit: exp.amount },
     ],
   })
   logAudit({ action: 'create', entity: 'vehicles', detail: `مصروف ${exp.amount}` })
@@ -181,23 +179,44 @@ export function updateShift(id, payload) {
   return mockDelay(s)
 }
 
-/* ── Vehicle handover (#5) ───────────────────────────────── */
+/* ── Vehicle handover (#5) ───────────────────────────────
+   Two separate vouchers:
+   - delivery (تسليم): the company hands a vehicle to a rider for a shift. It
+     stays open while the rider has the vehicle; the rider becomes the
+     vehicle's rider for that shift.
+   - receipt (استلام): always made from an open delivery voucher — vehicle,
+     rider and shift come from it; the odometer reading is required and can't
+     be below the delivery reading. It closes the delivery and frees the shift. */
+const shiftKey = (shiftId) => (shiftId === 'evening' ? 'eveningRiderId' : shiftId === 'morning' ? 'morningRiderId' : null)
+const handoverById = (id) => VEHICLE_HANDOVERS.find((h) => h.id === id)
+
 function decorateHandover(h) {
   const v = VEHICLES.find((x) => x.id === h.vehicleId)
+  const delivery = h.kind === 'receipt' ? handoverById(h.deliveryId) : null
+  const receipt = h.kind === 'delivery' && h.receiptId ? handoverById(h.receiptId) : null
   return {
     ...h,
     plate: v?.plate ?? '—',
     model: v?.model ?? '',
     shiftName: shiftById(h.shiftId)?.name ?? h.shiftId,
-    fromName: h.fromType === 'company' ? null : riderById(h.fromRiderId)?.name ?? h.fromRiderId,
-    toName: h.toType === 'company' ? null : riderById(h.toRiderId)?.name ?? h.toRiderId,
+    riderName: riderById(h.riderId)?.name ?? h.riderId,
+    open: h.kind === 'delivery' && !h.receiptId,
+    // delivery → its receipt; receipt → its delivery, and the km driven between them
+    deliveryRef: delivery?.ref ?? null,
+    deliveryDate: delivery?.date ?? null,
+    deliveryOdometer: delivery?.odometer ?? null,
+    receiptRef: receipt?.ref ?? null,
+    receiptDate: receipt?.date ?? null,
+    km: delivery ? Math.max(0, h.odometer - delivery.odometer) : receipt ? Math.max(0, receipt.odometer - h.odometer) : null,
   }
 }
 
-export function fetchHandovers({ vehicleId, riderId, from, to } = {}) {
+export function fetchHandovers({ kind, vehicleId, riderId, from, to, open } = {}) {
   const rows = VEHICLE_HANDOVERS.filter((h) => {
+    if (kind && h.kind !== kind) return false
     if (vehicleId && h.vehicleId !== vehicleId) return false
-    if (riderId && h.fromRiderId !== riderId && h.toRiderId !== riderId) return false
+    if (riderId && h.riderId !== riderId) return false
+    if (open && !(h.kind === 'delivery' && !h.receiptId)) return false
     return inRange(h.date, from, to)
   })
     .map(decorateHandover)
@@ -206,87 +225,165 @@ export function fetchHandovers({ vehicleId, riderId, from, to } = {}) {
 }
 
 let hSeq = VEHICLE_HANDOVERS.length
-/** Document a handover. The receiving rider becomes the vehicle's rider for
-    that shift (or the shift is freed when it goes back to the company). */
-export function createHandover(payload) {
+const nextRef = (kind) => {
+  const prefix = kind === 'delivery' ? 'VD' : 'VR'
+  const n = VEHICLE_HANDOVERS.filter((h) => h.kind === kind).length + 1
+  return `${prefix}-${new Date().getFullYear()}-${String(n).padStart(4, '0')}`
+}
+const conditionFields = (payload) => ({
+  odometer: Number(payload.odometer) || 0,
+  fuel: Math.max(0, Math.min(100, Number(payload.fuel) || 0)),
+  condition: payload.condition || 'good',
+  notes: payload.notes || '',
+  photo: payload.photo ? { name: payload.photo.name, url: payload.photo.url } : null,
+  by: payload.by || '',
+})
+
+/** Delivery voucher: the company hands the vehicle to a rider for a shift.
+    The shift must be free (whoever is on it has to be received back first). */
+export function createDelivery(payload) {
   const v = VEHICLES.find((x) => x.id === payload.vehicleId)
   if (!v) return Promise.reject(new Error('VEHICLE_REQUIRED'))
   if (!payload.shiftId || !shiftById(payload.shiftId)) return Promise.reject(new Error('SHIFT_REQUIRED'))
-  const fromType = payload.fromType || 'rider'
-  const toType = payload.toType || 'rider'
-  if (fromType === 'rider' && !payload.fromRiderId) return Promise.reject(new Error('FROM_REQUIRED'))
-  if (toType === 'rider' && !payload.toRiderId) return Promise.reject(new Error('TO_REQUIRED'))
-  if (fromType === 'company' && toType === 'company') return Promise.reject(new Error('SAME_PARTY'))
-  if (fromType === 'rider' && toType === 'rider' && payload.fromRiderId === payload.toRiderId) return Promise.reject(new Error('SAME_PARTY'))
+  if (!riderById(payload.riderId)) return Promise.reject(new Error('RIDER_REQUIRED'))
+  const key = shiftKey(payload.shiftId)
+  if ((key && v[key]) || VEHICLE_HANDOVERS.some((h) => h.kind === 'delivery' && !h.receiptId && h.vehicleId === v.id && h.shiftId === payload.shiftId)) {
+    return Promise.reject(new Error('SHIFT_TAKEN'))
+  }
+  if (assignmentOf(payload.riderId)) return Promise.reject(new Error('RIDER_BUSY'))
   hSeq += 1
   const h = {
     id: `vh${hSeq}`,
+    kind: 'delivery',
+    ref: nextRef('delivery'),
     vehicleId: v.id,
+    riderId: payload.riderId,
+    shiftId: payload.shiftId,
     date: payload.date || todayISO(),
     time: payload.time || new Date().toTimeString().slice(0, 5),
-    shiftId: payload.shiftId,
-    fromType,
-    fromRiderId: fromType === 'rider' ? payload.fromRiderId : null,
-    toType,
-    toRiderId: toType === 'rider' ? payload.toRiderId : null,
-    odometer: Number(payload.odometer) || 0,
-    fuel: Math.max(0, Math.min(100, Number(payload.fuel) || 0)),
-    condition: payload.condition || 'good',
-    notes: payload.notes || '',
-    photo: payload.photo ? { name: payload.photo.name, url: payload.photo.url } : null,
-    by: payload.by || '',
+    ...conditionFields(payload),
+    receiptId: null,
   }
   VEHICLE_HANDOVERS.push(h)
-  // keep the vehicle's shift assignment in step with the paperwork
-  const key = h.shiftId === 'evening' ? 'eveningRiderId' : h.shiftId === 'morning' ? 'morningRiderId' : null
-  if (key) v[key] = toType === 'rider' ? h.toRiderId : null
-  logAudit({ action: 'create', entity: 'vehicles', detail: `تسليم/استلام ${v.plate}` })
+  if (key) v[key] = h.riderId
+  logAudit({ action: 'create', entity: 'vehicles', detail: `سند تسليم ${h.ref} — ${v.plate}` })
+  return mockDelay(decorateHandover(h))
+}
+
+/** Receipt voucher, made from an open delivery voucher. */
+export function createReceipt(payload) {
+  const d = handoverById(payload.deliveryId)
+  if (!d || d.kind !== 'delivery') return Promise.reject(new Error('DELIVERY_REQUIRED'))
+  if (d.receiptId) return Promise.reject(new Error('ALREADY_RECEIVED'))
+  if (payload.odometer === '' || payload.odometer == null) return Promise.reject(new Error('ODOMETER_REQUIRED'))
+  const odometer = Number(payload.odometer) || 0
+  if (odometer < d.odometer) return Promise.reject(new Error('ODOMETER_BELOW'))
+  const date = payload.date || todayISO()
+  if (date < d.date) return Promise.reject(new Error('DATE_BEFORE_DELIVERY'))
+  hSeq += 1
+  const h = {
+    id: `vh${hSeq}`,
+    kind: 'receipt',
+    ref: nextRef('receipt'),
+    deliveryId: d.id,
+    vehicleId: d.vehicleId,
+    riderId: d.riderId,
+    shiftId: d.shiftId,
+    date,
+    time: payload.time || new Date().toTimeString().slice(0, 5),
+    ...conditionFields(payload),
+    odometer,
+  }
+  VEHICLE_HANDOVERS.push(h)
+  d.receiptId = h.id
+  const v = VEHICLES.find((x) => x.id === d.vehicleId)
+  const key = shiftKey(d.shiftId)
+  if (v && key && v[key] === d.riderId) v[key] = null
+  logAudit({ action: 'create', entity: 'vehicles', detail: `سند استلام ${h.ref} من ${d.ref} — ${v?.plate ?? ''}` })
   return mockDelay(decorateHandover(h))
 }
 
 /* ── Fuel sheet (#5 / #6) ────────────────────────────────── */
 function decorateFuel(f) {
   const v = VEHICLES.find((x) => x.id === f.vehicleId)
-  return { ...f, plate: v?.plate ?? '—', model: v?.model ?? '', riderName: riderById(f.riderId)?.name ?? '—', pricePerLiter: f.liters ? Math.round((f.amount / f.liters) * 100) / 100 : 0 }
+  return { ...f, plate: v?.plate ?? '—', model: v?.model ?? '', amount: f.amount ?? 0, costPerLiter: f.costPerLiter ?? 0 }
 }
 
-export function fetchFuelSheet({ vehicleId, riderId, from, to } = {}) {
-  const rows = FUEL_LOGS.filter((f) => (!vehicleId || f.vehicleId === vehicleId) && (!riderId || f.riderId === riderId) && inRange(f.date, from, to))
+/** Fuel stock at moving average cost: every purchase re-averages the cost
+    per liter; every fill-up takes liters out at that cost. Returns the current
+    average, and what is left in stock. */
+export function fuelCostState() {
+  const events = [
+    ...fuelPurchases().map((x) => ({ ...x, kind: 'in' })),
+    ...FUEL_LOGS.map((f) => ({ date: f.date, liters: f.liters, value: f.amount ?? 0, kind: 'out' })),
+  ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.kind === 'in' ? -1 : 1))
+  let liters = 0
+  let value = 0
+  let avg = 0
+  for (const e of events) {
+    if (e.kind === 'in') {
+      liters += e.liters
+      value += e.value
+      if (liters > 0) avg = value / liters
+    } else {
+      liters -= e.liters
+      value -= e.value
+    }
+  }
+  return { avgCost: Math.round(avg * 10000) / 10000, stockLiters: Math.round(liters * 100) / 100, stockValue: Math.round(value * 100) / 100 }
+}
+export function fetchFuelCost() {
+  return mockDelay(fuelCostState())
+}
+
+export function fetchFuelSheet({ vehicleId, from, to } = {}) {
+  const rows = FUEL_LOGS.filter((f) => (!vehicleId || f.vehicleId === vehicleId) && inRange(f.date, from, to))
     .map(decorateFuel)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
   const byVehicle = VEHICLES.map((v) => {
     const mine = rows.filter((r) => r.vehicleId === v.id)
     const liters = mine.reduce((s, r) => s + r.liters, 0)
     const amount = mine.reduce((s, r) => s + r.amount, 0)
-    return { id: v.id, plate: v.plate, model: v.model, tankCapacity: v.tankCapacity, fills: mine.length, liters, amount, avgPrice: liters ? Math.round((amount / liters) * 100) / 100 : 0 }
+    return { id: v.id, plate: v.plate, model: v.model, tankCapacity: v.tankCapacity, fills: mine.length, liters, amount }
   }).filter((r) => r.fills || !vehicleId)
   return mockDelay({
     rows,
     byVehicle,
     totals: { liters: rows.reduce((s, r) => s + r.liters, 0), amount: rows.reduce((s, r) => s + r.amount, 0), fills: rows.length },
+    cost: fuelCostState(),
   })
 }
 
 let fSeq = FUEL_LOGS.length
-/** Log a fill-up. Also books a `fuel` expense on the vehicle's cost center. */
+/** Log a fill-up: vehicle, liters and odometer — no rider and no typed amount.
+    Its cost = liters × the fuel's moving average cost, booked as a fuel
+    expense on the vehicle's cost center: Dr fuel expense / Cr fuel stock. */
 export async function createFuelLog(payload) {
   if (!payload.vehicleId) return Promise.reject(new Error('VEHICLE_REQUIRED'))
-  const amt = Number(payload.amount) || 0
-  if (amt <= 0) return Promise.reject(new Error('INVALID_AMOUNT'))
-  const exp = await createExpense({ vehicleId: payload.vehicleId, type: 'fuel', amount: amt, date: payload.date || todayISO(), invoiceNo: payload.invoiceNo || '—', note: payload.station ? `بنزين — ${payload.station}` : 'بنزين' })
+  const liters = Number(payload.liters) || 0
+  if (liters <= 0) return Promise.reject(new Error('INVALID_LITERS'))
+  const date = payload.date || todayISO()
+  const { avgCost } = fuelCostState()
+  const amount = Math.round(liters * avgCost * 100) / 100
+  const v = VEHICLES.find((x) => x.id === payload.vehicleId)
+  const exp = amount > 0
+    ? await createExpense({ vehicleId: payload.vehicleId, type: 'fuel', amount, date, invoiceNo: payload.invoiceNo || '—', note: `بنزين ${liters} لتر × ${avgCost}${payload.station ? ` — ${payload.station}` : ''}`, creditAccount: 'fuel_stock' })
+    : null
   fSeq += 1
   const f = {
     id: `f${fSeq}`,
     vehicleId: payload.vehicleId,
-    riderId: payload.riderId || null,
-    date: payload.date || todayISO(),
-    liters: Number(payload.liters) || 0,
-    amount: amt,
+    date,
+    liters,
+    costPerLiter: avgCost,
+    amount,
     odometer: Number(payload.odometer) || 0,
     station: payload.station || '',
+    invoiceNo: payload.invoiceNo || '',
     note: payload.note || '',
-    expenseId: exp.id,
+    expenseId: exp?.id ?? null,
   }
   FUEL_LOGS.push(f)
+  logAudit({ action: 'create', entity: 'vehicles', detail: `تعبئة ${liters} لتر — ${v?.plate ?? ''}` })
   return mockDelay(decorateFuel(f))
 }

@@ -165,10 +165,6 @@ const vehicleStatusVariant = (s) => (s === 'active' ? 'success' : s === 'mainten
                   <Badge variant="secondary">{{ loc(SHIFTS, assignment.shift) }}</Badge>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-muted-foreground">{{ t('vehicles.fields.value') }}</span>
-                  <span class="font-semibold tabular-nums">{{ sar(assignment.vehicle.value) }}</span>
-                </div>
-                <div class="flex items-center justify-between">
                   <span class="text-muted-foreground">{{ t('vehicles.statusLabel') }}</span>
                   <Badge :variant="vehicleStatusVariant(assignment.vehicle.status)">{{ loc(VEHICLE_STATUS, assignment.vehicle.status) }}</Badge>
                 </div>

@@ -9,9 +9,8 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
 import { TREASURY_KINDS } from '@/api/fixtures'
-import { ROLES, ALL_ROLES } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { createTreasury, updateTreasury } from '@/api/treasury'
+import { createTreasury, updateTreasury, treasuryUsers } from '@/api/treasury'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -23,13 +22,14 @@ const { t, locale } = useI18n()
 const toast = useToast()
 const isEdit = computed(() => !!props.treasury)
 const saving = ref(false)
-const form = reactive({ name: '', kind: 'cash', iban: '', opening: '', active: true, userRoles: [] })
+const form = reactive({ name: '', kind: 'cash', iban: '', opening: '', active: true, userIds: [] })
 const errors = reactive({})
 
-/* who may work on this box (vouchers, transfers). The manager always can. */
-const roleChoices = ALL_ROLES.filter((r) => r !== ROLES.MANAGER)
-function toggleRole(r) {
-  form.userRoles = form.userRoles.includes(r) ? form.userRoles.filter((x) => x !== r) : [...form.userRoles, r]
+/* which users may work on this box (vouchers, transfers), picked by name.
+   Managers always can. */
+const userChoices = computed(() => (props.open ? treasuryUsers() : []))
+function toggleUser(id) {
+  form.userIds = form.userIds.includes(id) ? form.userIds.filter((x) => x !== id) : [...form.userIds, id]
 }
 
 const kindOptions = computed(() => Object.keys(TREASURY_KINDS).map((k) => ({ value: k, label: TREASURY_KINDS[k][locale.value] ?? TREASURY_KINDS[k].ar })))
@@ -44,8 +44,8 @@ watch(
       iban: props.treasury?.iban ?? '',
       opening: props.treasury?.opening ?? '',
       active: props.treasury?.active ?? true,
-      // an older box without a list is open to everyone: show that as all ticked
-      userRoles: Array.isArray(props.treasury?.userRoles) ? [...props.treasury.userRoles] : props.treasury ? [...roleChoices] : [ROLES.ACCOUNTANT],
+      // an older box without a list is open to everyone: show that as all ticked; a new box starts empty
+      userIds: Array.isArray(props.treasury?.userIds) ? [...props.treasury.userIds] : props.treasury ? treasuryUsers().map((u) => u.id) : [],
     })
     delete errors.name
   },
@@ -96,21 +96,21 @@ async function submit() {
         <p class="text-muted-foreground text-xs">{{ t('treasury.access.hint') }}</p>
         <div class="flex flex-wrap gap-2">
           <span class="border-primary/30 bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium">
-            <Check class="size-3.5" /> {{ t('roles.manager') }} <span class="opacity-70">· {{ t('treasury.access.always') }}</span>
+            <Check class="size-3.5" /> {{ t('treasury.access.managers') }} <span class="opacity-70">· {{ t('treasury.access.always') }}</span>
           </span>
           <button
-            v-for="r in roleChoices"
-            :key="r"
+            v-for="u in userChoices"
+            :key="u.id"
             type="button"
-            :aria-pressed="form.userRoles.includes(r)"
+            :aria-pressed="form.userIds.includes(u.id)"
             :class="cn(
               'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:ring-primary/30 outline-none focus-visible:ring-4',
-              form.userRoles.includes(r) ? 'border-primary bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground border-transparent',
+              form.userIds.includes(u.id) ? 'border-primary bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground border-transparent',
             )"
-            @click="toggleRole(r)"
+            @click="toggleUser(u.id)"
           >
-            <Check v-if="form.userRoles.includes(r)" class="size-3.5" />
-            {{ t(`roles.${r}`) }}
+            <Check v-if="form.userIds.includes(u.id)" class="size-3.5" />
+            {{ u.name }} <span class="opacity-70">· {{ t(`roles.${u.role}`) }}</span>
           </button>
         </div>
       </fieldset>

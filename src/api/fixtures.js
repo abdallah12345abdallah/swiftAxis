@@ -99,6 +99,7 @@ export const CHART_OF_ACCOUNTS = [
   { id: 'rider_wallets', code: '1040', name: 'عُهد المناديب (كاش)', en: 'Rider cash on hand', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_cash' },
   { id: 'receivables', code: '1050', name: 'ذمم العملاء', en: 'Accounts receivable', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_receivables' },
   { id: 'rider_receivables', code: '1060', name: 'مديونيات المناديب', en: 'Rider receivables', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_receivables' },
+  { id: 'fuel_stock', code: '1070', name: 'مخزون الوقود', en: 'Fuel stock', type: 'asset', parent: 'current_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_other_current' },
   { id: 'fixed_assets', code: '1200', name: 'الأصول الثابتة', en: 'Fixed assets', type: 'asset', parent: 'assets', level: 2, isGroup: true, active: true },
   { id: 'vehicles_asset', code: '1210', name: 'السيارات والدراجات', en: 'Vehicles', type: 'asset', parent: 'fixed_assets', level: 3, isGroup: false, active: true, statementItem: 'bs_fixed' },
   { id: 'liabilities', code: '2000', name: 'الالتزامات', en: 'Liabilities', type: 'liability', parent: null, level: 1, isGroup: true, active: true },
@@ -237,16 +238,22 @@ export const AUDIT_LOG = [
 
 /* ── Commissions (EP-03) ────────────────────────────────── */
 
-/** Per-contract commission formula: base salary + tiered rates past target.
+/** Starter formulas by contract — only used to seed each rider's own formula
+    below. Commission belongs to the rider, not to the contract company.
     tiers: ordered brackets over the absolute order count; upTo:null = unbounded last tier. */
-export const COMMISSION_FORMULAS = {
+const CONTRACT_STARTER_FORMULAS = {
   hunger: { target: 480, base: 2500, tiers: [{ upTo: null, perOrder: 6 }] },
   jahez: { target: 480, base: 2400, tiers: [{ upTo: null, perOrder: 6 }] },
   internal: { target: 450, base: 2600, tiers: [{ upTo: 550, perOrder: 7 }, { upTo: null, perOrder: 9 }] },
 }
-/** Per-rider overrides (riderId → formula). */
-export const RIDER_FORMULA_OVERRIDES = {}
-/** Formula change history: { contract, at, before, after }. */
+/** Each rider's own commission formula (riderId → formula). */
+export const RIDER_FORMULAS = Object.fromEntries(
+  RIDERS.map((r) => {
+    const f = CONTRACT_STARTER_FORMULAS[r.contract]
+    return [r.id, f ? { ...f, tiers: f.tiers.map((t) => ({ ...t })) } : null]
+  }).filter(([, f]) => f),
+)
+/** Formula change history: { riderId, at, before, after }. */
 export const FORMULA_HISTORY = []
 /** Approved/locked monthly runs: { month:'2026-06', lockedAt, ref }. */
 export const COMMISSION_RUNS = [{ month: '2026-06', lockedAt: '2026-07-01', ref: 'JV-2026-0001' }]
@@ -307,13 +314,13 @@ export const EXPENSE_TYPES = {
 /** Vehicles. value = purchase value in SAR. Up to two riders (one per shift).
     Each vehicle owns a cost center (cc-veh-*) for its expenses. */
 export const VEHICLES = [
-  { id: 'v1', plate: 'ABC-1234', type: 'motorcycle', chassis: 'JH2PC37017M200001', color: 'أسود', model: 'Honda CB150', year: 2023, tankCapacity: 12, morningRiderId: 'R-001', eveningRiderId: null, value: 18000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v1' },
-  { id: 'v2', plate: 'DEF-5678', type: 'motorcycle', chassis: 'JH2PC37017M200002', color: 'أحمر', model: 'Honda CB150', year: 2023, tankCapacity: 12, morningRiderId: 'R-002', eveningRiderId: 'R-008', value: 18500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v2' },
-  { id: 'v3', plate: 'GHI-9012', type: 'motorcycle', chassis: 'MLHKC0910P5200003', color: 'أزرق', model: 'Yamaha YBR125', year: 2022, tankCapacity: 13, morningRiderId: 'R-003', eveningRiderId: null, value: 16500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v3' },
-  { id: 'v4', plate: 'JKL-3456', type: 'car', chassis: 'KMHCT41DAKU200004', color: 'أبيض', model: 'Hyundai Accent', year: 2022, tankCapacity: 45, morningRiderId: 'R-004', eveningRiderId: null, value: 78000, status: 'maintenance', statusFrom: '2026-07-10', statusTo: '2026-07-30', costCenter: 'cc-veh-v4' },
-  { id: 'v5', plate: 'MNO-7890', type: 'motorcycle', chassis: 'MLHKC0910P5200005', color: 'أسود', model: 'Yamaha YBR125', year: 2021, tankCapacity: 13, morningRiderId: 'R-005', eveningRiderId: null, value: 15500, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v5' },
-  { id: 'v6', plate: 'PQR-2345', type: 'motorcycle', chassis: 'JH2PC37017M200006', color: 'أبيض', model: 'Honda CB150', year: 2024, tankCapacity: 12, morningRiderId: 'R-006', eveningRiderId: null, value: 19000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v6' },
-  { id: 'v7', plate: 'STU-6789', type: 'car', chassis: 'JTDBR32E0J0200007', color: 'فضي', model: 'Toyota Yaris', year: 2021, tankCapacity: 42, morningRiderId: 'R-007', eveningRiderId: null, value: 69000, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v7' },
+  { id: 'v1', plate: 'ABC-1234', type: 'motorcycle', chassis: 'JH2PC37017M200001', color: 'أسود', model: 'Honda CB150', year: 2023, tankCapacity: 12, morningRiderId: 'R-001', eveningRiderId: null, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v1' },
+  { id: 'v2', plate: 'DEF-5678', type: 'motorcycle', chassis: 'JH2PC37017M200002', color: 'أحمر', model: 'Honda CB150', year: 2023, tankCapacity: 12, morningRiderId: 'R-002', eveningRiderId: 'R-008', status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v2' },
+  { id: 'v3', plate: 'GHI-9012', type: 'motorcycle', chassis: 'MLHKC0910P5200003', color: 'أزرق', model: 'Yamaha YBR125', year: 2022, tankCapacity: 13, morningRiderId: 'R-003', eveningRiderId: null, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v3' },
+  { id: 'v4', plate: 'JKL-3456', type: 'car', chassis: 'KMHCT41DAKU200004', color: 'أبيض', model: 'Hyundai Accent', year: 2022, tankCapacity: 45, morningRiderId: null, eveningRiderId: null, status: 'maintenance', statusFrom: '2026-07-10', statusTo: '2026-07-30', costCenter: 'cc-veh-v4' },
+  { id: 'v5', plate: 'MNO-7890', type: 'motorcycle', chassis: 'MLHKC0910P5200005', color: 'أسود', model: 'Yamaha YBR125', year: 2021, tankCapacity: 13, morningRiderId: 'R-005', eveningRiderId: null, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v5' },
+  { id: 'v6', plate: 'PQR-2345', type: 'motorcycle', chassis: 'JH2PC37017M200006', color: 'أبيض', model: 'Honda CB150', year: 2024, tankCapacity: 12, morningRiderId: 'R-006', eveningRiderId: null, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v6' },
+  { id: 'v7', plate: 'STU-6789', type: 'car', chassis: 'JTDBR32E0J0200007', color: 'فضي', model: 'Toyota Yaris', year: 2021, tankCapacity: 42, morningRiderId: 'R-007', eveningRiderId: null, status: 'active', statusFrom: null, statusTo: null, costCenter: 'cc-veh-v7' },
 ]
 
 export const VEHICLE_EXPENSES = [
@@ -341,7 +348,7 @@ export const SUPPLIERS = [
 
 export const PURCHASES = [
   { id: 'p1', supplierId: 's2', itemType: 'قطع غيار دراجات', qty: 4, unitPrice: 250, date: '2026-06-25', taxable: true, vehicleId: 'v1', costCenter: 'cc-veh-v1', invoiceNo: 'S-1201', ref: 'PO-2026-0001', preTax: 1000, vat: 150, total: 1150 },
-  { id: 'p2', supplierId: 's1', itemType: 'وقود', qty: 1, unitPrice: 800, date: '2026-06-22', taxable: true, vehicleId: null, costCenter: 'cc-fleet', invoiceNo: 'S-0980', ref: 'PO-2026-0002', preTax: 800, vat: 120, total: 920 },
+  { id: 'p2', supplierId: 's1', itemId: 'pi2', itemType: 'وقود', qty: 400, unitPrice: 2, date: '2026-06-22', taxable: true, vehicleId: null, costCenter: 'cc-fleet', invoiceNo: 'S-0980', ref: 'PO-2026-0002', preTax: 800, vat: 120, total: 920 },
   /* multi-item invoice: `lines` carry the items; preTax / vat / total stay on
      the purchase (reports read those). Older single-item rows have no `lines`
      — the API derives one from itemType / qty / unitPrice. */
@@ -362,6 +369,8 @@ export const USERS = [
   { id: 'u2', name: 'خالد الشهري', role: 'supervisor', mobile: '0500000002', active: true },
   { id: 'u3', name: 'سارة الدوسري', role: 'accountant', mobile: '0500000003', active: true },
   { id: 'u4', name: 'محمد الغامدي', role: 'rider', mobile: '0551234567', active: true },
+  { id: 'u5', name: 'فيصل الجهني', role: 'storekeeper', mobile: '0500000005', active: true },
+  { id: 'u6', name: 'عمر السبيعي', role: 'supervisor', mobile: '0500000006', active: true },
 ]
 
 /* ── Manual orders (#3) ─────────────────────────────────── */
@@ -386,12 +395,12 @@ export const TREASURY_KINDS = {
 /** Treasuries. `account` = the GL account the treasury maps to.
     kind 'rider' boxes hold cash still in riders' hands (عهدة). */
 export const TREASURIES = [
-  // userRoles: roles allowed to work on the box (the manager always is)
-  { id: 'tr-main', name: 'الخزنة الرئيسية', kind: 'cash', account: 'cash', opening: 25000, active: true, isMain: true, userRoles: ['accountant', 'storekeeper'] },
-  { id: 'tr-bank', name: 'مصرف الراجحي — الحساب الجاري', kind: 'bank', account: 'bank', iban: 'SA0380000000608010167519', opening: 180000, active: true, userRoles: ['accountant'] },
-  { id: 'tr-riders-jed', name: 'خزنة مناديب جدة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userRoles: ['accountant', 'supervisor', 'storekeeper'] },
-  { id: 'tr-riders-mak', name: 'خزنة مناديب مكة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userRoles: ['accountant', 'supervisor'] },
-  { id: 'tr-riders-taif', name: 'خزنة مناديب الطائف', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userRoles: ['accountant', 'supervisor'] },
+  // userIds: the users (USERS ids) allowed to work on the box (the manager always is)
+  { id: 'tr-main', name: 'الخزنة الرئيسية', kind: 'cash', account: 'cash', opening: 25000, active: true, isMain: true, userIds: ['u3', 'u5'] },
+  { id: 'tr-bank', name: 'مصرف الراجحي — الحساب الجاري', kind: 'bank', account: 'bank', iban: 'SA0380000000608010167519', opening: 180000, active: true, userIds: ['u3'] },
+  { id: 'tr-riders-jed', name: 'خزنة مناديب جدة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userIds: ['u3', 'u2', 'u5'] },
+  { id: 'tr-riders-mak', name: 'خزنة مناديب مكة', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userIds: ['u3', 'u2', 'u6'] },
+  { id: 'tr-riders-taif', name: 'خزنة مناديب الطائف', kind: 'rider', account: 'rider_wallets', opening: 0, active: true, userIds: ['u3', 'u6'] },
 ]
 
 /** Rider → treasury link (treasury settings screen). */
@@ -447,16 +456,30 @@ export const WORK_SHIFTS = [
   { id: 'evening', name: 'مسائي', en: 'Evening', from: '15:00', to: '23:00', active: true },
 ]
 
-/** Vehicle handover log. fromType/toType ∈ rider|company. fuel = 0–100 (%). */
+/** Vehicle handover vouchers. kind ∈ delivery (تسليم: company → rider for a
+    shift; open until received) | receipt (استلام: made from a delivery via
+    deliveryId, closes it). fuel = 0–100 (%). Every rider currently on a
+    vehicle has an open delivery voucher. */
+const openDelivery = (id, n, vehicleId, riderId, shiftId, date, odometer) =>
+  ({ id, kind: 'delivery', ref: `VD-2026-${String(n).padStart(4, '0')}`, vehicleId, riderId, shiftId, date, time: shiftId === 'evening' ? '15:00' : '07:30', odometer, fuel: 100, condition: 'good', notes: '', photo: null, by: 'فيصل الجهني', receiptId: null })
 export const VEHICLE_HANDOVERS = [
-  { id: 'vh1', vehicleId: 'v2', date: '2026-07-01', time: '15:05', shiftId: 'evening', fromType: 'rider', fromRiderId: 'R-002', toType: 'rider', toRiderId: 'R-008', odometer: 18420, fuel: 60, condition: 'good', notes: '', by: 'خالد الشهري' },
-  { id: 'vh2', vehicleId: 'v4', date: '2026-07-10', time: '09:30', shiftId: 'morning', fromType: 'rider', fromRiderId: 'R-004', toType: 'company', toRiderId: null, odometer: 61200, fuel: 25, condition: 'damaged', notes: 'خدش في الباب الأمامي — دخول الصيانة', by: 'فيصل الجهني' },
+  openDelivery('vh1', 1, 'v1', 'R-001', 'morning', '2026-06-01', 11200),
+  openDelivery('vh2', 2, 'v2', 'R-002', 'morning', '2026-06-01', 17350),
+  openDelivery('vh3', 3, 'v3', 'R-003', 'morning', '2026-06-01', 22410),
+  { ...openDelivery('vh4', 4, 'v4', 'R-004', 'morning', '2026-06-01', 59800), receiptId: 'vh9' },
+  openDelivery('vh5', 5, 'v5', 'R-005', 'morning', '2026-06-02', 30120),
+  openDelivery('vh6', 6, 'v6', 'R-006', 'morning', '2026-06-02', 3480),
+  openDelivery('vh7', 7, 'v7', 'R-007', 'morning', '2026-06-02', 41900),
+  openDelivery('vh8', 8, 'v2', 'R-008', 'evening', '2026-07-01', 18420),
+  { id: 'vh9', kind: 'receipt', ref: 'VR-2026-0001', deliveryId: 'vh4', vehicleId: 'v4', riderId: 'R-004', shiftId: 'morning', date: '2026-07-10', time: '09:30', odometer: 61200, fuel: 25, condition: 'damaged', notes: 'خدش في الباب الأمامي — دخول الصيانة', photo: null, by: 'فيصل الجهني' },
 ]
 
-/** Fuel sheet — one row per fill-up. Also creates a `fuel` vehicle expense. */
+/** Fuel sheet — one row per fill-up: vehicle, liters, odometer (no rider).
+    The cost is not typed: liters × the fuel's moving average cost at the time
+    (costPerLiter / amount are frozen on the row). */
 export const FUEL_LOGS = [
-  { id: 'f1', vehicleId: 'v1', riderId: 'R-001', date: '2026-06-20', liters: 11.5, amount: 400, odometer: 12210, station: 'الدريس — الحمراء', note: '', expenseId: 've2' },
-  { id: 'f2', vehicleId: 'v6', riderId: 'R-006', date: '2026-07-01', liters: 9.8, amount: 23, odometer: 4020, station: 'ساسكو — الروضة', note: '', expenseId: null },
+  { id: 'f1', vehicleId: 'v1', date: '2026-06-24', liters: 11.5, costPerLiter: 2, amount: 23, odometer: 12210, station: 'الدريس — الحمراء', invoiceNo: '', note: '', expenseId: null },
+  { id: 'f2', vehicleId: 'v6', date: '2026-07-01', liters: 9.8, costPerLiter: 2, amount: 19.6, odometer: 4020, station: 'ساسكو — الروضة', invoiceNo: '', note: '', expenseId: null },
 ]
 
 /* ── Catalogs (#6) ──────────────────────────────────────── */

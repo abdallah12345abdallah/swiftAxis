@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { useRouteTab } from '@/composables/useRouteTab'
 import { useConfirm } from '@/composables/useConfirm'
-import { Plus, Pencil, Bike, Car, Download, ArrowLeftRight, Building2, Fuel, Clock, Tags, Camera } from 'lucide-vue-next'
+import { Plus, Pencil, Bike, Car, Download, ArrowLeftRight, Fuel, Clock, Tags, Camera, KeyRound, Undo2 } from 'lucide-vue-next'
 import {
   Sun, Moon, Timer, Truck, Receipt, Coins, Calculator, Trophy, Power, PowerOff, Gauge,
   Layers, BadgeCheck, ListChecks, StickyNote, Users,
@@ -24,7 +24,8 @@ import { Progress } from '@/components/ui/progress'
 import VehicleDialog from '@/components/vehicles/VehicleDialog.vue'
 import ExpenseDialog from '@/components/vehicles/ExpenseDialog.vue'
 import ExpenseBreakdownChart from '@/components/vehicles/ExpenseBreakdownChart.vue'
-import VehicleHandoverDialog from '@/components/vehicles/VehicleHandoverDialog.vue'
+import VehicleDeliveryDialog from '@/components/vehicles/VehicleDeliveryDialog.vue'
+import VehicleReceiptDialog from '@/components/vehicles/VehicleReceiptDialog.vue'
 import ShiftDialog from '@/components/vehicles/ShiftDialog.vue'
 import FuelLogDialog from '@/components/vehicles/FuelLogDialog.vue'
 import ExpenseItemDialog from '@/components/vehicles/ExpenseItemDialog.vue'
@@ -53,13 +54,15 @@ const expenses = ref([])
 const prof = ref([])
 const shifts = ref([])
 const handovers = ref([])
-const fuel = ref({ rows: [], byVehicle: [], totals: { liters: 0, amount: 0, fills: 0 } })
+const fuel = ref({ rows: [], byVehicle: [], totals: { liters: 0, amount: 0, fills: 0 }, cost: { avgCost: 0, stockLiters: 0, stockValue: 0 } })
 const expenseItems = ref([])
 const accounts = ref([])
 
 const vehicleDialog = ref(false)
 const expenseDialog = ref(false)
 const handoverDialog = ref(false)
+const receiptDialog = ref(false)
+const receiptFor = ref('')
 const shiftDialog = ref(false)
 const fuelDialog = ref(false)
 const itemDialog = ref(false)
@@ -88,6 +91,7 @@ const statusVariant = (s) => (s === 'active' ? 'success' : s === 'maintenance' ?
 const tabs = computed(() => [
   { value: 'vehicles', label: t('vehicles.tabs.vehicles') },
   { value: 'handover', label: t('vehicles.tabs.handover') },
+  { value: 'receive', label: t('vehicles.tabs.receive') },
   { value: 'shifts', label: t('vehicles.tabs.shifts') },
   { value: 'expenses', label: t('vehicles.tabs.expenses') },
   { value: 'fuel', label: t('vehicles.tabs.fuel') },
@@ -129,31 +133,47 @@ const shownVehicles = computed(() => {
   )
 })
 
-/* handovers: search by plate / riders / notes, date range; vehicle, shift,
-   direction and condition in the tray */
+/* handovers are two separate screens: delivery vouchers (تسليم) and receipt
+   vouchers (استلام, each made from an open delivery). Both: search by ref /
+   plate / rider / notes, a date range; vehicle, shift, condition (and, for
+   deliveries, open / received) in the tray. */
+const deliveries = computed(() => handovers.value.filter((h) => h.kind === 'delivery'))
+const receipts = computed(() => handovers.value.filter((h) => h.kind === 'receipt'))
+const openDeliveries = computed(() => deliveries.value.filter((h) => h.open))
 const hoQuery = ref('')
 const hoRange = ref(['', ''])
-const hoFilters = ref({ vehicle: '', shift: '', direction: '', condition: '' })
+const hoFilters = ref({ vehicle: '', shift: '', state: '', condition: '' })
 const hoFilterDefs = computed(() => [
   { key: 'vehicle', label: t('vehicles.handover.vehicle'), options: vehicles.value.map((v) => ({ value: v.id, label: v.plate })) },
   { key: 'shift', label: t('vehicles.handover.shift'), options: shifts.value.map((x) => ({ value: x.id, label: locale.value === 'ar' ? x.name : x.en })) },
-  { key: 'direction', label: t('vehicles.filters.direction'), options: ['riders', 'toCompany', 'fromCompany'].map((k) => ({ value: k, label: t(`vehicles.filters.dir_${k}`) })) },
+  ...(tab.value === 'handover' ? [{ key: 'state', label: t('common.status'), options: ['open', 'received'].map((k) => ({ value: k, label: t(`vehicles.handover.states.${k}`) })) }] : []),
   { key: 'condition', label: t('vehicles.handover.condition'), options: ['good', 'damaged'].map((k) => ({ value: k, label: t(`vehicles.handover.conditions.${k}`) })) },
 ])
-const shownHandovers = computed(() => {
+const filterHandovers = (rows) => {
   const q = hoQuery.value.trim().toLowerCase()
   const [a, b] = hoRange.value
   const f = hoFilters.value
-  const dirOf = (h) => (h.toType === 'company' ? 'toCompany' : h.fromType === 'company' ? 'fromCompany' : 'riders')
-  return handovers.value.filter((h) =>
-    (!q || [h.plate, h.fromName, h.toName, h.fromRiderId, h.toRiderId, h.notes].some((x) => String(x ?? '').toLowerCase().includes(q))) &&
+  return rows.filter((h) =>
+    (!q || [h.ref, h.deliveryRef, h.receiptRef, h.plate, h.riderName, h.riderId, h.notes].some((x) => String(x ?? '').toLowerCase().includes(q))) &&
     (!a || h.date >= a) && (!b || h.date <= b) &&
     (!f.vehicle || h.vehicleId === f.vehicle) &&
     (!f.shift || h.shiftId === f.shift) &&
-    (!f.direction || dirOf(h) === f.direction) &&
+    (!f.state || (f.state === 'open') === !!h.open) &&
     (!f.condition || h.condition === f.condition),
   )
+}
+const shownDeliveries = computed(() => filterHandovers(deliveries.value))
+const shownReceipts = computed(() => filterHandovers(receipts.value))
+// each screen keeps its own filters
+watch(tab, () => {
+  hoQuery.value = ''
+  hoRange.value = ['', '']
+  hoFilters.value = { vehicle: '', shift: '', state: '', condition: '' }
 })
+function openReceipt(deliveryId = '') {
+  receiptFor.value = deliveryId
+  receiptDialog.value = true
+}
 
 /* expenses list: search, date range and vehicle (tray); the expense type is
    picked with the item pills above the list */
@@ -176,26 +196,25 @@ const expBase = computed(() => {
 })
 const shownExpenses = computed(() => expBase.value.filter((e) => !expFilters.value.type || e.type === expFilters.value.type))
 
-/* fuel sheet: vehicle / rider / dates go to the API (the per-vehicle summary
-   follows them); the search narrows the rows, and the cards count what is shown */
+/* fuel sheet: vehicle / dates go to the API (the per-vehicle summary follows
+   them); the search narrows the rows, and the cards count what is shown.
+   A fill-up has no rider and no typed amount: its cost is liters × the
+   fuel's moving average cost, worked out when it is saved. */
 const fuelVehicle = ref('')
-const fuelRider = ref('')
 const fuelQuery = ref('')
 const fuelRange = ref(['', ''])
 const fuelFilters = computed({
-  get: () => ({ vehicle: fuelVehicle.value, rider: fuelRider.value }),
+  get: () => ({ vehicle: fuelVehicle.value }),
   set: (v) => {
     fuelVehicle.value = v.vehicle ?? ''
-    fuelRider.value = v.rider ?? ''
   },
 })
 const fuelFilterDefs = computed(() => [
   { key: 'vehicle', label: t('vehicles.fields.vehicle'), options: vehicles.value.map((v) => ({ value: v.id, label: v.plate })) },
-  { key: 'rider', label: t('vehicles.fuel.rider'), options: riderOptions.value },
 ])
 const shownFuel = computed(() => {
   const q = fuelQuery.value.trim().toLowerCase()
-  return fuel.value.rows.filter((r) => !q || [r.station, r.plate, r.riderName, r.riderId].some((v) => String(v ?? '').toLowerCase().includes(q)))
+  return fuel.value.rows.filter((r) => !q || [r.station, r.plate, r.model, r.invoiceNo].some((v) => String(v ?? '').toLowerCase().includes(q)))
 })
 const fuelTotals = computed(() => ({
   fills: shownFuel.value.length,
@@ -353,8 +372,7 @@ const expStats = computed(() => {
 const expRowShare = (a) => Math.max(3, share(a, Math.max(1, ...shownExpenses.value.map((e) => e.amount))))
 const setExpType = (v) => (expFilters.value = { ...expFilters.value, type: expFilters.value.type === v ? '' : v })
 
-/* ── fuel: average price, tank fill per row, spend per vehicle ── */
-const fuelAvgPrice = computed(() => (fuelTotals.value.liters ? fuelTotals.value.amount / fuelTotals.value.liters : 0))
+/* ── fuel: tank fill per row, liters per vehicle ── */
 const fuelVehicleCount = computed(() => new Set(shownFuel.value.map((r) => r.vehicleId)).size)
 const tankOf = (vehicleId) => vehicles.value.find((v) => v.id === vehicleId)?.tankCapacity ?? 0
 const tankFill = (r) => {
@@ -362,9 +380,9 @@ const tankFill = (r) => {
   return tank ? Math.min(100, Math.round((r.liters / tank) * 100)) : null
 }
 const fuelBars = computed(() => {
-  const rows = fuel.value.byVehicle.filter((r) => r.fills).sort((a, b) => b.amount - a.amount)
-  const max = Math.max(1, ...rows.map((r) => r.amount))
-  return rows.map((r) => ({ ...r, width: Math.max(4, share(r.amount, max)) }))
+  const rows = fuel.value.byVehicle.filter((r) => r.fills).sort((a, b) => b.liters - a.liters)
+  const max = Math.max(1, ...rows.map((r) => r.liters))
+  return rows.map((r) => ({ ...r, width: Math.max(4, share(r.liters, max)) }))
 })
 const fuelIdle = computed(() => fuel.value.byVehicle.filter((r) => !r.fills).length)
 
@@ -430,9 +448,9 @@ watch([granularity, chartVehicle], loadBreakdown)
 
 async function loadFuel() {
   const [from, to] = fuelRange.value
-  fuel.value = await fetchFuelSheet({ vehicleId: fuelVehicle.value || undefined, riderId: fuelRider.value || undefined, from: from || undefined, to: to || undefined })
+  fuel.value = await fetchFuelSheet({ vehicleId: fuelVehicle.value || undefined, from: from || undefined, to: to || undefined })
 }
-watch([fuelVehicle, fuelRider, fuelRange], loadFuel)
+watch([fuelVehicle, fuelRange], loadFuel)
 
 async function load() {
   loading.value = true
@@ -478,8 +496,8 @@ function exportProf() {
 function exportFuel() {
   exportCsv(
     `fuel-sheet-${todayStamp()}`,
-    [t('common.date'), t('vehicles.fields.vehicle'), t('common.riderCode'), t('vehicles.fuel.rider'), t('vehicles.fuel.liters'), t('vehicles.fuel.amount'), t('vehicles.fuel.pricePerLiter'), t('vehicles.fuel.odometer'), t('vehicles.fuel.station')],
-    shownFuel.value.map((r) => [r.date, r.plate, r.riderId ?? '', r.riderName, r.liters, r.amount, r.pricePerLiter, r.odometer, r.station]),
+    [t('common.date'), t('vehicles.fields.vehicle'), t('vehicles.fuel.liters'), t('vehicles.fuel.avgCost'), t('vehicles.fuel.cost'), t('vehicles.fuel.odometer'), t('vehicles.fuel.station'), t('vehicles.fields.invoiceNo')],
+    shownFuel.value.map((r) => [r.date, r.plate, r.liters, r.costPerLiter, r.amount, r.odometer, r.station, r.invoiceNo ?? '']),
   )
 }
 </script>
@@ -489,7 +507,8 @@ function exportFuel() {
     <PageHeader :title="t('vehicles.title')" :subtitle="t('vehicles.subtitle')">
       <template #actions>
         <Button v-if="tab === 'vehicles'" @click="openAddVehicle"><Plus /> {{ t('vehicles.addVehicle') }}</Button>
-        <Button v-else-if="tab === 'handover'" @click="handoverDialog = true"><ArrowLeftRight /> {{ t('vehicles.handover.add') }}</Button>
+        <Button v-else-if="tab === 'handover'" @click="handoverDialog = true"><KeyRound /> {{ t('vehicles.handover.addDelivery') }}</Button>
+        <Button v-else-if="tab === 'receive'" :disabled="!openDeliveries.length" @click="openReceipt()"><Undo2 /> {{ t('vehicles.handover.addReceipt') }}</Button>
         <Button v-else-if="tab === 'shifts'" @click="openAddShift"><Plus /> {{ t('vehicles.shifts.add') }}</Button>
         <Button v-else-if="tab === 'expenses'" @click="expenseDialog = true"><Plus /> {{ t('vehicles.addExpense') }}</Button>
         <template v-else-if="tab === 'fuel'">
@@ -515,7 +534,6 @@ function exportFuel() {
           { key: 'type', label: t('vehicles.type') },
           { key: 'identity', label: t('vehicles.identity'), hideBelow: 'lg' },
           { key: 'riders', label: t('vehicles.rider') },
-          { key: 'value', label: t('vehicles.fields.value'), align: 'end', sortable: true, hideBelow: 'xl' },
           { key: 'status', label: t('vehicles.statusLabel') },
           { key: 'actions', label: t('common.actions'), align: 'end' },
         ]"
@@ -545,7 +563,6 @@ function exportFuel() {
             <span v-if="!row.morningRiderName && !row.eveningRiderName" class="text-muted-foreground">{{ t('vehicles.unassigned') }}</span>
           </div>
         </template>
-        <template #cell-value="{ row }"><span class="tabular-nums">{{ sar(row.value) }}</span></template>
         <template #cell-status="{ row }">
           <Badge :variant="statusVariant(row.status)">{{ loc(VEHICLE_STATUS, row.status) }}</Badge>
         </template>
@@ -558,38 +575,86 @@ function exportFuel() {
     </Card>
     </template>
 
-    <!-- Handover (#5) -->
-    <template v-else-if="tab === 'handover'">
+    <!-- Handover (#5): delivery vouchers and receipt vouchers are separate screens -->
+    <template v-else-if="tab === 'handover' || tab === 'receive'">
     <FilterBar v-model:search="hoQuery" v-model="hoFilters" :filters="hoFilterDefs" :search-placeholder="t('vehicles.filters.searchHandovers')" class="mb-4">
       <template #extra><DateRangePicker v-model="hoRange" /></template>
     </FilterBar>
-    <Card class="overflow-hidden">
+
+    <!-- Delivery (تسليم) -->
+    <Card v-if="tab === 'handover'" class="overflow-hidden">
       <DataTable
-        :loading="loading" :rows="shownHandovers" :empty="t('vehicles.handover.empty')" :page-size="12"
+        :loading="loading" :rows="shownDeliveries" :empty="t('vehicles.handover.empty')" :page-size="12"
         :columns="[
+          { key: 'ref', label: t('vehicles.handover.ref'), sortable: true },
           { key: 'date', label: t('common.date'), sortable: true },
           { key: 'plate', label: t('vehicles.handover.vehicle'), sortable: true },
-          { key: 'shiftName', label: t('vehicles.handover.shift') },
-          { key: 'fromName', label: t('vehicles.handover.from') },
-          { key: 'toName', label: t('vehicles.handover.to') },
+          { key: 'riderName', label: t('vehicles.handover.rider') },
+          { key: 'shiftName', label: t('vehicles.handover.shift'), hideBelow: 'sm' },
           { key: 'odometer', label: t('vehicles.handover.odometer'), align: 'end', hideBelow: 'lg' },
-          { key: 'fuel', label: t('vehicles.handover.fuel'), hideBelow: 'md' },
-          { key: 'condition', label: t('vehicles.handover.condition'), hideBelow: 'sm' },
+          { key: 'fuel', label: t('vehicles.handover.fuel'), hideBelow: 'xl' },
+          { key: 'condition', label: t('vehicles.handover.condition'), hideBelow: 'lg' },
+          { key: 'state', label: t('common.status') },
+          { key: 'actions', label: t('common.actions'), align: 'end' },
+        ]"
+      >
+        <template #cell-ref="{ row }"><span dir="ltr" class="font-medium">{{ row.ref }}</span></template>
+        <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span> <span class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ row.time }}</span></template>
+        <template #cell-plate="{ row }"><span dir="ltr" class="font-medium">{{ row.plate }}</span><p v-if="row.model" class="text-muted-foreground text-xs">{{ row.model }}</p></template>
+        <template #cell-riderName="{ row }"><span class="flex items-center gap-1.5">{{ row.riderName }} <RiderCode :code="row.riderId" /></span></template>
+        <template #cell-shiftName="{ row }"><Badge variant="secondary">{{ shiftName(row.shiftId) }}</Badge></template>
+        <template #cell-odometer="{ row }"><span class="tabular-nums">{{ num(row.odometer) }}</span></template>
+        <template #cell-fuel="{ row }">
+          <div class="flex items-center gap-2"><Progress :value="row.fuel" class="w-16" :indicator-class="row.fuel < 25 ? 'bg-danger' : 'bg-primary'" /><span class="text-xs tabular-nums">{{ row.fuel }}%</span></div>
+        </template>
+        <template #cell-condition="{ row }">
+          <Badge :variant="row.condition === 'good' ? 'success' : 'danger'">{{ t(`vehicles.handover.conditions.${row.condition}`) }}</Badge>
+          <p v-if="row.notes" class="text-muted-foreground mt-0.5 max-w-[16rem] truncate text-xs" :title="row.notes">{{ row.notes }}</p>
+        </template>
+        <template #cell-state="{ row }">
+          <Badge v-if="row.open" variant="warning">{{ t('vehicles.handover.states.open') }}</Badge>
+          <span v-else class="inline-flex flex-col items-start gap-0.5">
+            <Badge variant="success">{{ t('vehicles.handover.states.received') }}</Badge>
+            <span class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ row.receiptRef }}</span>
+          </span>
+        </template>
+        <template #cell-actions="{ row }">
+          <ActionMenu v-if="row.open" :items="[
+                    { label: t('vehicles.handover.receiveThis'), icon: Undo2, tone: 'orange', onSelect: () => openReceipt(row.id) },
+                  ]" />
+        </template>
+      </DataTable>
+    </Card>
+
+    <!-- Receipt (استلام) -->
+    <Card v-else class="overflow-hidden">
+      <DataTable
+        :loading="loading" :rows="shownReceipts" :empty="t('vehicles.handover.emptyReceipts')" :page-size="12"
+        :columns="[
+          { key: 'ref', label: t('vehicles.handover.ref'), sortable: true },
+          { key: 'date', label: t('common.date'), sortable: true },
+          { key: 'deliveryRef', label: t('vehicles.handover.deliveryRef'), hideBelow: 'md' },
+          { key: 'plate', label: t('vehicles.handover.vehicle'), sortable: true },
+          { key: 'riderName', label: t('vehicles.handover.rider') },
+          { key: 'shiftName', label: t('vehicles.handover.shift'), hideBelow: 'lg' },
+          { key: 'odometer', label: t('vehicles.handover.odometerReading'), align: 'end' },
+          { key: 'km', label: t('vehicles.handover.km'), align: 'end', hideBelow: 'sm' },
+          { key: 'fuel', label: t('vehicles.handover.fuel'), hideBelow: 'xl' },
+          { key: 'condition', label: t('vehicles.handover.condition'), hideBelow: 'lg' },
           { key: 'by', label: t('vehicles.handover.by'), hideBelow: 'xl' },
         ]"
       >
+        <template #cell-ref="{ row }"><span dir="ltr" class="font-medium">{{ row.ref }}</span></template>
         <template #cell-date="{ row }"><span class="tabular-nums">{{ formatDate(row.date) }}</span> <span class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ row.time }}</span></template>
+        <template #cell-deliveryRef="{ row }"><span dir="ltr" class="text-muted-foreground tabular-nums">{{ row.deliveryRef }}</span></template>
         <template #cell-plate="{ row }"><span dir="ltr" class="font-medium">{{ row.plate }}</span><p v-if="row.model" class="text-muted-foreground text-xs">{{ row.model }}</p></template>
+        <template #cell-riderName="{ row }"><span class="flex items-center gap-1.5">{{ row.riderName }} <RiderCode :code="row.riderId" /></span></template>
         <template #cell-shiftName="{ row }"><Badge variant="secondary">{{ shiftName(row.shiftId) }}</Badge></template>
-        <template #cell-fromName="{ row }">
-          <span v-if="row.fromType === 'company'" class="text-muted-foreground inline-flex items-center gap-1"><Building2 class="size-3.5" /> {{ t('vehicles.handover.company') }}</span>
-          <span v-else class="flex items-center gap-1.5">{{ row.fromName }} <RiderCode :code="row.fromRiderId" /></span>
+        <template #cell-odometer="{ row }">
+          <span class="font-semibold tabular-nums">{{ num(row.odometer) }}</span>
+          <p class="text-muted-foreground text-xs tabular-nums">{{ t('vehicles.handover.fromReading', { n: num(row.deliveryOdometer ?? 0) }) }}</p>
         </template>
-        <template #cell-toName="{ row }">
-          <span v-if="row.toType === 'company'" class="text-muted-foreground inline-flex items-center gap-1"><Building2 class="size-3.5" /> {{ t('vehicles.handover.company') }}</span>
-          <span v-else class="flex items-center gap-1.5 font-medium">{{ row.toName }} <RiderCode :code="row.toRiderId" /></span>
-        </template>
-        <template #cell-odometer="{ row }"><span class="tabular-nums">{{ num(row.odometer) }}</span></template>
+        <template #cell-km="{ row }"><span class="tabular-nums">{{ row.km == null ? '—' : num(row.km) }}</span></template>
         <template #cell-fuel="{ row }">
           <div class="flex items-center gap-2"><Progress :value="row.fuel" class="w-16" :indicator-class="row.fuel < 25 ? 'bg-danger' : 'bg-primary'" /><span class="text-xs tabular-nums">{{ row.fuel }}%</span></div>
         </template>
@@ -887,8 +952,8 @@ function exportFuel() {
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile :label="t('vehicles.fuel.fills')" :value="fuelTotals.fills" :format="(v) => num(Math.round(v))" :icon="MtFuel" tone="brand" :hint="t('vehicles.exp.vehiclesN', { n: num(fuelVehicleCount) })" />
         <MetricTile :label="t('vehicles.fuel.liters')" :value="fuelTotals.liters" :format="(v) => num(v, { decimals: 1 })" :icon="MtDroplets" tone="primary" />
-        <MetricTile :label="t('vehicles.fuel.amount')" :value="fuelTotals.amount" :format="sar" :icon="MtBanknote" tone="orange" />
-        <MetricTile :label="t('vehicles.fuel.avgPrice')" :value="fuelAvgPrice" :format="(v) => sar(v, { decimals: 2 })" :icon="Gauge" tone="success" />
+        <MetricTile :label="t('vehicles.fuel.cost')" :value="fuelTotals.amount" :format="sar" :icon="MtBanknote" tone="orange" />
+        <MetricTile :label="t('vehicles.fuel.avgCost')" :value="fuel.cost.avgCost" :format="(v) => sar(v, { decimals: 2 })" :icon="Gauge" tone="success" :hint="t('vehicles.fuel.stockHint', { n: num(fuel.cost.stockLiters, { decimals: 1 }) })" />
       </div>
       <div class="grid items-start gap-6 xl:grid-cols-3">
         <Card class="overflow-hidden xl:col-span-2">
@@ -897,11 +962,10 @@ function exportFuel() {
             :columns="[
               { key: 'date', label: t('common.date'), sortable: true },
               { key: 'plate', label: t('vehicles.fields.vehicle'), sortable: true },
-              { key: 'riderName', label: t('vehicles.fuel.rider'), hideBelow: 'md' },
-              { key: 'liters', label: t('vehicles.fuel.liters'), align: 'end' },
-              { key: 'amount', label: t('vehicles.fuel.amount'), align: 'end', sortable: true },
-              { key: 'pricePerLiter', label: t('vehicles.fuel.pricePerLiter'), align: 'end', hideBelow: 'lg' },
-              { key: 'odometer', label: t('vehicles.fuel.odometer'), align: 'end', hideBelow: 'xl' },
+              { key: 'liters', label: t('vehicles.fuel.liters'), align: 'end', sortable: true },
+              { key: 'amount', label: t('vehicles.fuel.cost'), align: 'end', sortable: true },
+              { key: 'odometer', label: t('vehicles.fuel.odometer'), align: 'end', hideBelow: 'sm' },
+              { key: 'invoiceNo', label: t('vehicles.fields.invoiceNo'), hideBelow: 'lg' },
             ]"
           >
             <template #cell-date="{ row }">
@@ -917,26 +981,22 @@ function exportFuel() {
               <span class="vh-plate" dir="ltr">{{ row.plate }}</span>
               <p v-if="row.model" class="text-muted-foreground mt-1 text-xs">{{ row.model }}</p>
             </template>
-            <template #cell-riderName="{ row }">
-              <span class="flex items-center gap-2">
-                <span class="vh-av">{{ initials(row.riderName) }}</span>
-                <span class="min-w-0 truncate">{{ row.riderName }}</span>
-                <RiderCode :code="row.riderId" />
-              </span>
-            </template>
             <template #cell-liters="{ row }">
               <div class="vf-lit" :title="tankFill(row) !== null ? t('vehicles.fuel.tankShare', { pct: `${num(tankFill(row))}%` }) : ''">
                 <span class="tabular-nums">{{ num(row.liters, { decimals: 1 }) }}</span>
                 <span v-if="tankFill(row) !== null" class="vf-tank"><i :style="{ width: `${tankFill(row)}%` }" /></span>
               </div>
             </template>
-            <template #cell-amount="{ row }"><span class="font-bold tabular-nums" dir="ltr">{{ sar(row.amount) }}</span></template>
-            <template #cell-pricePerLiter="{ row }"><span class="text-muted-foreground tabular-nums" dir="ltr">{{ sar(row.pricePerLiter, { decimals: 2 }) }}</span></template>
+            <template #cell-amount="{ row }">
+              <span class="font-semibold tabular-nums" dir="ltr">{{ sar(row.amount) }}</span>
+              <p v-if="row.costPerLiter" class="text-muted-foreground text-xs tabular-nums" dir="ltr">{{ sar(row.costPerLiter, { decimals: 2 }) }} / L</p>
+            </template>
+            <template #cell-invoiceNo="{ row }"><span class="text-muted-foreground" dir="ltr">{{ row.invoiceNo || '—' }}</span></template>
             <template #cell-odometer="{ row }"><span class="vf-odo" dir="ltr">{{ num(row.odometer) }}</span></template>
           </DataTable>
         </Card>
 
-        <!-- spend per vehicle, largest first -->
+        <!-- liters per vehicle, largest first -->
         <Card class="p-5">
           <h3 class="flex items-center gap-2 font-bold"><Truck class="text-muted-foreground size-4" /> {{ t('vehicles.fuel.byVehicle') }}</h3>
           <div v-if="loading" class="mt-4 space-y-3"><Skeleton v-for="i in 4" :key="i" class="h-14 rounded-xl" /></div>
@@ -946,13 +1006,12 @@ function exportFuel() {
               <div class="vf-row-top">
                 <span class="vh-plate" dir="ltr">{{ r.plate }}</span>
                 <span class="text-muted-foreground min-w-0 flex-1 truncate text-xs">{{ r.model }}</span>
-                <b dir="ltr">{{ sar(r.amount) }}</b>
+                <b class="tabular-nums">{{ t('vehicles.fuel.litersN', { n: num(r.liters, { decimals: 1 }) }) }}</b>
               </div>
               <span class="vf-bar"><i :style="{ width: `${r.width}%` }" /></span>
               <div class="vf-row-meta">
                 <span>{{ t('vehicles.fuel.fillsN', { n: num(r.fills) }) }}</span>
-                <span>{{ t('vehicles.fuel.liters') }} <b>{{ num(r.liters, { decimals: 1 }) }}</b></span>
-                <span>{{ t('vehicles.fuel.pricePerLiter') }} <b dir="ltr">{{ sar(r.avgPrice, { decimals: 2 }) }}</b></span>
+                <span>{{ t('vehicles.fuel.cost') }} <b dir="ltr">{{ sar(r.amount) }}</b></span>
                 <span v-if="r.tankCapacity">{{ t('vehicles.fuel.tank') }} <b>{{ num(r.tankCapacity) }}</b></span>
               </div>
             </li>
@@ -1071,11 +1130,12 @@ function exportFuel() {
       </DataTable>
     </Card>
 
-    <VehicleDialog v-model:open="vehicleDialog" :vehicle="editingVehicle" :type-options="typeOptions" :rider-options="riderOptions" @saved="load" />
+    <VehicleDialog v-model:open="vehicleDialog" :vehicle="editingVehicle" :type-options="typeOptions" @saved="load" />
     <ExpenseDialog v-model:open="expenseDialog" :vehicle-options="vehicleOptions" :type-options="expenseTypeOptions" @saved="load" />
-    <VehicleHandoverDialog v-model:open="handoverDialog" :vehicles="vehicles" :rider-options="riderOptions" :shift-options="shiftOptions" @saved="load" />
+    <VehicleDeliveryDialog v-model:open="handoverDialog" :vehicles="vehicles" :shift-options="shiftOptions" @saved="load" />
+    <VehicleReceiptDialog v-model:open="receiptDialog" :deliveries="openDeliveries" :delivery-id="receiptFor" @saved="load" />
     <ShiftDialog v-model:open="shiftDialog" :shift="editingShift" @saved="load" />
-    <FuelLogDialog v-model:open="fuelDialog" :vehicles="vehicles" :rider-options="riderOptions" @saved="load" />
+    <FuelLogDialog v-model:open="fuelDialog" :vehicles="vehicles" @saved="load" />
     <ExpenseItemDialog v-model:open="itemDialog" :item="editingItem" :account-options="expenseAccountOptions" @saved="load" />
   </div>
 </template>

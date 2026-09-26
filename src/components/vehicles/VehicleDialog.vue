@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Info } from 'lucide-vue-next'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/datepicker'
@@ -14,7 +15,6 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   vehicle: { type: Object, default: null },
   typeOptions: { type: Array, default: () => [] },
-  riderOptions: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['update:open', 'saved'])
 
@@ -23,8 +23,7 @@ const toast = useToast()
 const isEdit = computed(() => !!props.vehicle)
 const saving = ref(false)
 const form = reactive({
-  plate: '', type: 'motorcycle', morningRiderId: '', eveningRiderId: '',
-  value: '', status: 'active', statusFrom: '', statusTo: '',
+  plate: '', type: 'motorcycle', status: 'active', statusFrom: '', statusTo: '',
   // identity (#5)
   chassis: '', color: '', model: '', year: '', tankCapacity: '',
 })
@@ -41,9 +40,6 @@ watch(
     Object.assign(form, {
       plate: props.vehicle?.plate ?? '',
       type: props.vehicle?.type ?? 'motorcycle',
-      morningRiderId: props.vehicle?.morningRiderId ?? '',
-      eveningRiderId: props.vehicle?.eveningRiderId ?? '',
-      value: props.vehicle?.value ?? '',
       status: props.vehicle?.status ?? 'active',
       statusFrom: props.vehicle?.statusFrom ?? '',
       statusTo: props.vehicle?.statusTo ?? '',
@@ -64,18 +60,12 @@ async function submit() {
     errors.plate = t('common.required')
     return
   }
-  if (form.morningRiderId && form.morningRiderId === form.eveningRiderId) {
-    errors.riders = t('vehicles.errSameRider')
-    return
-  }
   saving.value = true
   try {
     isEdit.value ? await updateVehicle(props.vehicle.id, { ...form }) : await createVehicle({ ...form })
     toast.success(t('vehicles.saved'))
     emit('saved')
     emit('update:open', false)
-  } catch (e) {
-    if (e.message === 'SAME_RIDER') errors.riders = t('vehicles.errSameRider')
   } finally {
     saving.value = false
   }
@@ -124,22 +114,9 @@ async function submit() {
         </div>
       </div>
 
-      <div class="space-y-1.5">
-        <label class="text-sm font-medium">{{ t('vehicles.fields.value') }}</label>
-        <Input v-model="form.value" type="number" dir="ltr" min="0" />
-      </div>
-
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('vehicles.riders.morning') }}</label>
-          <Dropdown v-model="form.morningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" clearable />
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium">{{ t('vehicles.riders.evening') }}</label>
-          <Dropdown v-model="form.eveningRiderId" :options="riderOptions" :placeholder="t('vehicles.unassigned')" clearable />
-        </div>
-      </div>
-      <p v-if="errors.riders" class="text-danger text-xs">{{ errors.riders }}</p>
+      <p class="bg-primary/5 text-muted-foreground flex items-start gap-2 rounded-lg px-3 py-2 text-xs">
+        <Info class="text-primary mt-0.5 size-3.5 shrink-0" /> {{ t('vehicles.ridersViaDelivery') }}
+      </p>
 
       <div class="space-y-1.5">
         <label class="text-sm font-medium">{{ t('vehicles.statusLabel') }}</label>
