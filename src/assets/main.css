@@ -199,6 +199,50 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ── Fluid UI scale ──────────────────────────────────────────────
+   The design is drawn at its reference size from 1536px up. Between 1280px
+   and 1536px every spacing step and every type step shrinks with the
+   viewport, and from 1280px down to 1024px it holds that smaller size — so a
+   laptop shows the same layout as a wide monitor, just drawn tighter, instead
+   of the reference sizes crowding a narrower sheet.
+
+   Only the two tokens Tailwind builds its utilities from are touched, so the
+   whole system follows at once: `--spacing` feeds every p-/gap-/size-/w-/h-
+   utility, `--text-*` feeds every font-size utility (their line heights are
+   ratios, so they scale along). Spacing gives up more than type does, and
+   display sizes more than body sizes — the density changes while small text
+   stays readable.
+
+   Below 1024px the sidebar becomes a drawer and the sheet takes the whole
+   window, so there is more room per column than at 1024px, not less: the
+   reference sizes come back, which also keeps touch targets full size. */
+@media (min-width: 64rem) {
+  :root {
+    /* 4px → 3.5px */
+    --spacing: clamp(0.21875rem, 0.0625rem + 0.1953vw, 0.25rem);
+
+    --text-xs: clamp(0.703125rem, 0.46875rem + 0.293vw, 0.75rem); /* 12 → 11.25 */
+    --text-sm: clamp(0.8125rem, 0.5rem + 0.3906vw, 0.875rem); /* 14 → 13 */
+    --text-base: clamp(0.90625rem, 0.4375rem + 0.5859vw, 1rem); /* 16 → 14.5 */
+    --text-lg: clamp(1rem, 0.375rem + 0.7813vw, 1.125rem); /* 18 → 16 */
+    --text-xl: clamp(1.09375rem, 0.3125rem + 0.9766vw, 1.25rem); /* 20 → 17.5 */
+    --text-2xl: clamp(1.28125rem, 0.1875rem + 1.3672vw, 1.5rem); /* 24 → 20.5 */
+    --text-3xl: clamp(1.5625rem, 1.9531vw, 1.875rem); /* 30 → 25 */
+    --text-4xl: clamp(1.84375rem, 2.5391vw - 0.1875rem, 2.25rem); /* 36 → 29.5 */
+    --text-5xl: clamp(2.4375rem, 3.5156vw - 0.375rem, 3rem); /* 48 → 39 */
+
+    /* the big figure on a metric tile (see .stat-figure) */
+    --text-figure: clamp(1.4375rem, 0.125rem + 1.6406vw, 1.7rem); /* 27.2 → 23 */
+  }
+}
+
+/* The one size the utility scale has no step for: a metric tile's headline
+   number. It follows the fluid scale like everything else. */
+.stat-figure {
+  font-size: var(--text-figure, 1.7rem);
+  line-height: 1;
+}
+
 @layer base {
   * {
     border-color: var(--border);
@@ -261,13 +305,13 @@
    Used by DataTable and by hand-written tables via class="soft-table". */
 .soft-table {
   border-radius: calc(var(--radius) + 0.7rem);
-  padding: 0.2rem 0.5rem;
+  padding: calc(var(--spacing) * 0.8) calc(var(--spacing) * 2);
   background: linear-gradient(180deg, var(--muted), color-mix(in srgb, var(--brand) 7%, var(--muted)));
 }
 .soft-table table { border-collapse: separate; border-spacing: 0 5px; width: 100%; }
 .soft-table thead th {
-  padding-block: 0.6rem 0.2rem; border: 0; background: transparent;
-  font-size: 11.5px; letter-spacing: 0.03em; color: var(--muted-foreground); white-space: nowrap;
+  padding-block: calc(var(--spacing) * 2.4) calc(var(--spacing) * 0.8); border: 0; background: transparent;
+  font-size: calc(var(--text-xs) * 0.96); letter-spacing: 0.03em; color: var(--muted-foreground); white-space: nowrap;
 }
 .soft-table thead, .soft-table thead tr { background: transparent; border: 0; }
 .soft-table thead.sticky th, .soft-table thead th.sticky { background: color-mix(in srgb, var(--brand) 4%, var(--muted)); z-index: 1; }
@@ -304,27 +348,29 @@
   background: transparent; border-color: transparent; box-shadow: none; overflow: visible;
 }
 .bg-card:has(> .soft-host, > .soft-table, > .overflow-x-auto > .soft-table) > :not(.soft-host):not(.soft-table):not(.overflow-x-auto) {
-  border-color: transparent; padding-inline: 0.5rem;
+  border-color: transparent; padding-inline: calc(var(--spacing) * 2);
 }
 .bg-card:has(> .soft-host, > .soft-table, > .overflow-x-auto > .soft-table) > [class*='bg-muted'] {
-  margin-top: 0.5rem; padding-inline: 1.25rem; border-radius: 0.9rem;
+  margin-top: calc(var(--spacing) * 2); padding-inline: calc(var(--spacing) * 5); border-radius: 0.9rem;
 }
 
 /* short values (codes, amounts, plates) never break across lines */
 .soft-table td.tabular-nums, .soft-table td .tabular-nums, .soft-table td [dir='ltr'] { white-space: nowrap; }
 
 /* table pagination: soft square keys, the current page filled */
-.pager-btn { display: grid; place-items: center; min-width: 2.25rem; height: 2.25rem; padding-inline: .5rem; border-radius: .6rem; background: var(--card); color: var(--foreground); font-size: .85rem; font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--navy) 8%, transparent); transition: background-color .15s, color .15s; cursor: pointer; }
+.pager-btn { display: grid; place-items: center; min-width: calc(var(--spacing) * 9); height: calc(var(--spacing) * 9); padding-inline: calc(var(--spacing) * 2); border-radius: .6rem; background: var(--card); color: var(--foreground); font-size: calc(var(--text-sm) * 0.97); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--navy) 8%, transparent); transition: background-color .15s, color .15s; cursor: pointer; }
 .pager-btn:hover:not(:disabled):not(.is-current) { background: color-mix(in srgb, var(--navy) 6%, var(--card)); }
 .pager-btn.is-current { background: var(--primary); color: var(--primary-foreground); box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--primary) 70%, transparent); }
 .pager-btn:disabled { background: transparent; box-shadow: none; color: var(--muted-foreground); opacity: .45; cursor: default; }
 
 /* ── Page container ─────────────────────────────────────────────
    The sheet's padding is a variable so the pinned header can bleed to
-   its edges. */
-.sheet-main { --sheet-pad: 1rem; padding: var(--sheet-pad); }
-@media (min-width: 40rem) { .sheet-main { --sheet-pad: 1.5rem; } }
-@media (min-width: 64rem) { .sheet-main { --sheet-pad: 2rem; } }
+   its edges. It is counted in spacing steps, so it follows the fluid scale
+   above: 16px on a phone, 24px on a tablet, 32px on a wide monitor down to
+   28px on a laptop. */
+.sheet-main { --sheet-pad: calc(var(--spacing) * 4); padding: var(--sheet-pad); }
+@media (min-width: 40rem) { .sheet-main { --sheet-pad: calc(var(--spacing) * 6); } }
+@media (min-width: 64rem) { .sheet-main { --sheet-pad: calc(var(--spacing) * 8); } }
 
 /* Glass header. At rest the page header sits in the page and scrolls with it.
    Once a long page moves (main[data-compact], set by the layout) it pins to the
@@ -335,19 +381,19 @@
 .page-head {
   position: relative; z-index: 20;
   margin-inline: calc(var(--sheet-pad, 0px) * -1); padding-inline: var(--sheet-pad, 0px);
-  margin-top: calc(var(--sheet-pad, 0px) * -1); padding-top: var(--sheet-pad, 0px); padding-bottom: 0.25rem;
+  margin-top: calc(var(--sheet-pad, 0px) * -1); padding-top: var(--sheet-pad, 0px); padding-bottom: var(--spacing);
   transition: padding 0.3s ease, background-color 0.3s, box-shadow 0.3s, -webkit-backdrop-filter 0.3s, backdrop-filter 0.3s;
 }
 .page-head-title { transition: font-size 0.3s ease; }
-.page-head-sub { max-height: 3rem; overflow: hidden; margin-top: 0.25rem; transition: max-height 0.3s ease, opacity 0.2s, margin 0.3s; }
+.page-head-sub { max-height: 3rem; overflow: hidden; margin-top: var(--spacing); transition: max-height 0.3s ease, opacity 0.2s, margin 0.3s; }
 [data-compact] .page-head {
   position: sticky; top: calc(var(--sheet-pad, 0px) * -1); /* the negative margin counts toward the pinned edge, so offset it */
-  padding-block: 0.7rem; align-items: center;
+  padding-block: calc(var(--spacing) * 2.8); align-items: center;
   background: color-mix(in srgb, var(--background) 74%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 45%, transparent), 0 12px 24px -20px color-mix(in srgb, var(--navy) 70%, transparent);
 }
-[data-compact] .page-head-title { font-size: 1.125rem; }
+[data-compact] .page-head-title { font-size: var(--text-lg); }
 [data-compact] .page-head-sub { max-height: 0; opacity: 0; margin-top: 0; }
 
 /* Staggered rise: for a moment after each navigation (main.page-rise, set by

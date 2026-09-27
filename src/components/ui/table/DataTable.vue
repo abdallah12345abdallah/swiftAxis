@@ -4,6 +4,7 @@ import { ref, computed, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronsLeft } from 'lucide-vue-next'
 import { useCurrency } from '@/composables/useCurrency'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -65,11 +66,13 @@ const paged = computed(() => {
   return sorted.value.slice(start, start + props.pageSize)
 })
 
-// up to 5 page numbers, kept around the current page
+/* up to 5 page numbers, kept around the current page — 3 on a phone, where
+   five keys plus the four jump buttons would not fit on one line */
+const narrow = useMediaQuery('(max-width: 29.98rem)')
 const pageWindow = computed(() => {
   const n = totalPages.value
-  const size = Math.min(5, n)
-  const start = Math.min(Math.max(1, page.value - 2), n - size + 1)
+  const size = Math.min(narrow.value ? 3 : 5, n)
+  const start = Math.min(Math.max(1, page.value - (size >> 1)), n - size + 1)
   return Array.from({ length: size }, (_, i) => start + i)
 })
 const rangeFrom = computed(() => (page.value - 1) * props.pageSize + 1)

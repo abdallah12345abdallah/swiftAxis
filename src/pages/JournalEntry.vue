@@ -891,11 +891,11 @@ const SHORTCUTS = [
 /* page toolbar: one joined strip instead of loose buttons */
 .je-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 3px; border-radius: 0.9rem; border: 1px solid var(--border); background: var(--card); }
 .je-tool {
-  display: inline-flex; align-items: center; gap: 0.4rem; height: 2.15rem; padding: 0 0.8rem; border-radius: 0.65rem; cursor: pointer;
-  font-size: 13px; font-weight: 700; color: var(--foreground); white-space: nowrap; transition: background-color 0.15s, color 0.15s;
+  display: inline-flex; align-items: center; gap: calc(var(--spacing) * 1.6); height: calc(var(--spacing) * 8.6); padding: 0 calc(var(--spacing) * 3.2); border-radius: 0.65rem; cursor: pointer;
+  font-size: calc(var(--text-sm) * 0.93); font-weight: 700; color: var(--foreground); white-space: nowrap; transition: background-color 0.15s, color 0.15s;
 }
 .je-tool:hover:not(:disabled) { background: var(--muted); }
-.je-tool.is-icon { width: 2.15rem; padding: 0; justify-content: center; color: var(--muted-foreground); }
+.je-tool.is-icon { width: calc(var(--spacing) * 8.6); padding: 0; justify-content: center; color: var(--muted-foreground); }
 .je-tool.is-main { color: var(--primary); }
 .je-tool.is-main:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
 .je-tool.is-danger { color: var(--danger); }

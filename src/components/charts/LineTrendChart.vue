@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUiStore } from '@/stores/ui'
+import { useChartHeight } from '@/composables/useMediaQuery'
 
 const props = defineProps({
   labels: { type: Array, default: () => [] },
@@ -11,6 +12,7 @@ const props = defineProps({
 
 const { t } = useI18n()
 const ui = useUiStore()
+const height = useChartHeight(300)
 
 const BLUE = '#1E6FE0'
 const ORANGE = '#F47A20'
@@ -57,5 +59,5 @@ const options = computed(() => {
 </script>
 
 <template>
-  <apexchart type="line" height="300" :options="options" :series="series" />
+  <apexchart type="line" :height="height" :options="options" :series="series" />
 </template>

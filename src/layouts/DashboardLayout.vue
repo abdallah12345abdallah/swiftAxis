@@ -120,7 +120,7 @@ function logout() {
 
 <template>
   <div class="shell h-dvh overflow-hidden">
-    <div class="grid h-full grid-rows-[auto_1fr] gap-3 p-3 lg:grid-cols-[296px_1fr] lg:grid-rows-1 lg:gap-4 lg:p-4">
+    <div class="grid h-full grid-rows-[auto_1fr] gap-3 p-3 lg:grid-cols-[var(--rail)_1fr] lg:grid-rows-1 lg:gap-4 lg:p-4">
       <!-- ── phone-only bar: brand + drawer button ─────────── -->
       <div class="no-print flex items-center justify-between rounded-xl px-1 lg:hidden">
         <BrandLogo :mark-size="28" tone="light" />
@@ -133,7 +133,7 @@ function logout() {
       <!-- ── glass island ─────────────────────────────────── -->
       <div v-if="drawer" class="fixed inset-0 z-40 bg-navy/60 backdrop-blur-sm lg:hidden" @click="drawer = false" />
       <aside
-        class="island no-print fixed inset-y-3 z-50 flex w-[300px] flex-col rounded-2xl border border-white/15 p-3 text-white/90 shadow-2xl transition-transform duration-300 start-3 lg:sticky lg:inset-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh-2rem)] lg:w-auto lg:translate-x-0"
+        class="island no-print fixed inset-y-3 z-50 flex w-[min(300px,86vw)] flex-col rounded-2xl border border-white/15 p-3 text-white/90 shadow-2xl transition-transform duration-300 start-3 lg:sticky lg:inset-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh_-_var(--spacing)*8)] lg:w-auto lg:translate-x-0"
         :class="drawer ? 'translate-x-0' : '-translate-x-[110%] rtl:translate-x-[110%] lg:translate-x-0 lg:rtl:translate-x-0'"
       >
         <!-- brand -->
@@ -151,7 +151,7 @@ function logout() {
               <button
                 v-if="hasScreens(item.key)"
                 type="button"
-                class="island-link relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-start text-[14.5px] font-semibold text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+                class="island-link relative flex w-full cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-start font-semibold text-white/85 transition-colors hover:bg-white/10 hover:text-white"
                 :class="[isModuleActive(item) && 'is-active', isOpen(item.key) && !isModuleActive(item) && 'is-open']"
                 :aria-expanded="isOpen(item.key)"
                 @click="toggleModule(item.key)"
@@ -164,7 +164,7 @@ function logout() {
               <RouterLink
                 v-else
                 :to="item.to"
-                class="island-link relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-[14.5px] font-semibold text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+                class="island-link relative flex items-center gap-3 rounded-xl px-2.5 py-2 font-semibold text-white/85 transition-colors hover:bg-white/10 hover:text-white"
                 :class="isModuleActive(item) && 'is-active'"
               >
                 <span class="ic grid size-8 shrink-0 place-items-center rounded-lg"><component :is="ICONS[item.icon]" class="size-[18px]" /></span>
@@ -177,7 +177,7 @@ function logout() {
                   <p v-if="sub.group && (i === 0 || subsOf(item.key)[i - 1].group !== sub.group)" class="mt-2 mb-0.5 px-3 text-[11px] font-bold tracking-wide text-white/40 uppercase first:mt-0">{{ t(sub.group) }}</p>
                   <RouterLink
                     :to="subLocation(sub, defaultTabOf(item.key))"
-                    class="sub-link flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                    class="sub-link flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white"
                     :class="isSubActive(sub, route, defaultTabOf(item.key)) && 'is-active'"
                   >
                     <span class="dot size-2 shrink-0 rounded-full" />
@@ -199,7 +199,7 @@ function logout() {
                 <span class="acct-dot" aria-hidden="true" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block truncate text-[14px] font-bold">{{ auth.user?.name }}</span>
+                <span class="acct-name block truncate font-bold">{{ auth.user?.name }}</span>
                 <span class="flex items-center gap-1.5 text-[11.5px] text-white/65">
                   <component :is="ROLE_ICONS[auth.role]" class="size-3.5" /> {{ t(`roles.${auth.role}`) }}
                   <RiderCode v-if="auth.user?.riderId" :code="auth.user.riderId" />
@@ -277,12 +277,20 @@ function logout() {
 <style scoped>
 /* the brand ground — navy into brand blue, every color a token */
 .shell {
+  /* the sidebar rail. Counted in spacing steps, so it narrows with the fluid
+     scale in main.css instead of eating into a laptop's sheet: 296px from
+     1536px up, 259px at 1280px and below. */
+  --rail: calc(var(--spacing) * 74);
   background:
     radial-gradient(1200px 600px at 100% -10%, color-mix(in oklch, var(--brand) 55%, transparent), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, color-mix(in oklch, var(--orange) 28%, transparent), transparent 60%),
     linear-gradient(160deg, var(--navy) 0%, color-mix(in oklch, var(--navy) 55%, var(--brand)) 100%);
 }
 .island {
+  /* the island's own type sits between text-sm and text-base; it shrinks with
+     the rail over the same 1280→1536px band as the fluid scale */
+  --nav-text: 14.5px;
+  --nav-sub: 14px;
   background:
     radial-gradient(110% 30% at 50% 100%, color-mix(in oklch, var(--orange) 14%, transparent), transparent 70%),
     linear-gradient(170deg, color-mix(in oklch, var(--navy) 70%, var(--brand)) 0%, var(--navy) 62%, color-mix(in oklch, var(--navy) 90%, var(--orange)) 100%);
@@ -317,6 +325,14 @@ function logout() {
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
 @keyframes sweep { to { --sweep: 360deg; } }
+@media (min-width: 64rem) {
+  .island {
+    --nav-text: clamp(13px, 5.5px + 0.5859vw, 14.5px);
+    --nav-sub: clamp(12.75px, 6.5px + 0.4883vw, 14px);
+  }
+}
+.island-link { font-size: var(--nav-text); }
+.sub-link, .acct-name { font-size: var(--nav-sub); }
 /* reduced motion: keep the light but let it drift slowly */
 @media (prefers-reduced-motion: reduce) { .island::before, .island::after { animation-duration: 16s; } }
 /* the stack behind the sheet: two paler pages peeking out toward the outer
@@ -395,6 +411,6 @@ function logout() {
 .island-nav { scrollbar-width: none; }
 .island-nav::-webkit-scrollbar { display: none; }
 /* language switch beside the brand */
-.menu-item { display: flex; align-items: center; gap: 0.625rem; border-radius: var(--radius-md); padding: 0.5rem 0.625rem; font-size: 0.875rem; transition: background-color 0.15s ease; }
+.menu-item { display: flex; align-items: center; gap: calc(var(--spacing) * 2.5); border-radius: var(--radius-md); padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2.5); font-size: var(--text-sm); transition: background-color 0.15s ease; }
 .menu-item:hover { background: var(--accent); }
 </style>

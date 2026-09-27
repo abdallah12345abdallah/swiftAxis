@@ -102,7 +102,7 @@ async function submit() {
           <label class="text-sm font-medium">{{ t('vehicles.fields.color') }}</label>
           <Input v-model="form.color" />
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
             <label class="text-sm font-medium">{{ t('vehicles.fields.year') }}</label>
             <Input v-model="form.year" type="number" min="1990" max="2100" dir="ltr" />

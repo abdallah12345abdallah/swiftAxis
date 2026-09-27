@@ -61,7 +61,9 @@ function go(screen) {
       </template>
     </PageHeader>
 
-    <div class="grid gap-6 lg:grid-cols-[280px_1fr]">
+    <!-- the tree column is counted in spacing steps, so it narrows with the
+         fluid scale (280px wide, 245px on a laptop) -->
+    <div class="grid gap-6 lg:grid-cols-[calc(var(--spacing)*70)_1fr]">
       <!-- ── sidebar tree ─────────────────────────────────── -->
       <aside :class="cn('no-print lg:block', mobileOpen ? 'block' : 'hidden')">
         <Card class="bg-navy text-navy-foreground sticky top-24 overflow-hidden border-0 p-2">

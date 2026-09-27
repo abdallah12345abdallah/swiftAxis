@@ -68,7 +68,7 @@ const barWidth = computed(() => `${barReady.value ? Math.max(0, Math.min(100, pr
       <p class="text-muted-foreground min-w-0 truncate text-[13px] font-semibold">{{ label }}</p>
     </div>
 
-    <p class="relative mt-3 text-[1.7rem] leading-none font-black tracking-tight tabular-nums">{{ format(shown) }}</p>
+    <p class="stat-figure relative mt-3 font-black tracking-tight tabular-nums">{{ format(shown) }}</p>
 
     <div v-if="progress !== null" class="relative mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
       <span class="mtile-bar absolute inset-y-0 start-0 rounded-full" :style="{ width: barWidth }" />

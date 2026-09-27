@@ -379,15 +379,15 @@ function exportBest() {
           </section>
 
           <!-- signatures -->
-          <div class="grid grid-cols-2 gap-8 pt-6">
+          <div class="grid grid-cols-2 gap-4 pt-6 sm:gap-8">
             <div class="text-center">
               <p class="mb-8 text-sm font-semibold">{{ auth.user?.name }}</p>
-              <div class="bg-foreground/30 mx-auto h-px w-44" />
+              <div class="bg-foreground/30 mx-auto h-px w-full max-w-44" />
               <p class="text-muted-foreground mt-1 text-xs">{{ t('reports.monthly.preparedBy') }}</p>
             </div>
             <div class="text-center">
               <p class="mb-8 text-sm">&nbsp;</p>
-              <div class="bg-foreground/30 mx-auto h-px w-44" />
+              <div class="bg-foreground/30 mx-auto h-px w-full max-w-44" />
               <p class="text-muted-foreground mt-1 text-xs">{{ t('reports.monthly.approvedBy') }}</p>
             </div>
           </div>
