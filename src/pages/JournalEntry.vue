@@ -674,7 +674,7 @@ const SHORTCUTS = [
         </div>
 
         <div class="p-4">
-        <div class="soft-table overflow-x-auto">
+        <div class="soft-table overflow-x-auto" v-card-labels>
           <table class="w-full text-sm">
             <thead>
               <tr>
@@ -828,7 +828,7 @@ const SHORTCUTS = [
         </div>
       </div>
       <p v-if="header.description" class="mb-4 text-sm">{{ t('journal.statement') }}: {{ header.description }}</p>
-      <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+      <div class="soft-table overflow-x-auto" v-card-labels><table class="w-full text-sm">
         <thead class="text-muted-foreground border-b">
           <tr>
             <th class="py-2 text-start font-medium">#</th>

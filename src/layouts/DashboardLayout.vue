@@ -6,9 +6,10 @@ import {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
   Landmark, Receipt, Calculator,
-  LogOut, ChevronDown, UserCircle, Menu as MenuIcon, X, Languages, Check,
+  LogOut, ChevronDown, UserCircle, Menu as MenuIcon, X, Languages, Check, Search,
   UserCog, Bike, Warehouse,
 } from 'lucide-vue-next'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { NAV_ITEMS, NAV_GROUPS, ROLES, ALL_ROLES } from '@/lib/constants'
@@ -73,11 +74,97 @@ const pageTitle = computed(() => {
    other routes keep their instance while only their params change */
 const screenKey = computed(() => `${String(route.name)}:${route.params.tab ?? ''}`)
 
-/* the sheet scrolls, not the window — reset it on navigation */
 const drawer = ref(false)
 const mainEl = ref(null)
+
+/* ── the island as a bottom sheet (below lg) ───────────────────────────
+   On a phone the island rises from the bottom edge instead of sliding in from
+   the side: everything it holds is then within thumb reach, and the gesture
+   is the one every phone uses for a menu. It rests at 62% of the window and
+   pulls up to 92%; the grabber drags it between the two, and a long pull down
+   closes it. Above lg none of this applies — the island is the sticky rail. */
+const SNAP = { peek: '62dvh', full: '92dvh' }
+const snap = ref('peek')
+const dragY = ref(0)
+let dragFrom = null
+
+/* the rail takes over from lg up: the sheet's gestures and its search box are
+   both gone there, so neither may leave state behind */
+const isRail = useMediaQuery('(min-width: 64rem)')
+watch(isRail, (rail) => {
+  if (!rail) return
+  query.value = ''
+  snap.value = 'peek'
+})
+
+function onGrab(e) {
+  if (isRail.value) return
+  dragFrom = e.clientY
+  dragY.value = 0
+  e.currentTarget.setPointerCapture?.(e.pointerId)
+}
+function onGrabMove(e) {
+  if (dragFrom === null) return
+  // pulling up past the tall snap should feel resistant, not rubbery
+  dragY.value = Math.max(e.clientY - dragFrom, -48)
+}
+function onGrabEnd() {
+  if (dragFrom === null) return
+  const dy = dragY.value
+  dragFrom = null
+  dragY.value = 0
+  if (Math.abs(dy) < 6) snap.value = snap.value === 'full' ? 'peek' : 'full' // a tap
+  else if (dy > 120) drawer.value = false
+  else if (dy < -40) snap.value = 'full'
+  else if (dy > 40) snap.value = 'peek'
+}
+
+/* while a drag is in progress the sheet tracks the finger, so it must not
+   also be animating toward a snap point */
+const sheetStyle = computed(() => ({
+  '--sheet-h': SNAP[snap.value],
+  ...(dragY.value ? { transform: `translateY(${dragY.value}px)`, transition: 'none' } : {}),
+}))
+
+/* ── search ───────────────────────────────────────────────────────────
+   One list of every module and every screen the role may open: on a phone
+   typing two letters beats scrolling a menu of fifteen modules. Arabic is
+   normalised first, so a search for "المحافظ" finds it however the alef and
+   the taa marbuta were typed. */
+const query = ref('')
+const norm = (s) =>
+  String(s)
+    .toLowerCase()
+    .replace(/[ً-ْٰ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+
+const results = computed(() => {
+  const q = norm(query.value.trim())
+  if (!q) return null
+  const out = []
+  for (const g of groups.value) {
+    for (const item of g.items) {
+      const label = t(`nav.${item.key}`)
+      if (norm(label).includes(q)) out.push({ id: item.key, label, module: '', to: item.to, icon: item.icon, tone: g.tone })
+      for (const sub of subsOf(item.key)) {
+        const screen = t(sub.labelKey)
+        if (norm(screen).includes(q)) {
+          out.push({ id: `${item.key}:${sub.key}`, label: screen, module: label, to: subLocation(sub, defaultTabOf(item.key)), icon: item.icon, tone: g.tone })
+        }
+      }
+    }
+  }
+  return out
+})
+
+/* the page sheet scrolls, not the window — reset it on navigation, and let go
+   of whatever the menu was showing */
 watch(() => route.fullPath, () => {
   drawer.value = false
+  query.value = ''
+  snap.value = 'peek'
   mainEl.value?.scrollTo({ top: 0 })
 })
 
@@ -109,8 +196,19 @@ function onOutsideClick(e) {
   if (e.target.closest('aside.island')) return
   expanded.value = new Set(activeKey.value ? [activeKey.value] : [])
 }
-onMounted(() => document.addEventListener('click', onOutsideClick))
-onBeforeUnmount(() => document.removeEventListener('click', onOutsideClick))
+/* Escape closes the sheet — the scrim and the pull-down gesture are not
+   reachable from a keyboard */
+function onEsc(e) {
+  if (e.key === 'Escape' && drawer.value) drawer.value = false
+}
+onMounted(() => {
+  document.addEventListener('click', onOutsideClick)
+  document.addEventListener('keydown', onEsc)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onOutsideClick)
+  document.removeEventListener('keydown', onEsc)
+})
 
 function logout() {
   auth.logout()
@@ -126,25 +224,82 @@ function logout() {
         <BrandLogo :mark-size="28" tone="light" />
         <div class="flex items-center gap-2 text-white">
           <span class="max-w-[50vw] truncate text-sm font-semibold">{{ pageTitle }}</span>
-          <button type="button" class="inline-flex size-9 items-center justify-center rounded-lg border border-white/20 bg-white/10" :aria-label="t('layout.menu')" @click="drawer = true"><MenuIcon class="size-5" /></button>
+          <button
+            type="button"
+            class="inline-flex size-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 transition-colors"
+            :class="drawer && 'bg-white/25'"
+            :aria-label="drawer ? t('layout.closeMenu') : t('layout.menu')"
+            :aria-expanded="drawer"
+            @click="drawer = !drawer"
+          >
+            <X v-if="drawer" class="size-5" /><MenuIcon v-else class="size-5" />
+          </button>
         </div>
       </div>
 
-      <!-- ── glass island ─────────────────────────────────── -->
-      <div v-if="drawer" class="fixed inset-0 z-40 bg-navy/60 backdrop-blur-sm lg:hidden" @click="drawer = false" />
+      <!-- ── glass island: the sticky rail from lg up, a bottom sheet below ── -->
+      <Transition enter-from-class="opacity-0" leave-to-class="opacity-0">
+        <div v-if="drawer" class="fixed inset-0 z-40 bg-navy/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden" @click="drawer = false" />
+      </Transition>
       <aside
-        class="island no-print fixed inset-y-3 z-50 flex w-[min(300px,86vw)] flex-col rounded-2xl border border-white/15 p-3 text-white/90 shadow-2xl transition-transform duration-300 start-3 lg:sticky lg:inset-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh_-_var(--spacing)*8)] lg:w-auto lg:translate-x-0"
-        :class="drawer ? 'translate-x-0' : '-translate-x-[110%] rtl:translate-x-[110%] lg:translate-x-0 lg:rtl:translate-x-0'"
+        class="island no-print fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-2xl border border-white/15 p-3 pt-1.5 text-white/90 shadow-2xl transition-transform duration-300 max-lg:rounded-t-3xl max-lg:rounded-b-none lg:sticky lg:inset-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh_-_var(--spacing)*8)] lg:w-auto lg:translate-y-0 lg:pt-3"
+        :class="drawer ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'"
+        :style="sheetStyle"
       >
-        <!-- brand -->
-        <div class="relative mb-4 flex items-center justify-center px-1 pt-2 pb-1">
+        <!-- brand (the rail only — on a phone the bar above already carries it) -->
+        <div class="relative mb-4 hidden items-center justify-center px-1 pt-2 pb-1 lg:flex">
           <RouterLink to="/dashboard"><BrandLogo :mark-size="44" word-size="text-2xl" tone="light" animate="loop" /></RouterLink>
-          <button type="button" class="hover:bg-white/10 absolute end-0 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-lg lg:hidden" :aria-label="t('layout.closeMenu')" @click="drawer = false"><X class="size-4" /></button>
         </div>
 
-        <!-- groups: every link, always visible; the active module unfolds its screens -->
+        <!-- phone: the grabber, then search. Drag it to resize, tap it to
+             switch between the two heights, pull it down to close. -->
+        <div class="lg:hidden">
+          <button
+            type="button"
+            class="sheet-grab flex w-full cursor-grab touch-none items-center justify-center py-2.5"
+            :aria-label="snap === 'full' ? t('common.collapse') : t('common.expand')"
+            @pointerdown="onGrab"
+            @pointermove="onGrabMove"
+            @pointerup="onGrabEnd"
+            @pointercancel="onGrabEnd"
+          >
+            <span class="block h-1 w-10 rounded-full bg-white/35 transition-colors" />
+          </button>
+
+          <label class="focus-within:border-white/35 mb-3 flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/10 px-3">
+            <Search class="size-4 shrink-0 text-white/55" />
+            <span class="sr-only">{{ t('layout.search') }}</span>
+            <input
+              v-model="query"
+              type="search"
+              :placeholder="t('layout.search')"
+              class="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-white outline-none placeholder:text-white/45"
+            />
+            <button v-if="query" type="button" class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full bg-white/10 text-white/70" :aria-label="t('common.clear')" @click="query = ''">
+              <X class="size-3.5" />
+            </button>
+          </label>
+        </div>
+
+        <!-- what the menu shows: search hits, or every link with the active
+             module's screens unfolded under it -->
         <nav class="island-nav min-h-0 flex-1 space-y-2 overflow-y-auto">
-          <div v-for="g in groups" :key="g.key" :data-tone="g.tone">
+          <template v-if="results">
+            <p class="mb-1 px-2 text-[11px] font-bold tracking-[.12em] text-white/55 uppercase">{{ t('layout.results') }}</p>
+            <RouterLink
+              v-for="r in results"
+              :key="r.id"
+              :to="r.to"
+              class="sub-link flex items-center gap-2.5 rounded-lg px-3 py-2.5 font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <component :is="ICONS[r.icon]" class="size-4 shrink-0 text-white/60" />
+              <span class="min-w-0 flex-1 truncate">{{ r.label }}</span>
+              <span v-if="r.module" class="shrink-0 truncate text-[11px] text-white/45">{{ r.module }}</span>
+            </RouterLink>
+            <p v-if="!results.length" class="px-3 py-6 text-center text-sm text-white/55">{{ t('layout.noResults') }}</p>
+          </template>
+
+          <div v-for="g in groups" v-else :key="g.key" :data-tone="g.tone">
             <p class="mb-1 flex items-center gap-1.5 px-2 text-[11px] font-bold tracking-[.12em] text-white/55 uppercase"><span class="tone-dot size-1.5 rounded-full" /> {{ t(`nav.groups.${g.key}`) }}</p>
             <template v-for="item in g.items" :key="item.key">
               <!-- toggle (has screens) -->
@@ -325,6 +480,29 @@ function logout() {
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
 @keyframes sweep { to { --sweep: 360deg; } }
+/* ── below lg the island is a bottom sheet ────────────────────────────
+   Its height is whatever snap point the grabber last set (the inline
+   --sheet-h), it never covers the whole window, and it clears the home bar.
+   Nothing here is RTL-dependent: the sheet moves up and down, which is one
+   thing the side drawer it replaces could not claim. */
+@media (max-width: 63.99rem) {
+  .island {
+    height: var(--sheet-h, 62dvh);
+    max-height: 92dvh;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    /* the height is what the grabber changes, so it has to ease like the rest
+       of the move; a drag overrides this inline so the sheet tracks the finger */
+    transition-property: translate, transform, height;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* the travelling light drew the rail's edge; a sheet needs a plain one */
+    border-top-color: color-mix(in oklch, white 16%, transparent);
+  }
+  /* the travelling light belongs to the floating rail; on a sheet whose bottom
+     edge is off-screen it would only glow along a seam nobody can see */
+  .island::before, .island::after { display: none; }
+  .sheet-grab:active span { background: color-mix(in oklch, white 60%, transparent); }
+}
 @media (min-width: 64rem) {
   .island {
     --nav-text: clamp(13px, 5.5px + 0.5859vw, 14.5px);

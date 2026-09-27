@@ -383,7 +383,7 @@ function exportVat() {
       <Card v-else-if="!vatRows.length"><EmptyState :title="t('purchases.empty')" /></Card>
 
       <div v-else class="grid items-start gap-6 lg:grid-cols-3">
-        <div class="soft-table overflow-x-auto lg:col-span-2">
+        <div class="soft-table overflow-x-auto lg:col-span-2" v-card-labels>
           <table class="w-full text-sm">
             <thead>
               <tr>

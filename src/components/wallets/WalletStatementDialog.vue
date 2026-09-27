@@ -52,7 +52,7 @@ function exportStatement() {
       <RiderCode :code="rider?.id" />
       <Button variant="outline" size="sm" @click="exportStatement"><Download /> {{ t('common.export') }}</Button>
     </div>
-    <div class="soft-table max-h-[50vh] overflow-auto">
+    <div class="soft-table max-h-[50vh] overflow-auto" v-card-labels>
       <table class="w-full text-sm">
         <thead class="bg-muted/50 text-muted-foreground sticky top-0">
           <tr>

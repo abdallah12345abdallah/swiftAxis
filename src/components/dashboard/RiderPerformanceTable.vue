@@ -47,7 +47,7 @@ function barClass(r) {
     </CardHeader>
     <CardContent>
       <div class="overflow-x-auto">
-        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+        <div class="soft-table overflow-x-auto" v-card-labels><table class="w-full text-sm">
           <thead>
             <tr class="text-muted-foreground border-b text-start">
               <th class="px-5 py-2.5 text-start font-medium">{{ t('dashboard.table.rider') }}</th>

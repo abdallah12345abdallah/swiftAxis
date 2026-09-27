@@ -94,7 +94,7 @@ async function run() {
           <p class="text-muted-foreground text-xs">{{ t('accounting.yearClose.hint') }}</p>
         </CardHeader>
         <CardContent>
-          <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+          <div class="soft-table overflow-x-auto" v-card-labels><table class="w-full text-sm">
             <thead class="text-muted-foreground border-b"><tr>
               <th class="px-5 py-2 text-start font-medium">{{ t('journal.account') }}</th>
               <th class="px-5 py-2 text-start font-medium">{{ t('common.description') }}</th>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Folder, FileText } from 'lucide-vue-next'
 import ReportShell from '@/components/accounting/shared/ReportShell.vue'
@@ -34,6 +34,13 @@ onMounted(async () => {
 })
 watch([account, from, to], load)
 const money = (v) => sar(v, { decimals: 2 })
+/* the totals strip names its figures where it has no columns to sit under */
+const totalLabels = computed(() => ({
+  opening: t('accounting.common.opening'),
+  debit: t('ledger.debit'),
+  credit: t('ledger.credit'),
+  closing: t('accounting.common.closing'),
+}))
 const drill = (row) => row.isGroup && (account.value = row.id)
 const exportRows = () => data.value && exportCsv(`main-${account.value}-${todayStamp()}`, [t('accounting.common.code'), t('journal.account'), t('accounting.common.opening'), t('ledger.debit'), t('ledger.credit'), t('accounting.common.closing')], data.value.rows.map((r) => [r.code, r.name, r.opening, r.debit, r.credit, r.closing]))
 </script>
@@ -65,8 +72,13 @@ const exportRows = () => data.value && exportCsv(`main-${account.value}-${todayS
       <template #cell-credit="{ row }"><span class="tabular-nums">{{ row.credit ? money(row.credit) : '' }}</span></template>
       <template #cell-closing="{ row }"><span class="font-semibold tabular-nums">{{ money(row.closing) }}</span></template>
     </DataTable>
-    <div v-if="data" class="bg-muted/40 grid grid-cols-4 gap-2 border-t px-5 py-3 text-end text-sm font-semibold tabular-nums">
-      <span>{{ money(data.totals.opening) }}</span><span>{{ money(data.totals.debit) }}</span><span>{{ money(data.totals.credit) }}</span><span>{{ money(data.totals.closing) }}</span>
+    <!-- totals: a strip under the table's columns on a wide screen, and — since
+         a phone draws the rows as cards with no columns to line up with — a
+         named list there -->
+    <div v-if="data" class="bg-muted/40 grid gap-2 rounded-2xl border-t px-5 py-3 text-sm font-semibold tabular-nums sm:grid-cols-4 sm:rounded-none sm:text-end">
+      <span v-for="k in ['opening', 'debit', 'credit', 'closing']" :key="k" class="flex justify-between gap-2 sm:block">
+        <span class="text-muted-foreground font-medium sm:hidden">{{ totalLabels[k] }}</span>{{ money(data.totals[k]) }}
+      </span>
     </div>
   </ReportShell>
 </template>

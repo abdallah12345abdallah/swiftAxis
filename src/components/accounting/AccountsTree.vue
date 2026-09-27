@@ -121,7 +121,7 @@ const typeVariant = { asset: 'default', liability: 'warning', equity: 'accent', 
     <Card class="overflow-hidden">
       <div v-if="loading" class="space-y-3 p-5"><Skeleton v-for="i in 8" :key="i" class="h-10 rounded-lg" /></div>
       <div v-else class="overflow-x-auto">
-        <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+        <div class="soft-table no-cards overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-muted-foreground border-b">
               <th class="px-5 py-3 text-start font-medium">{{ t('journal.account') }}</th>

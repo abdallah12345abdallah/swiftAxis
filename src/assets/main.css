@@ -437,6 +437,110 @@
 .soft-table .overflow-x-auto, .soft-table.overflow-x-auto { overflow-y: hidden; scrollbar-width: none; }
 .soft-table .overflow-x-auto::-webkit-scrollbar, .soft-table.overflow-x-auto::-webkit-scrollbar { display: none; }
 
+/* ── Phone: a table is drawn as a stack of cards ──────────────────────
+   Below 40rem a soft-well table stops being columns and becomes one card per
+   row: the row's first field is the card's heading, every other field reads
+   "name — value" on its own line, and the columns a wide table hides come
+   back, because room down the page is the one thing a phone has.
+
+   The names come from `data-label`. DataTable writes them from its `columns`;
+   a hand-written table has them copied off its header row by the
+   `v-card-labels` directive (src/lib/cardLabels.js), so the two can never
+   drift apart. A cell with no name — a spanned totals line, an icon-only
+   actions column — simply fills the card's width.
+
+   Put `no-cards` on a table whose columns *are* the meaning (a permissions
+   matrix, an account tree): there, a sideways scroll says more than a stack
+   of cards would.
+
+   This block comes last on purpose: several of its resets tie on specificity
+   with the soft-well rules above, and the later rule wins. */
+@media (max-width: 39.99rem) {
+  /* the well is what holds columns together; a stack of cards does not need it
+     (an empty state still does, hence :has(table)) */
+  .soft-table:not(.no-cards):has(table) { padding: 0; background: none; border-radius: 0; }
+  .soft-table:not(.no-cards) :is(table, tbody, tfoot, tr, td) { display: block; width: auto; }
+  .soft-table:not(.no-cards) thead { display: none; }
+  .soft-table:not(.no-cards) table { border-spacing: 0; }
+
+  /* one row, one card. The card must not clip its own overflow — an action
+     menu opens out of it — so the heading's tint is rounded on the cell
+     instead, further down. */
+  .soft-table:not(.no-cards) { --row-radius: calc(var(--radius) + 0.5rem); }
+  .soft-table:not(.no-cards) :is(tbody, tfoot) tr {
+    border: 0;
+    border-radius: var(--row-radius);
+    background: var(--card);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--navy) 10%, transparent);
+  }
+  .soft-table:not(.no-cards) :is(tbody, tfoot) tr + tr { margin-top: calc(var(--spacing) * 2); }
+  .soft-table:not(.no-cards) tfoot tr { background: color-mix(in srgb, var(--navy) 7%, var(--card)); }
+
+  /* one field, one line */
+  .soft-table:not(.no-cards) :is(tbody, tfoot) td {
+    min-height: calc(var(--spacing) * 8);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3.5) !important;
+    background: none !important;
+    border: 0;
+    border-radius: 0 !important;
+    text-align: end;
+    white-space: normal;
+  }
+  .soft-table:not(.no-cards) :is(tbody, tfoot) td + td {
+    border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  }
+  /* the column's name on the start edge pushes the value to the end edge; a
+     value made of several parts stays together, and wraps under the name
+     rather than squeezing when the two cannot share a line */
+  .soft-table:not(.no-cards) td[data-label] { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--spacing) * 2); }
+  .soft-table:not(.no-cards) td[data-label]::before {
+    content: attr(data-label);
+    margin-inline-end: auto;
+    max-width: 55%;
+    color: var(--muted-foreground);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-align: start;
+  }
+
+  /* the first field is the card's heading — no name, and the hover accent bar
+     that shares this pseudo-element on a wide screen stays out of the way */
+  .soft-table:not(.no-cards) :is(tbody, tfoot) tr > td:first-child {
+    background: color-mix(in srgb, var(--muted) 65%, transparent) !important;
+    border-start-start-radius: var(--row-radius) !important;
+    border-start-end-radius: var(--row-radius) !important;
+    font-weight: 700;
+    text-align: start;
+  }
+  .soft-table:not(.no-cards) :is(tbody, tfoot) tr > td:first-child::before { display: none; }
+
+  /* a spanned cell — a totals line, an empty state, a group heading */
+  .soft-table:not(.no-cards) td[colspan] { text-align: start; }
+  .soft-table:not(.no-cards) td[colspan]::before { display: none; }
+
+  /* an expandable row and its details read as one card */
+  .soft-table:not(.no-cards) tbody tr.is-open {
+    background: var(--navy);
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+  .soft-table:not(.no-cards) tbody tr.is-open > td:first-child {
+    background: color-mix(in oklch, white 12%, transparent) !important;
+  }
+  .soft-table:not(.no-cards) tbody tr.is-expansion {
+    margin-top: 0;
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
+    transform: none;
+  }
+  /* the details are the card's body, not another heading */
+  .soft-table:not(.no-cards) tbody tr.is-expansion > td {
+    background: none !important;
+    font-weight: normal;
+    text-align: start;
+  }
+}
+
 /* Thin scrollbar for dropdown option lists and other small popovers */
 .thin-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }

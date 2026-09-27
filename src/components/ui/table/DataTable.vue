@@ -125,7 +125,9 @@ const alignClass = (c) => ({ end: 'text-end', center: 'text-center' })[c?.align]
                 :class="[expandable && 'cursor-pointer', openKey === row[rowKey] && 'is-open']"
                 @click="onRowClick(row, $event)"
               >
-                <td v-for="c in columns" :key="c.key" class="px-4 py-3" :class="[hideClass(c), alignClass(c), c.class]">
+                <!-- data-label names the field on a phone, where each row is
+                     drawn as a card (see the card block in main.css) -->
+                <td v-for="c in columns" :key="c.key" class="px-4 py-3" :data-label="c.label" :class="[hideClass(c), alignClass(c), c.class]">
                   <slot :name="`cell-${c.key}`" :row="row" :value="row[c.key]">{{ row[c.key] }}</slot>
                 </td>
               </tr>

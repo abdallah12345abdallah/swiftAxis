@@ -228,7 +228,7 @@ const colClass = (r) => ({
 
       <div v-if="!hasRows" class="bg-card rounded-2xl border"><EmptyState :title="t('users.rolesTab.noMatch')" /></div>
 
-      <div v-else class="soft-table ur-mx" @mouseleave="hoverRole = ''">
+      <div v-else class="soft-table no-cards ur-mx" @mouseleave="hoverRole = ''">
         <table class="w-full text-sm">
           <thead>
             <tr>

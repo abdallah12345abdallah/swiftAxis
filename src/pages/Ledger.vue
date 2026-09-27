@@ -457,7 +457,7 @@ function exportTrial() {
       </div>
       <Card v-else-if="!trialGroups.length"><EmptyState :title="t('ledger.empty')" /></Card>
 
-      <div v-else class="soft-table overflow-x-auto">
+      <div v-else class="soft-table overflow-x-auto" v-card-labels>
         <table class="w-full text-sm">
           <thead>
             <tr>

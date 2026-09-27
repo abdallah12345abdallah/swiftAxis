@@ -288,7 +288,7 @@ function exportBest() {
           <!-- riders -->
           <section>
             <h3 class="rpt-title"><RpUsers class="size-4" /> {{ t('reports.ridersTitle') }}</h3>
-            <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+            <div class="soft-table overflow-x-auto" v-card-labels><table class="w-full text-sm">
               <thead>
                 <tr>
                   <th class="px-4 text-start">{{ t('dashboard.table.rider') }}</th>
@@ -327,7 +327,7 @@ function exportBest() {
           <!-- vehicles -->
           <section>
             <h3 class="rpt-title"><RpCar class="size-4" /> {{ t('reports.vehiclesTitle') }}</h3>
-            <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+            <div class="soft-table overflow-x-auto" v-card-labels><table class="w-full text-sm">
               <thead>
                 <tr>
                   <th class="px-4 text-start">{{ t('vehicles.prof.vehicle') }}</th>

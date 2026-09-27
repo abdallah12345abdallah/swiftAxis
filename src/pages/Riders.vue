@@ -226,7 +226,7 @@ function exportCsv() {
         <EmptyState v-else-if="!filtered.length" :title="t('riders.empty')" />
 
         <div v-else class="overflow-x-auto">
-          <div class="soft-table overflow-x-auto"><table class="w-full text-sm">
+          <div class="soft-table overflow-x-auto" v-card-labels><table class="w-full text-sm">
             <thead>
               <tr class="text-muted-foreground border-b">
                 <th class="px-5 py-3 text-start font-medium">{{ t('riders.table.rider') }}</th>

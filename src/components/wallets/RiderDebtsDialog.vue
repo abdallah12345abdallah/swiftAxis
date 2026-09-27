@@ -104,7 +104,7 @@ const isIn = (type) => type === 'receipt' || type === 'transfer_in'
 
       <Tabs v-model="tab" :tabs="tabs" />
 
-      <div class="soft-table max-h-[42vh] overflow-auto">
+      <div class="soft-table max-h-[42vh] overflow-auto" v-card-labels>
         <!-- debts -->
         <table v-if="tab === 'debts'" class="w-full text-sm">
           <thead class="bg-muted/50 text-muted-foreground sticky top-0"><tr>

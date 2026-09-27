@@ -14,6 +14,7 @@ import { router } from './router'
 import { i18n } from './i18n'
 import { useUiStore } from './stores/ui'
 import { useAuthStore } from './stores/auth'
+import { vCardLabels } from './lib/cardLabels'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -21,6 +22,9 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(i18n)
 app.use(VueApexCharts)
+// hand-written tables name their cells from their own header row, for the
+// card layout phones get (see src/lib/cardLabels.js)
+app.directive('card-labels', vCardLabels)
 
 // Restore persisted theme / locale / session before the first render.
 useUiStore().init()

@@ -30,6 +30,13 @@ async function load() {
 onMounted(load)
 watch([level, from, to, onlyMovement], load)
 const money = (v) => (v ? sar(v, { decimals: 2 }) : '')
+/* The header spans two rows, so the card layout phones get cannot read the
+   column names off it (see src/lib/cardLabels.js) — it gets them from here,
+   each one joining the group above it to the side under it. */
+const cardLabels = computed(() => {
+  const groups = [t('accounting.common.opening'), t('accounting.common.movement'), t('accounting.common.closing')]
+  return groups.flatMap((g) => [`${g} · ${t('ledger.debit')}`, `${g} · ${t('ledger.credit')}`])
+})
 const balanced = computed(() => data.value && Math.round((data.value.totals.closingDebit - data.value.totals.closingCredit) * 100) === 0)
 const exportRows = () => data.value && exportCsv(`trial-balance-L${level.value}-${todayStamp()}`, [t('accounting.common.code'), t('journal.account'), `${t('accounting.common.opening')} ${t('ledger.debit')}`, `${t('accounting.common.opening')} ${t('ledger.credit')}`, t('ledger.debit'), t('ledger.credit'), `${t('accounting.common.closing')} ${t('ledger.debit')}`, `${t('accounting.common.closing')} ${t('ledger.credit')}`], data.value.rows.map((r) => [r.code, r.name, r.openingDebit, r.openingCredit, r.debit, r.credit, r.closingDebit, r.closingCredit]))
 </script>
@@ -61,18 +68,18 @@ const exportRows = () => data.value && exportCsv(`trial-balance-L${level.value}-
         <tbody>
           <tr v-for="r in data.rows" :key="r.id" class="hover:bg-muted/40 border-b last:border-0">
             <td class="px-4 py-2"><span dir="ltr" class="font-mono text-xs">{{ r.code }}</span> <span :class="r.level < 3 ? 'font-semibold' : ''">{{ locale === 'ar' ? r.name : r.en }}</span></td>
-            <td class="border-s px-4 py-2 text-end tabular-nums">{{ money(r.openingDebit) }}</td><td class="px-4 py-2 text-end tabular-nums">{{ money(r.openingCredit) }}</td>
-            <td class="border-s px-4 py-2 text-end tabular-nums">{{ money(r.debit) }}</td><td class="px-4 py-2 text-end tabular-nums">{{ money(r.credit) }}</td>
-            <td class="border-s px-4 py-2 text-end font-semibold tabular-nums">{{ money(r.closingDebit) }}</td><td class="px-4 py-2 text-end font-semibold tabular-nums">{{ money(r.closingCredit) }}</td>
+            <td class="border-s px-4 py-2 text-end tabular-nums" :data-label="cardLabels[0]">{{ money(r.openingDebit) }}</td><td class="px-4 py-2 text-end tabular-nums" :data-label="cardLabels[1]">{{ money(r.openingCredit) }}</td>
+            <td class="border-s px-4 py-2 text-end tabular-nums" :data-label="cardLabels[2]">{{ money(r.debit) }}</td><td class="px-4 py-2 text-end tabular-nums" :data-label="cardLabels[3]">{{ money(r.credit) }}</td>
+            <td class="border-s px-4 py-2 text-end font-semibold tabular-nums" :data-label="cardLabels[4]">{{ money(r.closingDebit) }}</td><td class="px-4 py-2 text-end font-semibold tabular-nums" :data-label="cardLabels[5]">{{ money(r.closingCredit) }}</td>
           </tr>
           <tr v-if="!data.rows.length"><td colspan="7" class="text-muted-foreground py-10 text-center">{{ t('common.noData') }}</td></tr>
         </tbody>
         <tfoot>
           <tr class="bg-muted/40 border-t font-bold tabular-nums">
             <td class="px-4 py-3">{{ t('common.total') }}</td>
-            <td class="border-s px-4 py-3 text-end">{{ money(data.totals.openingDebit) }}</td><td class="px-4 py-3 text-end">{{ money(data.totals.openingCredit) }}</td>
-            <td class="border-s px-4 py-3 text-end">{{ money(data.totals.debit) }}</td><td class="px-4 py-3 text-end">{{ money(data.totals.credit) }}</td>
-            <td class="border-s px-4 py-3 text-end">{{ money(data.totals.closingDebit) }}</td><td class="px-4 py-3 text-end">{{ money(data.totals.closingCredit) }}</td>
+            <td class="border-s px-4 py-3 text-end" :data-label="cardLabels[0]">{{ money(data.totals.openingDebit) }}</td><td class="px-4 py-3 text-end" :data-label="cardLabels[1]">{{ money(data.totals.openingCredit) }}</td>
+            <td class="border-s px-4 py-3 text-end" :data-label="cardLabels[2]">{{ money(data.totals.debit) }}</td><td class="px-4 py-3 text-end" :data-label="cardLabels[3]">{{ money(data.totals.credit) }}</td>
+            <td class="border-s px-4 py-3 text-end" :data-label="cardLabels[4]">{{ money(data.totals.closingDebit) }}</td><td class="px-4 py-3 text-end" :data-label="cardLabels[5]">{{ money(data.totals.closingCredit) }}</td>
           </tr>
         </tfoot>
       </table></div>
