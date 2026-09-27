@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, ClipboardList, Percent, Wallet, Car,
   FileBarChart, BookOpen, ShoppingCart, ShieldCheck, Settings, FileSignature,
   Landmark, Receipt, Calculator,
-  LogOut, ChevronDown, UserCircle, Menu as MenuIcon, X, Languages, Check, Search,
+  LogOut, ChevronDown, UserCircle, Menu as MenuIcon, X, Languages, Check,
   UserCog, Bike, Warehouse,
 } from 'lucide-vue-next'
 import { useMediaQuery } from '@/composables/useMediaQuery'
@@ -16,6 +16,7 @@ import { NAV_ITEMS, NAV_GROUPS, ROLES, ALL_ROLES } from '@/lib/constants'
 import { SUB_SCREENS, isSubActive, subLocation, currentScreen, allowedScreens } from '@/lib/subScreens'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 import Menu from '@/components/common/Menu.vue'
+import NavSheet from '@/components/common/NavSheet.vue'
 import Avatar from '@/components/common/Avatar.vue'
 import RiderCode from '@/components/common/RiderCode.vue'
 import { ToastHost } from '@/components/ui/toast'
@@ -88,13 +89,11 @@ const snap = ref('peek')
 const dragY = ref(0)
 let dragFrom = null
 
-/* the rail takes over from lg up: the sheet's gestures and its search box are
-   both gone there, so neither may leave state behind */
+/* the rail takes over from lg up, where the sheet's gestures are gone, so its
+   height must not be left behind */
 const isRail = useMediaQuery('(min-width: 64rem)')
 watch(isRail, (rail) => {
-  if (!rail) return
-  query.value = ''
-  snap.value = 'peek'
+  if (rail) snap.value = 'peek'
 })
 
 function onGrab(e) {
@@ -126,44 +125,10 @@ const sheetStyle = computed(() => ({
   ...(dragY.value ? { transform: `translateY(${dragY.value}px)`, transition: 'none' } : {}),
 }))
 
-/* ── search ───────────────────────────────────────────────────────────
-   One list of every module and every screen the role may open: on a phone
-   typing two letters beats scrolling a menu of fifteen modules. Arabic is
-   normalised first, so a search for "المحافظ" finds it however the alef and
-   the taa marbuta were typed. */
-const query = ref('')
-const norm = (s) =>
-  String(s)
-    .toLowerCase()
-    .replace(/[ً-ْٰ]/g, '')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
-
-const results = computed(() => {
-  const q = norm(query.value.trim())
-  if (!q) return null
-  const out = []
-  for (const g of groups.value) {
-    for (const item of g.items) {
-      const label = t(`nav.${item.key}`)
-      if (norm(label).includes(q)) out.push({ id: item.key, label, module: '', to: item.to, icon: item.icon, tone: g.tone })
-      for (const sub of subsOf(item.key)) {
-        const screen = t(sub.labelKey)
-        if (norm(screen).includes(q)) {
-          out.push({ id: `${item.key}:${sub.key}`, label: screen, module: label, to: subLocation(sub, defaultTabOf(item.key)), icon: item.icon, tone: g.tone })
-        }
-      }
-    }
-  }
-  return out
-})
-
-/* the page sheet scrolls, not the window — reset it on navigation, and let go
-   of whatever the menu was showing */
+/* the page sheet scrolls, not the window — reset it on navigation, and put the
+   menu back to its resting height */
 watch(() => route.fullPath, () => {
   drawer.value = false
-  query.value = ''
   snap.value = 'peek'
   mainEl.value?.scrollTo({ top: 0 })
 })
@@ -183,10 +148,20 @@ onBeforeUnmount(() => clearTimeout(riseTimer))
    moves, and lets go only back at the very top. The header shrinking takes
    ~45px off the page, so it only pins with room to spare; with the browser's
    scroll anchoring off (see .sheet-main) the scroll position stays put. */
+/* How much the page must have left to scroll before the header is allowed to
+   pin. Pinning collapses the header — the subtitle folds, the title shrinks,
+   the padding tightens — which takes ~45px off the page. On a page that can
+   only just scroll, that would drag scrollTop back to the top, which un-pins
+   it, which makes it tall again: a flap. This floor is that ~45px with room
+   to spare, and no more, so that a page which scrolls only a little still
+   gets a pinned header. A page that does not scroll at all never pins,
+   because there is nothing to pin over. */
+const PIN_FLOOR = 80
+
 const compact = ref(false)
 function onMainScroll(e) {
   const el = e.target
-  if (!compact.value && el.scrollTop > 4 && el.scrollHeight - el.clientHeight >= 120) compact.value = true
+  if (!compact.value && el.scrollTop > 4 && el.scrollHeight - el.clientHeight >= PIN_FLOOR) compact.value = true
   else if (compact.value && el.scrollTop <= 1) compact.value = false
 }
 watch(() => route.fullPath, () => { compact.value = false })
@@ -246,60 +221,36 @@ function logout() {
         :class="drawer ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'"
         :style="sheetStyle"
       >
+        <!-- the island's own night sky, behind everything it holds -->
+        <span class="island-sky" aria-hidden="true"><i class="grain" /></span>
+
         <!-- brand (the rail only — on a phone the bar above already carries it) -->
         <div class="relative mb-4 hidden items-center justify-center px-1 pt-2 pb-1 lg:flex">
           <RouterLink to="/dashboard"><BrandLogo :mark-size="44" word-size="text-2xl" tone="light" animate="loop" /></RouterLink>
         </div>
 
-        <!-- phone: the grabber, then search. Drag it to resize, tap it to
-             switch between the two heights, pull it down to close. -->
-        <div class="lg:hidden">
-          <button
-            type="button"
-            class="sheet-grab flex w-full cursor-grab touch-none items-center justify-center py-2.5"
-            :aria-label="snap === 'full' ? t('common.collapse') : t('common.expand')"
-            @pointerdown="onGrab"
-            @pointermove="onGrabMove"
-            @pointerup="onGrabEnd"
-            @pointercancel="onGrabEnd"
-          >
-            <span class="block h-1 w-10 rounded-full bg-white/35 transition-colors" />
-          </button>
+        <!-- phone: the grabber. Drag it to resize, tap it to switch between the
+             two heights, pull it down to close. -->
+        <button
+          type="button"
+          class="sheet-grab flex w-full shrink-0 cursor-grab touch-none items-center justify-center py-2.5 lg:hidden"
+          :aria-label="snap === 'full' ? t('common.collapse') : t('common.expand')"
+          @pointerdown="onGrab"
+          @pointermove="onGrabMove"
+          @pointerup="onGrabEnd"
+          @pointercancel="onGrabEnd"
+        >
+          <span class="block h-1 w-10 rounded-full bg-white/35 transition-colors" />
+        </button>
 
-          <label class="focus-within:border-white/35 mb-3 flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/10 px-3">
-            <Search class="size-4 shrink-0 text-white/55" />
-            <span class="sr-only">{{ t('layout.search') }}</span>
-            <input
-              v-model="query"
-              type="search"
-              :placeholder="t('layout.search')"
-              class="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-white outline-none placeholder:text-white/45"
-            />
-            <button v-if="query" type="button" class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full bg-white/10 text-white/70" :aria-label="t('common.clear')" @click="query = ''">
-              <X class="size-3.5" />
-            </button>
-          </label>
-        </div>
+        <!-- the phone menu is a design of its own — tiles two to a row, a
+             module's screens as a second level, search across both -->
+        <NavSheet class="lg:hidden" />
 
-        <!-- what the menu shows: search hits, or every link with the active
-             module's screens unfolded under it -->
-        <nav class="island-nav min-h-0 flex-1 space-y-2 overflow-y-auto">
-          <template v-if="results">
-            <p class="mb-1 px-2 text-[11px] font-bold tracking-[.12em] text-white/55 uppercase">{{ t('layout.results') }}</p>
-            <RouterLink
-              v-for="r in results"
-              :key="r.id"
-              :to="r.to"
-              class="sub-link flex items-center gap-2.5 rounded-lg px-3 py-2.5 font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <component :is="ICONS[r.icon]" class="size-4 shrink-0 text-white/60" />
-              <span class="min-w-0 flex-1 truncate">{{ r.label }}</span>
-              <span v-if="r.module" class="shrink-0 truncate text-[11px] text-white/45">{{ r.module }}</span>
-            </RouterLink>
-            <p v-if="!results.length" class="px-3 py-6 text-center text-sm text-white/55">{{ t('layout.noResults') }}</p>
-          </template>
-
-          <div v-for="g in groups" v-else :key="g.key" :data-tone="g.tone">
+        <!-- from lg up the rail keeps its list: every link in view at once,
+             with the active module's screens unfolded under it -->
+        <nav class="island-nav hidden min-h-0 flex-1 space-y-2 overflow-y-auto lg:block">
+          <div v-for="g in groups" :key="g.key" :data-tone="g.tone">
             <p class="mb-1 flex items-center gap-1.5 px-2 text-[11px] font-bold tracking-[.12em] text-white/55 uppercase"><span class="tone-dot size-1.5 rounded-full" /> {{ t(`nav.groups.${g.key}`) }}</p>
             <template v-for="item in g.items" :key="item.key">
               <!-- toggle (has screens) -->
@@ -408,9 +359,12 @@ function logout() {
         <span :key="'g2-' + route.path" class="sheet-ghost g2 hidden lg:block" aria-hidden="true" />
         <span :key="'g1-' + route.path" class="sheet-ghost g1 hidden lg:block" aria-hidden="true" />
         <div class="sheet bg-background text-foreground relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl shadow-2xl">
+          <!-- the ground the cards sit on: two slow clouds of brand light,
+               under a still film of grain -->
+          <span class="sheet-sky" aria-hidden="true"><i class="grain" /></span>
           <main
             ref="mainEl"
-            class="sheet-main min-h-0 flex-1 overflow-y-auto"
+            class="sheet-main relative min-h-0 flex-1 overflow-y-auto"
             :class="rising && 'page-rise'"
             :data-compact="compact || undefined"
             @scroll.passive="onMainScroll"
@@ -480,12 +434,111 @@ function logout() {
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
 @keyframes sweep { to { --sweep: 360deg; } }
+
+/* ── فضاء ─────────────────────────────────────────────────────────────
+   Ambient depth on the two surfaces, to a fixed budget: THREE continuously
+   animated layers in the whole app, and every one of them animates `transform`
+   only, which the compositor handles without touching layout, paint or the
+   main thread. Everything that would have cost more is deliberately absent —
+   no `mix-blend-mode` and no `backdrop-filter` over a moving layer (both make
+   the browser re-composite the area underneath every frame), no `filter:
+   blur()` on anything that moves, no animated gradient angle or `@property`
+   (that repaints the whole box each frame), no `scale()` on a large layer (it
+   re-rasterises at new sizes), no `will-change` (it pins textures in memory),
+   and no canvas or JS. The texture layers below are still images: they cost
+   one small tile each and nothing per frame. */
+
+/* the still grain both surfaces share. One 140px tile, repeated — it is what
+   makes a wide gradient read as a designed surface instead of a banded ramp,
+   and it never animates. No blend mode: blending over the moving clouds is
+   exactly the per-frame cost this budget is avoiding. */
+.grain {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+.sheet-sky .grain { opacity: 0.028; }
+.island-sky .grain { opacity: 0.05; }
+
+/* ── the island's night sky ───────────────────────────────────────────
+   Two fields of stars: the far one is still, the near one drifts past it, and
+   the difference between them is what reads as depth. Only the near one is
+   animated — a second moving field would double the cost to say the same
+   thing. It is one repeating tile moved by exactly one tile's height, so the
+   loop is seamless, and the layer is only one tile taller than the island
+   rather than oversized. z-index -1 keeps it under the island's content;
+   `isolation: isolate` on .island keeps it from escaping. */
+.island-sky {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  overflow: hidden; border-radius: inherit;
+}
+.island-sky::before, .island-sky::after {
+  content: ''; position: absolute; inset-inline: 0; top: 0; background-repeat: repeat;
+}
+/* the far field is still, and paints first so the drifting one passes in
+   front of it — the wrong way round and the depth reads backwards */
+.island-sky::before {
+  bottom: 0;
+  background-image:
+    radial-gradient(1px 1px at 45% 35%, color-mix(in oklch, white 26%, transparent), transparent 62%),
+    radial-gradient(1px 1px at 12% 88%, color-mix(in oklch, white 20%, transparent), transparent 62%),
+    radial-gradient(1.2px 1.2px at 78% 20%, color-mix(in oklch, var(--orange) 60%, white), transparent 62%),
+    radial-gradient(1px 1px at 92% 70%, color-mix(in oklch, var(--brand) 55%, white), transparent 62%);
+  background-size: 300px 300px;
+}
+.island-sky::after {
+  bottom: -190px;
+  background-image:
+    radial-gradient(1.3px 1.3px at 18% 24%, color-mix(in oklch, white 55%, transparent), transparent 62%),
+    radial-gradient(1px 1px at 62% 12%, color-mix(in oklch, white 40%, transparent), transparent 62%),
+    radial-gradient(1.4px 1.4px at 84% 58%, color-mix(in oklch, white 48%, transparent), transparent 62%),
+    radial-gradient(1px 1px at 34% 76%, color-mix(in oklch, white 34%, transparent), transparent 62%),
+    radial-gradient(1.1px 1.1px at 8% 62%, color-mix(in oklch, white 42%, transparent), transparent 62%);
+  background-size: 190px 190px;
+  animation: sky-drift 120s linear infinite;
+}
+@keyframes sky-drift { to { transform: translate3d(0, -190px, 0); } }
+
+/* ── the ground the page's cards sit on ───────────────────────────────
+   Not stars — a page is light and a starfield would fight the content. Two
+   clouds of brand light drift across it, and the cards (opaque) float over
+   them, so the movement only ever shows in the gaps. They translate and
+   nothing else: a scale would make the browser re-rasterise a large soft
+   gradient over and over. */
+.sheet-sky { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.sheet-sky::before, .sheet-sky::after { content: ''; position: absolute; }
+.sheet-sky::before {
+  width: 62%; height: 52%; top: -10%; inset-inline-start: -8%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--brand) 10%, transparent), transparent 72%);
+  animation: cloud-a 56s ease-in-out infinite;
+}
+.sheet-sky::after {
+  width: 58%; height: 56%; bottom: -14%; inset-inline-end: -6%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--orange) 9%, transparent), transparent 72%);
+  animation: cloud-b 71s ease-in-out infinite;
+}
+/* the dark theme can carry more of it before the text starts to suffer */
+.dark .sheet-sky::before { background: radial-gradient(closest-side, color-mix(in oklch, var(--brand) 18%, transparent), transparent 72%); }
+.dark .sheet-sky::after { background: radial-gradient(closest-side, color-mix(in oklch, var(--orange) 14%, transparent), transparent 72%); }
+@keyframes cloud-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(16%, 14%, 0); }
+}
+@keyframes cloud-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-14%, -16%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-sky::after, .sheet-sky::before, .sheet-sky::after { animation: none !important; }
+}
+/* nothing ambient belongs on paper */
+@media print { .sheet-sky, .island-sky { display: none; } }
 /* ── below lg the island is a bottom sheet ────────────────────────────
    Its height is whatever snap point the grabber last set (the inline
    --sheet-h), it never covers the whole window, and it clears the home bar.
    Nothing here is RTL-dependent: the sheet moves up and down, which is one
    thing the side drawer it replaces could not claim. */
-@media (max-width: 63.99rem) {
+@media (width < 64rem) {
   .island {
     height: var(--sheet-h, 62dvh);
     max-height: 92dvh;

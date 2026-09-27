@@ -1901,6 +1901,8 @@
   },
   "drp": {
     "title": "Choose a period",
+    "tabPresets": "Presets",
+    "tabDays": "Pick days",
     "all": "All days",
     "today": "Today",
     "yesterday": "Yesterday",

@@ -890,6 +890,9 @@ const SHORTCUTS = [
 .je-chip { display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 9999px; padding: 0.1rem 0.6rem; font-size: 12px; font-weight: 700; background: var(--muted); color: var(--foreground); font-variant-numeric: tabular-nums; }
 /* page toolbar: one joined strip instead of loose buttons */
 .je-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 3px; border-radius: 0.9rem; border: 1px solid var(--border); background: var(--card); }
+/* pinned, the header is one line, so the toolbar scrolls sideways in it
+   instead of folding and making the strip several rows deep */
+[data-compact] .je-tools { flex-wrap: nowrap; }
 .je-tool {
   display: inline-flex; align-items: center; gap: calc(var(--spacing) * 1.6); height: calc(var(--spacing) * 8.6); padding: 0 calc(var(--spacing) * 3.2); border-radius: 0.65rem; cursor: pointer;
   font-size: calc(var(--text-sm) * 0.93); font-weight: 700; color: var(--foreground); white-space: nowrap; transition: background-color 0.15s, color 0.15s;

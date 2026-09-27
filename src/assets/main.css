@@ -368,7 +368,14 @@
    its edges. It is counted in spacing steps, so it follows the fluid scale
    above: 16px on a phone, 24px on a tablet, 32px on a wide monitor down to
    28px on a laptop. */
-.sheet-main { --sheet-pad: calc(var(--spacing) * 4); padding: var(--sheet-pad); }
+/* The sheet scrolls without drawing a scrollbar, as every other scroll region
+   in here does (tables, the menu, dropdown lists). A scrollbar would reserve a
+   gutter inside the sheet's edges, and the pinned header — which bleeds to
+   those edges — would stop a scrollbar's width short of one of them and leave
+   a bare strip with no frost and no hairline. A child cannot paint over its
+   own container's scrollbar, so the gutter has to go rather than be covered. */
+.sheet-main { --sheet-pad: calc(var(--spacing) * 4); padding: var(--sheet-pad); scrollbar-width: none; }
+.sheet-main::-webkit-scrollbar { display: none; }
 @media (min-width: 40rem) { .sheet-main { --sheet-pad: calc(var(--spacing) * 6); } }
 @media (min-width: 64rem) { .sheet-main { --sheet-pad: calc(var(--spacing) * 8); } }
 
@@ -389,11 +396,25 @@
 [data-compact] .page-head {
   position: sticky; top: calc(var(--sheet-pad, 0px) * -1); /* the negative margin counts toward the pinned edge, so offset it */
   padding-block: calc(var(--spacing) * 2.8); align-items: center;
-  background: color-mix(in srgb, var(--background) 74%, transparent);
+  /* Pinned, the strip is one line. Wrapping here would drop the actions onto a
+     second row the moment the title and the buttons stop fitting — the strip
+     doubles in height, the page jumps as it pins, and the buttons end up
+     floating over the content below. The title gives way instead. */
+  flex-wrap: nowrap; gap: calc(var(--spacing) * 3);
+  /* denser than at rest, so a table scrolling underneath cannot be read
+     through the title */
+  background: color-mix(in srgb, var(--background) 88%, transparent);
   -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 45%, transparent), 0 12px 24px -20px color-mix(in srgb, var(--navy) 70%, transparent);
 }
-[data-compact] .page-head-title { font-size: var(--text-lg); }
+[data-compact] .page-head-title { font-size: var(--text-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the actions keep their size; a toolbar wider than the strip scrolls sideways
+   rather than folding it into two rows */
+[data-compact] .page-head-actions {
+  width: auto; max-width: 78%; flex-shrink: 0; flex-wrap: nowrap;
+  overflow-x: auto; scrollbar-width: none;
+}
+[data-compact] .page-head-actions::-webkit-scrollbar { display: none; }
 [data-compact] .page-head-sub { max-height: 0; opacity: 0; margin-top: 0; }
 
 /* Staggered rise: for a moment after each navigation (main.page-rise, set by
@@ -455,7 +476,7 @@
 
    This block comes last on purpose: several of its resets tie on specificity
    with the soft-well rules above, and the later rule wins. */
-@media (max-width: 39.99rem) {
+@media (width < 40rem) {
   /* the well is what holds columns together; a stack of cards does not need it
      (an empty state still does, hence :has(table)) */
   .soft-table:not(.no-cards):has(table) { padding: 0; background: none; border-radius: 0; }

@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Check, RefreshCw } from 'lucide-vue-next'
 import { RTL_LOCALES } from '@/i18n'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import { cn } from '@/lib/utils'
 
 /* SwiftAxis date-range picker.
@@ -88,6 +89,12 @@ const triggerRange = computed(() => {
 
 /* ── draft (what the panel edits until "apply") ──────────────────── */
 const open = ref(false)
+/* On a phone the two halves of the panel are two tabs instead of two columns:
+   a ready-made period is the common case and gets the full width, and the
+   calendar gets the whole sheet when a custom range is what is wanted. From sm
+   up both are visible side by side and this is ignored. */
+const sheetTab = ref('presets')
+const uid = useId()
 const start = ref('')
 const end = ref('')
 const hover = ref('')
@@ -107,6 +114,8 @@ function openPanel() {
   const anchor = fromISO(end.value) ?? fromISO(start.value) ?? today()
   view.value = new Date(anchor.getFullYear(), anchor.getMonth(), 1)
   syncFields()
+  // a sheet shows one pane at a time: start where the current value came from
+  sheetTab.value = currentPreset.value ? 'presets' : 'days'
   open.value = true
   nextTick(place)
 }
@@ -203,11 +212,18 @@ function commitField(which) {
   syncFields()
 }
 
-/* ── placement: fixed, under the trigger, flush with its outer edge ── */
+/* ── placement ──────────────────────────────────────────────────────
+   From sm up the panel is a popover: fixed, under the trigger, flush with its
+   outer edge. Below sm it is a sheet rising from the bottom edge instead — a
+   540px panel has nowhere to sit under a trigger on a phone, and the bottom
+   edge is where the thumb already is. The sheet's geometry is all CSS
+   (max-sm: classes below), so this only has to stay out of its way. */
+const asSheet = useMediaQuery('(width < 40rem)')
 const triggerEl = ref(null)
 const panelEl = ref(null)
 const pos = ref({ top: 0, left: 0 })
 function place() {
+  if (asSheet.value) return
   const tr = triggerEl.value?.getBoundingClientRect()
   const pw = panelEl.value?.offsetWidth ?? 520
   const ph = panelEl.value?.offsetHeight ?? 440
@@ -218,6 +234,35 @@ function place() {
   if (top + ph > window.innerHeight - 8 && tr.top - ph - 8 > 8) top = tr.top - ph - 8
   pos.value = { top, left }
 }
+
+/* the sheet is dragged down by its grabber to dismiss — the same gesture the
+   navigation sheet uses. A drag that does not travel far enough springs back. */
+const dragY = ref(0)
+let dragFrom = null
+function onGrab(e) {
+  if (!asSheet.value) return
+  dragFrom = e.clientY
+  dragY.value = 0
+  e.currentTarget.setPointerCapture?.(e.pointerId)
+}
+function onGrabMove(e) {
+  if (dragFrom === null) return
+  dragY.value = Math.max(0, e.clientY - dragFrom)
+}
+function onGrabEnd() {
+  if (dragFrom === null) return
+  const dy = dragY.value
+  dragFrom = null
+  dragY.value = 0
+  if (dy > 110) close()
+}
+
+/* a popover is placed by script; a sheet is placed by CSS, and only moves while
+   a drag is in progress */
+const panelStyle = computed(() => {
+  if (asSheet.value) return dragY.value ? { transform: `translateY(${dragY.value}px)`, transition: 'none' } : {}
+  return { top: `${pos.value.top}px`, left: `${pos.value.left}px`, transformOrigin: isRtl.value ? 'top left' : 'top right' }
+})
 function onDocDown(e) {
   if (panelEl.value?.contains(e.target) || triggerEl.value?.contains(e.target)) return
   close()
@@ -244,6 +289,10 @@ onBeforeUnmount(() => {
 
 // the sliding highlight behind the active preset
 const presetIndex = computed(() => props.presets.indexOf(draftPreset.value))
+
+/* both panes from sm up; one at a time inside the sheet */
+const showPresets = computed(() => !asSheet.value || sheetTab.value === 'presets')
+const showDays = computed(() => !asSheet.value || sheetTab.value === 'days')
 </script>
 
 <template>
@@ -279,19 +328,67 @@ const presetIndex = computed(() => props.presets.indexOf(draftPreset.value))
   </div>
 
   <Teleport to="body">
-    <Transition name="drp">
+    <!-- a sheet needs something behind it to dismiss against; a popover does not -->
+    <Transition name="drp-fade">
+      <div v-if="open && asSheet" class="bg-navy/50 fixed inset-0 z-[59] backdrop-blur-sm" @click="close" />
+    </Transition>
+
+    <Transition :name="asSheet ? 'drp-sheet' : 'drp'">
       <div
         v-if="open"
         ref="panelEl"
         role="dialog"
         :aria-label="t('drp.title')"
         :dir="isRtl ? 'rtl' : 'ltr'"
-        class="drp-panel bg-card text-card-foreground fixed z-[60] flex w-[min(540px,calc(100vw-16px))] flex-col rounded-2xl border"
-        :style="{ top: `${pos.top}px`, left: `${pos.left}px`, transformOrigin: isRtl ? 'top left' : 'top right' }"
+        class="drp-panel bg-card text-card-foreground fixed z-[60] flex w-full flex-col rounded-2xl border max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[92dvh] max-sm:rounded-t-3xl max-sm:rounded-b-none sm:w-[min(540px,calc(100vw-16px))]"
+        :style="panelStyle"
       >
-        <div class="flex min-h-0 flex-col sm:flex-row">
-          <!-- presets -->
-          <div class="drp-presets relative flex gap-1 overflow-x-auto border-b p-2 sm:w-44 sm:shrink-0 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-e sm:p-3">
+        <!-- phone: drag it down to dismiss -->
+        <button
+          v-if="asSheet"
+          type="button"
+          class="drp-grab flex w-full shrink-0 cursor-grab touch-none items-center justify-center pt-2.5 pb-1"
+          :aria-label="t('common.cancel')"
+          @pointerdown="onGrab"
+          @pointermove="onGrabMove"
+          @pointerup="onGrabEnd"
+          @pointercancel="onGrabEnd"
+        >
+          <span class="bg-border block h-1 w-10 rounded-full" />
+        </button>
+
+        <!-- phone: the two halves become two tabs -->
+        <div v-if="asSheet" class="shrink-0 px-3 pb-1">
+          <div class="bg-muted grid grid-cols-2 gap-1 rounded-xl p-1" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              class="h-9 cursor-pointer rounded-lg text-[13px] transition-colors"
+              :class="sheetTab === 'presets' ? 'bg-card text-foreground font-bold shadow-sm' : 'text-muted-foreground font-medium'"
+              :aria-selected="sheetTab === 'presets'"
+              :aria-controls="`${uid}-presets`"
+              @click="sheetTab = 'presets'"
+            >{{ t('drp.tabPresets') }}</button>
+            <button
+              type="button"
+              role="tab"
+              class="h-9 cursor-pointer rounded-lg text-[13px] transition-colors"
+              :class="sheetTab === 'days' ? 'bg-card text-foreground font-bold shadow-sm' : 'text-muted-foreground font-medium'"
+              :aria-selected="sheetTab === 'days'"
+              :aria-controls="`${uid}-days`"
+              @click="sheetTab = 'days'"
+            >{{ t('drp.tabDays') }}</button>
+          </div>
+        </div>
+
+        <div class="flex min-h-0 flex-col max-sm:flex-1 max-sm:overflow-y-auto sm:flex-row">
+          <!-- presets: a grid of full-width choices on a phone, a column from sm -->
+          <div
+            v-show="showPresets"
+            :id="`${uid}-presets`"
+            :role="asSheet ? 'tabpanel' : undefined"
+            class="drp-presets relative grid grid-cols-2 gap-2 p-3 sm:flex sm:w-44 sm:shrink-0 sm:flex-col sm:gap-1 sm:border-e sm:p-3"
+          >
             <span
               v-if="presetIndex >= 0"
               class="drp-glide bg-primary/12 pointer-events-none absolute hidden rounded-lg sm:block"
@@ -301,17 +398,17 @@ const presetIndex = computed(() => props.presets.indexOf(draftPreset.value))
               v-for="p in presets"
               :key="p"
               type="button"
-              class="relative flex h-9 shrink-0 items-center justify-between gap-2 rounded-lg px-3 text-start text-[13.5px] whitespace-nowrap transition-colors sm:h-10"
-              :class="draftPreset === p ? 'text-primary max-sm:bg-primary/12 font-bold' : 'text-foreground/80 hover:bg-muted font-medium'"
+              class="relative flex h-11 shrink-0 items-center justify-between gap-2 rounded-lg px-3 text-start text-[13.5px] transition-colors sm:h-10 sm:whitespace-nowrap"
+              :class="draftPreset === p ? 'text-primary max-sm:bg-primary/12 max-sm:ring-primary/30 font-bold max-sm:ring-1' : 'text-foreground/80 hover:bg-muted max-sm:bg-muted/50 font-medium'"
               @click="pickPreset(p)"
             >
-              {{ t(`drp.${p}`) }}
-              <Check v-if="draftPreset === p" class="drp-tick hidden size-3.5 sm:block" />
+              <span class="min-w-0 truncate">{{ t(`drp.${p}`) }}</span>
+              <Check v-if="draftPreset === p" class="drp-tick size-3.5 shrink-0" />
             </button>
           </div>
 
           <!-- calendar -->
-          <div class="min-w-0 flex-1 p-3 sm:p-4">
+          <div v-show="showDays" :id="`${uid}-days`" :role="asSheet ? 'tabpanel' : undefined" class="min-w-0 flex-1 p-3 sm:p-4">
             <div class="mb-2 flex items-center justify-between">
               <button type="button" class="hover:bg-muted text-muted-foreground grid size-8 place-items-center rounded-lg transition-colors" :aria-label="t('datepicker.prev')" @click="prevMonth">
                 <component :is="isRtl ? ChevronRight : ChevronLeft" class="size-4" />
@@ -368,16 +465,18 @@ const presetIndex = computed(() => props.presets.indexOf(draftPreset.value))
           </div>
         </div>
 
-        <div class="flex items-center gap-2 border-t px-3 py-3 sm:px-4">
+        <!-- on a phone the hint takes its own line and the two actions split the
+             width, so both are a comfortable thumb target -->
+        <div class="flex shrink-0 items-center gap-2 border-t px-3 py-3 max-sm:flex-wrap sm:px-4">
           <Transition name="drp-fade" mode="out-in">
-            <span :key="`${painted[0]}-${painted[1]}-${start && !end}`" class="text-muted-foreground text-xs">
+            <span :key="`${painted[0]}-${painted[1]}-${start && !end}`" class="text-muted-foreground text-xs max-sm:w-full max-sm:text-center">
               <template v-if="start && !end">{{ t('drp.pickEnd') }}</template>
               <template v-else-if="daysCount">{{ t('drp.days', { n: daysCount }) }}</template>
               <template v-else>{{ t('drp.allHint') }}</template>
             </span>
           </Transition>
-          <button type="button" class="hover:bg-muted ms-auto h-9 rounded-lg px-4 text-sm font-medium transition-colors" @click="close">{{ t('common.cancel') }}</button>
-          <button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-lg px-5 text-sm font-bold transition-colors" @click="apply">{{ t('drp.apply') }}</button>
+          <button type="button" class="hover:bg-muted ms-auto h-9 rounded-lg px-4 text-sm font-medium transition-colors max-sm:h-11 max-sm:flex-1" @click="close">{{ t('common.cancel') }}</button>
+          <button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-lg px-5 text-sm font-bold transition-colors max-sm:h-11 max-sm:flex-1" @click="apply">{{ t('drp.apply') }}</button>
         </div>
       </div>
     </Transition>
@@ -401,6 +500,27 @@ const presetIndex = computed(() => props.presets.indexOf(draftPreset.value))
 .drp-enter-active { transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15); }
 .drp-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .drp-enter-from, .drp-leave-to { opacity: 0; transform: translateY(-6px) scale(0.96); }
+
+/* ── below sm the panel is a sheet ─────────────────────────────────────
+   It rises from the bottom edge, clears the home bar, and gives its days a
+   full touch target now that there is width to spend. The slide animates
+   `translate`, not `transform`, so a drag on the grabber (which sets an inline
+   transform) never fights the transition. */
+.drp-sheet-enter-active { transition: opacity 0.25s ease, translate 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.05); }
+.drp-sheet-leave-active { transition: opacity 0.18s ease, translate 0.2s ease; }
+.drp-sheet-enter-from, .drp-sheet-leave-to { opacity: 0; translate: 0 100%; }
+@media (width < 40rem) {
+  .drp-panel {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -18px 40px -16px color-mix(in srgb, var(--navy) 55%, transparent);
+  }
+  .drp-day { height: 2.75rem; }
+  .drp-grab span { transition: background-color 0.15s; }
+  .drp-grab:active span { background: var(--muted-foreground); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drp-sheet-enter-active, .drp-sheet-leave-active { transition: none !important; }
+}
 
 /* presets: a soft highlight glides to the active one */
 .drp-presets { scrollbar-width: none; }

@@ -1,9 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Search, SlidersHorizontal, FilterX, X } from 'lucide-vue-next'
+import { Search, SlidersHorizontal, FilterX } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
-import { Dropdown } from '@/components/ui/dropdown'
+import { useMediaQuery } from '@/composables/useMediaQuery'
+import BottomSheet from '@/components/ui/sheet/BottomSheet.vue'
+import FilterFields from '@/components/common/FilterFields.vue'
 
 /* Page filter bar: the search box stays in view; every other filter lives in
    a tray under it that the "Filters" button opens. The button carries a badge
@@ -30,21 +32,15 @@ const { t } = useI18n()
 
 const isBlank = (v) => v === '' || v === null || v === undefined
 const activeCount = computed(() => props.filters.filter((f) => !isBlank(props.modelValue[f.key])).length)
-const open = ref(activeCount.value > 0)
 
-function set(key, value) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value ?? '' })
-}
-const hasValue = (key) => !isBlank(props.modelValue[key])
-// typed number fields keep digits only (Arabic-Indic digits are converted)
-function onType(f, e) {
-  let v = e.target.value
-  if (f.type === 'number') {
-    v = v.replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^0-9.]/g, '')
-    if (v !== e.target.value) e.target.value = v
-  }
-  set(f.key, v)
-}
+/* Below sm the tray becomes a sheet: a row of chips has nowhere to go beside a
+   search box on a phone. Same `open`, so the Filters button drives both. It
+   starts open only as a tray — a sheet over the page on arrival would be
+   startling, and its badge already says how many filters are on. */
+const asSheet = useMediaQuery('(width < 40rem)')
+const open = ref(activeCount.value > 0 && !asSheet.value)
+watch(asSheet, () => (open.value = false))
+
 function clearAll() {
   emit('update:modelValue', { ...props.modelValue, ...Object.fromEntries(props.filters.map((f) => [f.key, ''])) })
 }
@@ -53,7 +49,9 @@ function clearAll() {
 <template>
   <div class="space-y-2.5">
     <div class="flex flex-wrap items-center gap-2.5">
-      <div v-if="search !== undefined" class="relative min-w-[220px] flex-1 sm:max-w-[45%]">
+      <!-- on a phone the search takes the whole line: sharing it with the date
+           range and the Filters button squeezes the field down to its icon -->
+      <div v-if="search !== undefined" class="relative w-full sm:w-auto sm:min-w-[220px] sm:max-w-[45%] sm:flex-1">
         <Search class="text-muted-foreground pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 start-3.5" />
         <Input :model-value="search" :placeholder="searchPlaceholder" class="border-border hover:border-primary/40 ps-10" @update:model-value="emit('update:search', $event)" />
       </div>
@@ -79,54 +77,11 @@ function clearAll() {
       <slot name="actions" />
     </div>
 
-    <!-- the tray: grows open, its filters stagger in -->
-    <div v-if="filters.length" class="fb-tray" :class="open && 'is-open'" :aria-hidden="!open">
+    <!-- from sm up: the tray grows open under the bar, its filters stagger in -->
+    <div v-if="filters.length && !asSheet" class="fb-tray" :class="open && 'is-open'" :aria-hidden="!open">
       <div class="min-h-0 overflow-hidden">
         <div class="bg-muted/40 border-border/70 flex flex-wrap items-center gap-2 rounded-2xl border p-2">
-          <template v-for="(f, i) in filters" :key="f.key">
-          <!-- typed field: the same box as a dropdown filter — its name, then the
-               value typed inline, and a clear × once something is typed -->
-          <label
-            v-if="f.type"
-            class="fb-chip fb-field focus-within:border-primary flex h-10 w-auto min-w-[170px] flex-1 cursor-text items-center gap-1.5 rounded-lg border ps-3.5 pe-2 text-sm transition-colors sm:flex-none"
-            :class="hasValue(f.key) ? 'border-primary/50 bg-primary/5' : 'bg-card border-border hover:border-primary/40'"
-            :style="{ '--i': i }"
-          >
-            <span class="shrink-0" :class="hasValue(f.key) ? 'text-muted-foreground' : 'text-foreground/80'">{{ f.label }} :</span>
-            <input
-              :value="modelValue[f.key] ?? ''"
-              type="text"
-              :inputmode="f.type === 'number' ? 'numeric' : 'text'"
-              placeholder="—"
-              dir="ltr"
-              :tabindex="open ? 0 : -1"
-              class="text-foreground placeholder:text-muted-foreground/50 min-w-0 flex-1 bg-transparent text-center font-bold tabular-nums outline-none"
-              @input="onType(f, $event)"
-            />
-            <button
-              v-if="hasValue(f.key)"
-              type="button"
-              class="text-muted-foreground hover:bg-accent hover:text-foreground grid size-6 shrink-0 cursor-pointer place-items-center rounded-full"
-              :aria-label="t('common.clear')"
-              @click.prevent="set(f.key, '')"
-            >
-              <X class="size-3.5" />
-            </button>
-          </label>
-          <Dropdown
-            v-else
-            :model-value="modelValue[f.key] ?? ''"
-            :options="f.options"
-            :prefix="f.label"
-            :placeholder="f.label"
-            :searchable="f.searchable ?? null"
-            clearable
-            class="fb-chip bg-card h-10 w-auto min-w-[170px] flex-1 sm:flex-none"
-            :style="{ '--i': i }"
-            :tabindex="open ? 0 : -1"
-            @update:model-value="set(f.key, $event)"
-          />
-          </template>
+          <FilterFields :filters="filters" :model-value="modelValue" :tabindex="open ? 0 : -1" @update:model-value="emit('update:modelValue', $event)" />
           <Transition name="fb-clear">
             <button
               v-if="activeCount"
@@ -142,6 +97,27 @@ function clearAll() {
         </div>
       </div>
     </div>
+
+    <!-- on a phone there is no room beside the bar for a tray of chips, so the
+         same filters open as a sheet from the bottom edge, one to a line -->
+    <BottomSheet v-if="filters.length && asSheet" v-model:open="open" :title="t('filters.title')">
+      <div class="grid gap-2">
+        <FilterFields :filters="filters" :model-value="modelValue" stacked @update:model-value="emit('update:modelValue', $event)" />
+      </div>
+      <template #footer>
+        <button
+          type="button"
+          class="border-border text-foreground hover:bg-muted h-11 flex-1 rounded-xl border text-sm font-medium transition-colors disabled:opacity-45"
+          :disabled="!activeCount"
+          @click="clearAll"
+        >
+          <span class="inline-flex items-center justify-center gap-2"><FilterX class="size-4" /> {{ t('filters.clearAll') }}</span>
+        </button>
+        <button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 h-11 flex-1 rounded-xl text-sm font-bold transition-colors" @click="open = false">
+          {{ t('common.close') }}
+        </button>
+      </template>
+    </BottomSheet>
   </div>
 </template>
 

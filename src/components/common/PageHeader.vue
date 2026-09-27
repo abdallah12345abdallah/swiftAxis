@@ -26,7 +26,7 @@ const heading = computed(() => (screen.value ? t(screen.value.labelKey) : props.
     </div>
     <!-- actions wrap and keep to the end edge, so a toolbar of several buttons
          folds onto its own lines on a phone instead of overflowing the sheet -->
-    <div class="flex flex-wrap items-center justify-end gap-2">
+    <div class="page-head-actions flex flex-wrap items-center justify-end gap-2">
       <slot name="actions" />
     </div>
   </div>

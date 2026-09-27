@@ -84,7 +84,7 @@ watch(() => auth.role, load)
         </p>
       </div>
 
-      <DateRangePicker v-if="!isRider" v-model="range" refresh :refreshing="loading" class="w-full sm:w-auto" @refresh="load" />
+      <DateRangePicker v-if="!isRider" v-model="range" refresh :refreshing="loading" class="page-head-actions w-full sm:w-auto" @refresh="load" />
     </div>
 
     <!-- ── Loading ────────────────────────────────────────── -->
