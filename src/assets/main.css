@@ -389,10 +389,40 @@
   position: relative; z-index: 20;
   margin-inline: calc(var(--sheet-pad, 0px) * -1); padding-inline: var(--sheet-pad, 0px);
   margin-top: calc(var(--sheet-pad, 0px) * -1); padding-top: var(--sheet-pad, 0px); padding-bottom: var(--spacing);
-  transition: padding 0.3s ease, background-color 0.3s, box-shadow 0.3s, -webkit-backdrop-filter 0.3s, backdrop-filter 0.3s;
 }
-.page-head-title { transition: font-size 0.3s ease; }
-.page-head-sub { max-height: 3rem; overflow: hidden; margin-top: var(--spacing); transition: max-height 0.3s ease, opacity 0.2s, margin 0.3s; }
+.page-head-sub { margin-top: var(--spacing); }
+
+/* ── how the header pins ──────────────────────────────────────────────
+   The geometry — padding, title size, the subtitle — changes in ONE frame,
+   untransitioned. Only the surface animates, and it is a layer of its own so
+   that appearing costs a composited fade and nothing else.
+
+   The old version transitioned `padding`, `font-size` and `max-height`: three
+   properties that force layout, so every frame of a 300ms change relaid out
+   the header *and everything under it*, while the type re-rasterised at
+   fractional sizes and came out blurry. That is what made scrolling feel
+   heavy. A single reflow at the moment of pinning is invisible; eighteen of
+   them are not. */
+.page-head::before, .page-head::after { content: ''; position: absolute; z-index: -1; pointer-events: none; }
+/* the surface: opaque, because a translucent strip over a dense table ghosts
+   its text through the title — and because a blur here would be re-computed
+   on every scroll frame for the whole width of the sheet */
+.page-head::before {
+  inset: 0;
+  background: var(--background);
+  box-shadow: 0 10px 20px -18px color-mix(in srgb, var(--navy) 65%, transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+/* the brand hairline, drawn outward from the middle as the strip settles */
+.page-head::after {
+  inset-inline: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 60%, transparent) 12%, color-mix(in srgb, var(--primary) 60%, transparent) 88%, transparent);
+  transform: scaleX(0);
+  transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+[data-compact] .page-head::before { opacity: 1; }
+[data-compact] .page-head::after { transform: scaleX(1); }
 [data-compact] .page-head {
   position: sticky; top: calc(var(--sheet-pad, 0px) * -1); /* the negative margin counts toward the pinned edge, so offset it */
   padding-block: calc(var(--spacing) * 2.8); align-items: center;
@@ -401,11 +431,6 @@
      doubles in height, the page jumps as it pins, and the buttons end up
      floating over the content below. The title gives way instead. */
   flex-wrap: nowrap; gap: calc(var(--spacing) * 3);
-  /* denser than at rest, so a table scrolling underneath cannot be read
-     through the title */
-  background: color-mix(in srgb, var(--background) 88%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 45%, transparent), 0 12px 24px -20px color-mix(in srgb, var(--navy) 70%, transparent);
 }
 [data-compact] .page-head-title { font-size: var(--text-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the actions keep their size; a toolbar wider than the strip scrolls sideways
@@ -415,7 +440,7 @@
   overflow-x: auto; scrollbar-width: none;
 }
 [data-compact] .page-head-actions::-webkit-scrollbar { display: none; }
-[data-compact] .page-head-sub { max-height: 0; opacity: 0; margin-top: 0; }
+[data-compact] .page-head-sub { display: none; }
 
 /* Staggered rise: for a moment after each navigation (main.page-rise, set by
    the layout) whatever the page inserts rises into place in sequence — its
@@ -445,7 +470,7 @@
 .page-rise .soft-table tbody tr:nth-child(n + 9) { animation-delay: 400ms; }
 @media (prefers-reduced-motion: reduce) {
   .page-rise > * > *, .page-rise > * > .grid > *, .page-rise .soft-table tbody tr { animation: none; }
-  .page-head, .page-head-title, .page-head-sub { transition: none; }
+  .page-head::before, .page-head::after { transition: none; }
 }
 @media print { .page-head { position: static; } }
 
